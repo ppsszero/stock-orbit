@@ -7,10 +7,12 @@ import { FiTrash2, FiMenu, FiBarChart2, FiExternalLink } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition, zIndex , sp } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
+import { usePriceFlash } from '../hooks/usePriceFlash';
 import { Badge, StatusDot, StockLogo, IconButton } from '@/shared/ui';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
 import { sem } from '@/shared/styles/semantic';
+import { priceFlash } from '@/shared/styles/sharedStyles';
 
 interface Props {
   sym: StockSymbol;
@@ -30,6 +32,7 @@ export const StockRow = memo(({
   const confirm = useConfirm();
   const toast = useToast();
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
+  const flash = usePriceFlash(p, vm.direction);
 
   // NOTE: setNodeRef → 행 전체, listeners → 로고 영역에만 적용.
   // 행 전체가 드래그되면 클릭/호버 이벤트와 충돌하므로 핸들을 로고로 제한.
@@ -112,8 +115,8 @@ export const StockRow = memo(({
           </div>
         ) : vm.hasPrice ? (
           <>
-            <span css={s.price}>{vm.priceLabel}</span>
-            <span css={s.change[vm.direction]}>{vm.changeLabel}</span>
+            <span css={[s.price, flash && priceFlash[flash]]}>{vm.priceLabel}</span>
+            <span css={[s.change[vm.direction], flash && priceFlash[flash]]}>{vm.changeLabel}</span>
           </>
         ) : (
           <span css={s.dots}>···</span>

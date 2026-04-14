@@ -1,5 +1,6 @@
-import { css } from '@emotion/react';
+import { css, keyframes } from '@emotion/react';
 import { v } from './vars';
+import { sem } from './semantic';
 import { spacing, fontSize, fontWeight, letterSpacing } from './tokens';
 
 /** 그룹 헤더 (국내주식/해외주식 등) — StockList, StockGrid, StockTile 공유 */
@@ -25,3 +26,19 @@ export const sectionTitleStyle = css`
   letter-spacing: ${letterSpacing.wider}px;
   &:not(:first-of-type) { margin-top: ${spacing.xl}px; }
 `;
+
+/** 가격 갱신 배경 하이라이트 — 트레이딩 터미널 표준 패턴 */
+const highlightUp = keyframes`
+  0% { background: color-mix(in srgb, ${sem.feedback.up} 25%, transparent); }
+  100% { background: transparent; }
+`;
+const highlightDown = keyframes`
+  0% { background: color-mix(in srgb, ${sem.feedback.down} 25%, transparent); }
+  100% { background: transparent; }
+`;
+
+/** 가격 갱신 flash 스타일 — usePriceFlash 반환값으로 선택 */
+export const priceFlash = {
+  up: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightUp} 0.8s ease-out;`,
+  down: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightDown} 0.8s ease-out;`,
+} as const;

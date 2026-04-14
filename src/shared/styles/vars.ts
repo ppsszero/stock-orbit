@@ -69,6 +69,8 @@ export const v = {
   tileText: 'var(--c-tile-text)',
   tileTextMuted: 'var(--c-tile-text-muted)',
   tileTextFaint: 'var(--c-tile-text-faint)',
+  tileShadowSm: 'var(--c-tile-shadow-sm)',
+  tileShadowMd: 'var(--c-tile-shadow-md)',
   // Inverse (theme-independent)
   inverse: 'var(--c-inverse)',
 } as const;
@@ -124,5 +126,7 @@ export const themeToVars = (colors: Record<string, string>): string => `
   --c-tile-text: ${colors.tileText};
   --c-tile-text-muted: ${colors.tileTextMuted};
   --c-tile-text-faint: ${colors.tileTextFaint};
+  --c-tile-shadow-sm: ${colors.tileShadowSm};
+  --c-tile-shadow-md: ${colors.tileShadowMd};
   --c-inverse: #FFFFFF;
 `;

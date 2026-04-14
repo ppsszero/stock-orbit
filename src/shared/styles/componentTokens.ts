@@ -79,7 +79,7 @@ export const inputCommon = {
 export const iconButtonTokens = {
   default: {
     default: { bg: sem.bg.elevated,        color: sem.text.secondary },
-    hover:   { bg: sem.bg.elevated,        color: sem.text.primary },
+    hover:   { bg: sem.bg.elevated,        color: sem.action.primary },
   },
   ghost: {
     default: { bg: 'transparent',          color: sem.text.secondary },
@@ -91,8 +91,8 @@ export const iconButtonTokens = {
     active:  { bg: sem.bg.elevated,        color: sem.text.tertiary },
   },
   danger: {
-    default: { bg: sem.bg.elevated,        color: sem.text.tertiary },
-    hover:   { bg: sem.action.dangerTint,  color: sem.action.danger },
+    default: { bg: sem.bg.elevated,        color: sem.text.secondary },
+    hover:   { bg: sem.bg.elevated,        color: sem.action.danger },
   },
 } as const;
 

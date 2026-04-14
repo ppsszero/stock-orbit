@@ -1,10 +1,12 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
+import { css, } from '@emotion/react';
+import { useCallback } from 'react';
 import { FiX } from 'react-icons/fi';
 import { StockPrice, StockSymbol } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius , sp } from '@/shared/styles/tokens';
 import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
+import { useBackAction } from '@/shared/hooks/useBackAction';
 
 interface Props {
   symbol: StockSymbol | null;
@@ -20,6 +22,8 @@ const Row = ({ label, value, color }: { label: string; value: string; color?: st
 );
 
 export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
+  const handleClose = useCallback(() => onClose(), [onClose]);
+  useBackAction(!!symbol && !!price, handleClose);
   if (!symbol || !price) return null;
   const p = price;
   const c = p.currency;
@@ -72,7 +76,7 @@ export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
             <div css={s.grid}>
               {p.volume && <Row label="거래량" value={p.volume} />}
               {p.tradingValue && <Row label="거래대금" value={p.tradingValue} />}
-              {p.marketCap && <Row label="시가총액" value={p.marketCap} color="#A78BFA" />}
+              {p.marketCap && <Row label="시가총액" value={p.marketCap} />}
             </div>
           </>}
 
@@ -138,6 +142,6 @@ const s = {
   sectionTitle: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; color: ${sem.text.tertiary}; padding: ${sp('md', 'xs')} ${spacing.xl}px ${spacing.sm}px; text-transform: uppercase; letter-spacing: 0.3px;`,
   grid: css`display: flex; flex-direction: column;`,
   row: css`display: flex; align-items: center; justify-content: space-between; padding: ${spacing.md}px ${spacing.xl}px;`,
-  label: css`font-size: ${fontSize.md}px; color: rgba(160,163,168,0.8);`,
-  value: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: #e0e0e0; font-variant-numeric: tabular-nums;`,
+  label: css`font-size: ${fontSize.md}px; color: ${sem.text.tertiary};`,
+  value: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.secondary}; font-variant-numeric: tabular-nums;`,
 };

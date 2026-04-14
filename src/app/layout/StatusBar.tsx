@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore, memo, MutableRefObject } from 'react';
 import { FiSearch, FiSettings, FiActivity, FiTrendingUp, FiFileText } from 'react-icons/fi';
 import { Tooltip } from '@/shared/ui/Tooltip';
 import { useToast } from '@/shared/ui/Toast';
@@ -11,8 +11,10 @@ import { sem } from '@/shared/styles/semantic';
 interface Props {
   lastUpdated: Date | null;
   loading: boolean;
-  /** 표시할 종목이 있는지 — 없으면 갱신 시각 대신 "종목 없음" 표시 */
+  fetching: boolean;
   hasSymbols: boolean;
+  progressRef: MutableRefObject<number>;
+  subscribeProgress: (fn: () => void) => () => void;
   onSearch: () => void;
   onSettings: () => void;
   onRefresh: () => void;
@@ -21,35 +23,55 @@ interface Props {
   onNews: () => void;
 }
 
-/**
- * 하단 상태 바 — Dumb Component.
- * memo 적용으로 props 변경 없으면 리렌더 방지.
- * CSS 변수 기반 스타일링 (런타임 CSS 생성 제거).
- */
-export const StatusBar = memo(({ lastUpdated, loading, hasSymbols, onSearch, onSettings, onRefresh, onInvestor, onRanking, onNews }: Props) => {
+export const StatusBar = memo(({
+  lastUpdated, loading, fetching, hasSymbols,
+  progressRef, subscribeProgress,
+  onSearch, onSettings, onRefresh, onInvestor, onRanking, onNews,
+}: Props) => {
   const toast = useToast();
-  const [flash, setFlash] = useState(false);
-  const prevRef = useRef(lastUpdated);
 
+  // progress 구독 (향후 활용 가능)
+  useSyncExternalStore(subscribeProgress, () => progressRef.current);
+
+  // 완료 플래시 + 수동 갱신 시 토스트
+  const [doneFlash, setDoneFlash] = useState(false);
+  const wasFetching = useRef(false);
+  const manualRefresh = useRef(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
-    if (lastUpdated && lastUpdated !== prevRef.current) {
-      setFlash(true);
-      const id = setTimeout(() => setFlash(false), 1200);
-      prevRef.current = lastUpdated;
-      return () => clearTimeout(id);
+    if (fetching) {
+      wasFetching.current = true;
+    } else if (wasFetching.current) {
+      wasFetching.current = false;
+      setDoneFlash(true);
+      if (manualRefresh.current) {
+        manualRefresh.current = false;
+        toast.show('데이터를 갱신했어요.');
+      }
+      clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setDoneFlash(false), 1200);
     }
-  }, [lastUpdated]);
+    return () => clearTimeout(flashTimer.current);
+  }, [fetching, toast]);
 
+  const lastManualAt = useRef(0);
   const handleRefresh = useCallback(() => {
     if (!hasSymbols) {
       toast.show('갱신할 종목이 없어요', 'info');
       return;
     }
+    if (fetching) return;
+    const elapsed = Date.now() - lastManualAt.current;
+    if (elapsed < 10_000) {
+      const sec = Math.ceil((10_000 - elapsed) / 1000);
+      toast.show(`${sec}초 뒤에 다시 시도해주세요`, 'info');
+      return;
+    }
+    lastManualAt.current = Date.now();
+    manualRefresh.current = true;
     onRefresh();
-    toast.show('데이터를 갱신했어요.');
-  }, [onRefresh, toast, hasSymbols]);
+  }, [onRefresh, toast, hasSymbols, fetching]);
 
-  // 갱신 시각 표시 텍스트 — 상태별로 명확한 한글 문구 사용
   const statusText = !hasSymbols
     ? '종목 없음'
     : (loading && !lastUpdated)
@@ -76,12 +98,21 @@ export const StatusBar = memo(({ lastUpdated, loading, hasSymbols, onSearch, onS
           <button css={s.ctrlBtn} onClick={onNews} aria-label="뉴스"><FiFileText size={13} /></button>
         </Tooltip>
         <span css={s.divider} />
-        <Tooltip content={hasSymbols ? '데이터 갱신' : '종목을 먼저 추가해주세요'} position="top" display="inline-flex">
-          <button css={s.updateInfo} onClick={handleRefresh} aria-label="데이터 갱신">
-            <span css={[s.dot, hasSymbols && flash && s.dotFlash, hasSymbols && loading && s.dotLoading]} />
+        <Tooltip content={hasSymbols ? (fetching ? '갱신 중...' : '데이터 갱신') : '종목을 먼저 추가해주세요'} position="top" display="inline-flex">
+          <button
+            css={[s.updateInfo, fetching && s.updateInfoDisabled]}
+            onClick={handleRefresh}
+            aria-label="데이터 갱신"
+          >
+            <span css={[
+              s.dot,
+              fetching && s.dotFetching,
+              doneFlash && s.dotDone,
+            ]} />
             <span css={s.time}>{statusText}</span>
           </button>
         </Tooltip>
+        <span css={s.divider} />
         <Tooltip content="설정" position="top" display="inline-flex">
           <button css={s.ctrlBtn} onClick={onSettings} aria-label="설정"><FiSettings size={13} /></button>
         </Tooltip>
@@ -90,7 +121,16 @@ export const StatusBar = memo(({ lastUpdated, loading, hasSymbols, onSearch, onS
   );
 });
 
-const pulse = keyframes`0%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.8)}100%{opacity:1;transform:scale(1)}`;
+const pulse = keyframes`
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.6); }
+  100% { opacity: 1; transform: scale(1); }
+`;
+const flashOut = keyframes`
+  0% { background: ${sem.action.success}; box-shadow: 0 0 4px ${sem.action.success}; }
+  100% { background: ${sem.text.tertiary}; box-shadow: none; }
+`;
+
 const s = {
   bar: css`
     display: flex; align-items: center; justify-content: space-between;
@@ -118,10 +158,24 @@ const s = {
     color: ${sem.text.tertiary}; transition: all ${transition.fast};
     &:hover { background: ${sem.bg.elevated}; color: ${sem.text.secondary}; }
   `,
-  divider: css`width: 1px; height: ${spacing.lg}px; background: ${sem.border.default}; flex-shrink: 0;`,
-  updateInfo: css`display: flex; align-items: center; gap: ${spacing.sm}px; padding: 0 ${spacing.md}px; cursor: pointer; border: none; background: transparent;`,
-  dot: css`width: 5px; height: 5px; border-radius: 50%; background: ${sem.text.tertiary}; transition: background 0.3s; flex-shrink: 0;`,
-  dotFlash: css`background: ${sem.action.success}; animation: ${pulse} 1.2s ease;`,
-  dotLoading: css`background: ${sem.action.warning}; animation: ${pulse} 0.8s ease infinite;`,
-  time: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary}; white-space: nowrap; font-variant-numeric: tabular-nums;`,
+  divider: css`width: 1px; height: ${spacing.lg}px; background: ${sem.border.accent}; flex-shrink: 0;`,
+  updateInfo: css`
+    display: flex; align-items: center; gap: ${spacing.sm + 2}px;
+    padding: 0 ${spacing.md}px; cursor: pointer; border: none; background: transparent;
+  `,
+  updateInfoDisabled: css`cursor: default;`,
+  dot: css`
+    width: 5px; height: 5px; border-radius: 50%;
+    background: ${sem.text.tertiary}; flex-shrink: 0;
+    transition: background 0.3s;
+  `,
+  dotFetching: css`
+    background: ${sem.action.primary};
+    animation: ${pulse} 0.8s ease infinite;
+  `,
+  dotDone: css`animation: ${flashOut} 1.2s ease forwards;`,
+  time: css`
+    font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  `,
 };

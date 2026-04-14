@@ -57,6 +57,7 @@ export interface NaverDomesticDetailRaw {
 export interface NaverStockItemInfo {
   code: string;
   value: string;
+  valueDesc?: string;
 }
 
 export interface NaverOverseasDetailRaw {

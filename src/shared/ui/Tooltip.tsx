@@ -47,7 +47,7 @@ export const Tooltip = ({ content, children, position = 'bottom', delay = 400, d
     const isTopAnchored = position === 'top';
     const topAnchor = isTopAnchored ? wrap.top : (mouseY.current || wrap.top + wrap.height / 2);
     const bottomAnchor = isTopAnchored ? wrap.bottom : (mouseY.current || wrap.bottom);
-    const above = topAnchor - tipH - 10;
+    const above = topAnchor - tipH - 8;
     const below = bottomAnchor + 16;
 
     let y: number;
@@ -77,6 +77,7 @@ export const Tooltip = ({ content, children, position = 'bottom', delay = 400, d
   };
 
   const show = () => {
+    if (!content) return;
     if (activeHide && activeHide !== hideImmediate) activeHide();
     activeHide = hideImmediate;
     timer.current = setTimeout(() => setVisible(true), delay);
@@ -116,7 +117,7 @@ const s = {
   tip: css`
     position: fixed; z-index: ${zIndex.tooltip};
     padding: ${spacing.md}px ${spacing.lg}px; border-radius: ${radius.xl}px;
-    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; line-height: 1.6;
+    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; line-height: 1.6;
     white-space: pre-line; max-width: 260px; width: max-content;
     pointer-events: none; will-change: transform, opacity;
     background: ${sem.surface.popover}; color: ${sem.surface.popoverText};

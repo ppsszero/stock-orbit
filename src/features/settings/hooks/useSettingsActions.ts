@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { AppSettings } from '@/shared/types';
 
 /** 최소 윈도우 크기 제한 (electron main.js의 minWidth/minHeight와 일치) */
-const MIN_WIDTH = 336;
-const MIN_HEIGHT = 400;
+const MIN_WIDTH = 340;
+const MIN_HEIGHT = 340;
 /** 최대치는 모니터 크기 등 환경 의존이지만, 방어적으로 상한 둠 */
 const MAX_WIDTH = 4000;
 const MAX_HEIGHT = 4000;

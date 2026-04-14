@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, memo } from 'react';
 import { FiMinus, FiX } from 'react-icons/fi';
 import { Tooltip } from '@/shared/ui/Tooltip';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
+import { useBackAction } from '@/shared/hooks/useBackAction';
 import logoSvg from '../../assets/logo.svg';
 import { spacing, fontSize, fontWeight, radius, transition, zIndex, letterSpacing , sp } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
@@ -33,6 +34,7 @@ export const TitleBar = memo(({
 
   const closePopup = useCallback(() => setShowOpacity(false), []);
   useOutsideClick(popRef, showOpacity, closePopup);
+  useBackAction(showOpacity, closePopup);
 
   const togglePopup = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,7 +62,7 @@ export const TitleBar = memo(({
             <button css={s.btn} onClick={togglePopup} aria-label="투명도 조절">💧</button>
           </Tooltip>
           {showOpacity && (
-            <div css={s.pop}>
+            <div css={s.pop} onClick={e => e.stopPropagation()}>
               <input type="range" min="30" max="100" step="1"
                 value={Math.round(opacity * 100)} onChange={handleOpacity} css={s.slider} />
               <span css={s.sliderVal}>{Math.round(opacity * 100)}%</span>
@@ -106,8 +108,8 @@ const s = {
   rel: css`position: relative;`,
   pop: css`
     position: absolute; top: 36px; right: -20px;
-    background: ${sem.surface.card}; border: 1px solid ${sem.border.default};
-    border-radius: ${radius['2xl']}px; padding: ${sp('lg', 'xs')} ${spacing.xl}px; box-shadow: ${sem.shadow.default};
+    background: ${sem.surface.popover}; border: 1px solid ${sem.border.default};
+    border-radius: ${radius['2xl']}px; padding: ${sp('lg', 'xs')} ${spacing.xl}px; box-shadow: ${sem.shadow.popover};
     z-index: ${zIndex.dropdown}; display: flex; align-items: center; gap: ${sp('md', 'xs')}; min-width: 180px;
   `,
   slider: css`

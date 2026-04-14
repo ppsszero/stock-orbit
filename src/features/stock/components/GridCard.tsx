@@ -7,9 +7,12 @@ import { FiTrash2, FiBarChart2, FiExternalLink, FiMenu } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
+import { usePriceFlash } from '../hooks/usePriceFlash';
+import { IconButton } from '@/shared/ui';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
 import { sem } from '@/shared/styles/semantic';
+import { priceFlash } from '@/shared/styles/sharedStyles';
 
 interface Props {
   sym: StockSymbol;
@@ -29,6 +32,7 @@ export const GridCard = memo(({
   const confirm = useConfirm();
   const toast = useToast();
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
+  const flash = usePriceFlash(p, vm.direction);
 
   const {
     attributes, listeners, setNodeRef,
@@ -71,17 +75,11 @@ export const GridCard = memo(({
       {...attributes}
     >
       <div css={s.actions} className="card-actions">
-        <button css={s.actionBtn} onClick={handleClick} aria-label="외부 링크 열기">
-          <FiExternalLink size={11} />
-        </button>
+        <IconButton icon={<FiExternalLink size={11} />} size={22} onClick={handleClick} ariaLabel="외부 링크 열기" />
         {vm.hasPrice && (
-          <button css={s.actionBtn} onClick={handleDetail} aria-label="차트 보기">
-            <FiBarChart2 size={11} />
-          </button>
+          <IconButton icon={<FiBarChart2 size={11} />} size={22} onClick={handleDetail} ariaLabel="차트 보기" />
         )}
-        <button css={s.delBtn} onClick={handleRemove} aria-label="종목 삭제">
-          <FiTrash2 size={11} />
-        </button>
+        <IconButton icon={<FiTrash2 size={11} />} size={22} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />
       </div>
 
       <div css={s.cardTop}>
@@ -102,8 +100,8 @@ export const GridCard = memo(({
       <div css={s.cardBottom}>
         {vm.hasPrice ? (
           <>
-            <span css={s.price}>{vm.priceLabel}</span>
-            <span css={s.change[vm.direction]}>
+            <span css={[s.price, flash && priceFlash[flash]]}>{vm.priceLabel}</span>
+            <span css={[s.change[vm.direction], flash && priceFlash[flash]]}>
               {vm.arrowLabel}{vm.percentLabel}
             </span>
           </>
@@ -134,27 +132,15 @@ const s = {
       &:hover .drag-handle { opacity: 1; }
     `;
     return {
-      up: css`${base} background-image: linear-gradient(135deg, ${sem.feedback.up}08 0%, transparent 60%);`,
-      down: css`${base} background-image: linear-gradient(135deg, ${sem.feedback.down}08 0%, transparent 60%);`,
+      up: css`${base}`,
+      down: css`${base}`,
       flat: css`${base}`,
     };
   })() as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
   dragging: css`opacity: 0.5; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.2);`,
   actions: css`
-    position: absolute; top: 6px; right: 6px; z-index: 3;
+    position: absolute; bottom: 6px; right: 6px; z-index: 3;
     display: flex; gap: ${spacing.xs}px; opacity: 0; transition: opacity ${transition.fast};
-  `,
-  actionBtn: css`
-    width: 22px; height: 22px; border: none; border-radius: ${radius.md}px;
-    background: ${sem.action.primaryHover}; color: ${sem.action.primary};
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    &:hover { background: ${sem.action.primaryMedium}; }
-  `,
-  delBtn: css`
-    width: 22px; height: 22px; border: none; border-radius: ${radius.md}px;
-    background: ${sem.action.dangerTint}; color: ${sem.action.danger};
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    &:hover { background: ${sem.action.dangerBorder}; }
   `,
   cardTop: css`display: flex; align-items: center; gap: ${spacing.md}px; margin-bottom: ${spacing.md}px;`,
   logoWrap: css`
@@ -183,7 +169,7 @@ const s = {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   `,
   codeTxt: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary}; line-height: 1.2;`,
-  cardBottom: css`display: flex; flex-direction: column; gap: ${spacing.xs}px;`,
+  cardBottom: css`display: flex; flex-direction: column; align-items: flex-start; gap: ${spacing.xs}px;`,
   price: css`
     font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary};
     font-variant-numeric: tabular-nums;

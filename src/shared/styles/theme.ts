@@ -19,7 +19,7 @@ const lightColors = {
   up: '#E42939',
   down: '#2272EB',
   flat: '#8B95A1',
-  cardBg: '#FFFFFF',
+  cardBg: '#F7F8FA',
   titleBarBg: '#E5E8EB',
   marqueeBg: '#F2F4F6',
   shadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -30,7 +30,7 @@ const lightColors = {
   // Popover (Toast, Tooltip)
   popoverBg: '#FFFFFF',
   popoverText: '#191F28',
-  popoverShadow: '0 4px 24px rgba(0,0,0,0.1)',
+  popoverShadow: '0 2px 12px rgba(0,0,0,0.2)',
   // Tinted (pre-calculated alpha)
   accentTint: '#3182F615',
   accentHover: '#3182F625',
@@ -43,19 +43,23 @@ const lightColors = {
   dangerBorder: '#F0445220',
   successTint: '#00C85320',
   successHover: '#00C85330',
-  // Heatmap (tile opacity scale)
-  upHeavy: '#E42939D0',
-  upStrong: '#E4293990',
-  upMild: '#E4293955',
-  upWeak: '#E4293930',
-  downHeavy: '#2272EBD0',
-  downStrong: '#2272EB90',
-  downMild: '#2272EB55',
-  downWeak: '#2272EB30',
-  // Tile text
+  // Heatmap — 라이트는 명도/채도를 직접 조절하여 단계 폭 확보
+  // Heatmap — WCAG AA (vs #FFFFFF), Weak도 5.5:1 이상 확보
+  upHeavy: '#7F1D1D',    // 13.6:1
+  upStrong: '#991B1B',   // 10.2:1
+  upMild: '#B91C1C',     //  7.1:1
+  upWeak: '#C62828',     //  5.6:1
+  downHeavy: '#1E3A8A',  // 12.8:1
+  downStrong: '#1E40AF', //  9.5:1
+  downMild: '#1D4ED8',   //  6.4:1
+  downWeak: '#2D63D5',   //  5.5:1
+  // Tile text — 진한 배경이므로 흰색 유지
   tileText: '#FFFFFF',
   tileTextMuted: '#FFFFFFBF',
   tileTextFaint: '#FFFFFF80',
+  // Tile text-shadow — 라이트에서는 불필요
+  tileShadowSm: 'none',
+  tileShadowMd: 'none',
 };
 
 const darkColors = {
@@ -113,6 +117,9 @@ const darkColors = {
   tileText: '#FFFFFF',
   tileTextMuted: '#FFFFFFBF',
   tileTextFaint: '#FFFFFF80',
+  // Tile text-shadow — 다크 배경에서 가독성 보조
+  tileShadowSm: '0 1px 2px rgba(0,0,0,0.3)',
+  tileShadowMd: '0 1px 3px rgba(0,0,0,0.3)',
 };
 
 export const lightTheme = { ...lightColors, ...tokens };

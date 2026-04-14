@@ -33,8 +33,8 @@ function createWindow() {
     height: saved?.height || 680,
     x: saved?.x,
     y: saved?.y,
-    minWidth: 336,
-    minHeight: 400,
+    minWidth: 340,
+    minHeight: 340,
     frame: false,
     transparent: true,
     resizable: true,
@@ -178,9 +178,22 @@ app.whenReady().then(() => {
   mainWindow.webContents.on('did-attach-webview', (_, wc) => {
     wc.on('before-input-event', (_event, input) => {
       if (input.type !== 'keyDown' || input.key !== 'Escape') return;
-      // 앱 종료 등으로 mainWindow가 이미 파괴된 경우 무시
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send('webview-back');
+    });
+
+    // 마우스 뒤로/앞으로 버튼 — webview 내부에 JS 주입, console-message로 수신
+    wc.on('did-finish-load', () => {
+      wc.executeJavaScript(`
+        document.addEventListener('mouseup', (e) => {
+          if (e.button === 3) console.log('__orbit_nav:back');
+          if (e.button === 4) console.log('__orbit_nav:forward');
+        });
+      `).catch(() => {});
+    });
+    wc.on('console-message', (_, _level, message) => {
+      if (message === '__orbit_nav:back' && wc.canGoBack()) wc.goBack();
+      else if (message === '__orbit_nav:forward' && wc.canGoForward()) wc.goForward();
     });
   });
 

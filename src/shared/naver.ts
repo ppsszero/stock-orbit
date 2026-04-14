@@ -107,6 +107,17 @@ const parseMarketValue = (s: string | undefined): number | undefined => {
   return val * multiplier;
 };
 
+// 한화 시총 파싱 — "6,795조 9,242억원" → 6,795,924,200,000,000 (원)
+const parseKrwMarketValue = (s: string | undefined): number | undefined => {
+  if (!s) return undefined;
+  let total = 0;
+  const jo = s.match(/([\d,]+)조/);
+  const eok = s.match(/([\d,]+)억/);
+  if (jo) total += parseFloat(jo[1].replace(/,/g, '')) * 1e12;
+  if (eok) total += parseFloat(eok[1].replace(/,/g, '')) * 1e8;
+  return total > 0 ? total : undefined;
+};
+
 // === Autocomplete ===
 export const searchStocks = async (query: string): Promise<NaverAutoCompleteItem[]> => {
   if (!query.trim()) return [];
@@ -174,6 +185,7 @@ export const fetchOverseasStock = async (reutersCode: string): Promise<StockPric
     const nationMap: Record<string, string> = { USA: 'US', JPN: 'JP', CHN: 'CN', HKG: 'HK', VNM: 'VN' };
     const infos = d.stockItemTotalInfos || [];
     const getInfo = (code: string) => infos.find(i => i.code === code)?.value;
+    const getInfoDesc = (code: string) => infos.find(i => i.code === code)?.valueDesc;
     const exchange = d.stockExchangeType?.name || d.stockExchangeName || '';
     return {
       code: d.symbolCode || reutersCode.split('.')[0], name: d.stockName || reutersCode,
@@ -192,7 +204,7 @@ export const fetchOverseasStock = async (reutersCode: string): Promise<StockPric
       volume: getInfo('accumulatedTradingVolume'),
       tradingValue: getInfo('accumulatedTradingValue'),
       marketCap: getInfo('marketValue'),
-      marketCapRaw: parseMarketValue(getInfo('marketValue')),
+      marketCapRaw: parseKrwMarketValue(getInfoDesc('marketValue')) || parseMarketValue(getInfo('marketValue')),
       per: getInfo('per'), pbr: getInfo('pbr'),
       week52High: getInfo('highPriceOf52Weeks') ? num(getInfo('highPriceOf52Weeks')!) : undefined,
       week52Low: getInfo('lowPriceOf52Weeks') ? num(getInfo('lowPriceOf52Weeks')!) : undefined,
