@@ -57,6 +57,8 @@ export const sem = {
     text:       v.tileText,
     textMuted:  v.tileTextMuted,
     textFaint:  v.tileTextFaint,
+    shadowSm:   v.tileShadowSm,
+    shadowMd:   v.tileShadowMd,
   },
   overlay: {
     dim:    'rgba(0,0,0,0.5)',   // 모달 배경

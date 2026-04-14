@@ -7,9 +7,11 @@ import { FiTrash2, FiBarChart2, FiExternalLink, FiMenu } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
+import { usePriceFlash } from '../hooks/usePriceFlash';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
 import { sem } from '@/shared/styles/semantic';
+import { priceFlash } from '@/shared/styles/sharedStyles';
 
 interface Props {
   sym: StockSymbol;
@@ -29,6 +31,7 @@ export const GridCard = memo(({
   const confirm = useConfirm();
   const toast = useToast();
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
+  const flash = usePriceFlash(p, vm.direction);
 
   const {
     attributes, listeners, setNodeRef,
@@ -102,8 +105,8 @@ export const GridCard = memo(({
       <div css={s.cardBottom}>
         {vm.hasPrice ? (
           <>
-            <span css={s.price}>{vm.priceLabel}</span>
-            <span css={s.change[vm.direction]}>
+            <span css={[s.price, flash && priceFlash[flash]]}>{vm.priceLabel}</span>
+            <span css={[s.change[vm.direction], flash && priceFlash[flash]]}>
               {vm.arrowLabel}{vm.percentLabel}
             </span>
           </>
@@ -134,27 +137,27 @@ const s = {
       &:hover .drag-handle { opacity: 1; }
     `;
     return {
-      up: css`${base} background-image: linear-gradient(135deg, ${sem.feedback.up}08 0%, transparent 60%);`,
-      down: css`${base} background-image: linear-gradient(135deg, ${sem.feedback.down}08 0%, transparent 60%);`,
+      up: css`${base}`,
+      down: css`${base}`,
       flat: css`${base}`,
     };
   })() as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
   dragging: css`opacity: 0.5; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.2);`,
   actions: css`
-    position: absolute; top: 6px; right: 6px; z-index: 3;
+    position: absolute; bottom: 6px; right: 6px; z-index: 3;
     display: flex; gap: ${spacing.xs}px; opacity: 0; transition: opacity ${transition.fast};
   `,
   actionBtn: css`
     width: 22px; height: 22px; border: none; border-radius: ${radius.md}px;
-    background: ${sem.action.primaryHover}; color: ${sem.action.primary};
+    background: ${sem.action.primaryMedium}; color: ${sem.action.primary};
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    &:hover { background: ${sem.action.primaryMedium}; }
+    &:hover { background: ${sem.action.primaryStrong}; }
   `,
   delBtn: css`
     width: 22px; height: 22px; border: none; border-radius: ${radius.md}px;
-    background: ${sem.action.dangerTint}; color: ${sem.action.danger};
+    background: ${sem.action.dangerBorder}; color: ${sem.action.danger};
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    &:hover { background: ${sem.action.dangerBorder}; }
+    &:hover { background: color-mix(in srgb, ${sem.action.danger} 30%, transparent); }
   `,
   cardTop: css`display: flex; align-items: center; gap: ${spacing.md}px; margin-bottom: ${spacing.md}px;`,
   logoWrap: css`

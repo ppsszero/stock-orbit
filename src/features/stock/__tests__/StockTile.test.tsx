@@ -59,11 +59,14 @@ describe('StockTile', () => {
     expect(screen.getByText('종목을 추가해보세요')).toBeInTheDocument();
   });
 
-  it('타일 클릭 시 onClick이 호출된다', async () => {
+  it('타일 클릭 → 팝오버 → 외부 링크 버튼 클릭 시 onClick이 호출된다', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     renderTile(<StockTile {...baseProps} onClick={onClick} />);
+    // 타일 클릭하여 팝오버 열기
     await user.click(screen.getByText('삼성전자'));
+    const linkBtn = screen.getByLabelText('외부 링크 열기');
+    await user.click(linkBtn);
     expect(onClick).toHaveBeenCalledWith(sym1);
   });
 

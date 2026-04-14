@@ -1,3 +1,4 @@
+import { useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StockPrice, StockSymbol } from '@/shared/types';
 import { fetchDomesticStock, fetchOverseasStock } from '@/shared/naver';
@@ -22,20 +23,12 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /**
  * 종목 수가 많으면 10개씩 쪼개서 3초 간격으로 병렬 요청 전송.
- * - 각 배치 내부는 Promise.allSettled로 동시 요청 (10개)
- * - 배치 간은 sleep으로 서버 스파이크 완화
- * - 실패 종목은 누락(null) 처리, 성공 종목만 가격 업데이트
- *
- * 타이밍 (예: 30개 종목, refreshInterval=30s)
- *   T=0s  Batch 1 발사
- *   T=3s  Batch 2 발사
- *   T=6s  Batch 3 발사  → queryFn 완료 (~7s)
- *   T=37s 다음 사이클 시작 (React Query의 refetchInterval은 "완료 기준"이므로
- *         마지막 배치 완료 후 refreshInterval만큼 대기)
- *
- *   각 종목의 실효 갱신 주기 ≈ refreshInterval + 배치 소요시간
+ * onProgress 콜백으로 배치 진행률(0~1)을 실시간 보고.
  */
-const fetchInBatches = async (symbols: StockSymbol[]): Promise<Record<string, StockPrice>> => {
+const fetchInBatches = async (
+  symbols: StockSymbol[],
+  onProgress?: (ratio: number) => void,
+): Promise<Record<string, StockPrice>> => {
   const out: Record<string, StockPrice> = {};
   if (symbols.length === 0) return out;
 
@@ -47,13 +40,18 @@ const fetchInBatches = async (symbols: StockSymbol[]): Promise<Record<string, St
   };
 
   if (symbols.length <= BATCH_THRESHOLD) {
+    onProgress?.(0.5);
     await runBatch(symbols);
+    onProgress?.(1);
     return out;
   }
 
+  const total = Math.ceil(symbols.length / BATCH_SIZE);
   for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
     const batch = symbols.slice(i, i + BATCH_SIZE);
     await runBatch(batch);
+    const done = Math.floor(i / BATCH_SIZE) + 1;
+    onProgress?.(done / total);
     if (i + BATCH_SIZE < symbols.length) await sleep(BATCH_DELAY_MS);
   }
   return out;
@@ -62,19 +60,50 @@ const fetchInBatches = async (symbols: StockSymbol[]): Promise<Record<string, St
 /**
  * 종목별 실시간 가격 폴링.
  * 30초 기본 주기 + ±5초 지터로 서버 부하 스파이크 방지.
+ * progress(0~1)를 반환하여 UI에서 진행 상황을 표시할 수 있음.
  */
 export const useStockPrices = (symbols: StockSymbol[], refreshInterval: number) => {
-  const { data: prices = {}, isLoading, dataUpdatedAt, refetch } = useQuery({
+  // progress를 ref로 관리 — setState로 하면 queryFn 안에서 리렌더 폭풍
+  // 외부에서 구독할 수 있도록 콜백 패턴 사용
+  const progressRef = useRef(0);
+  const listenersRef = useRef<Set<() => void>>(new Set());
+
+  const setProgress = useCallback((v: number) => {
+    progressRef.current = v;
+    listenersRef.current.forEach(fn => fn());
+  }, []);
+
+  // 언마운트 시 리스너 정리
+  useEffect(() => () => { listenersRef.current.clear(); }, []);
+
+  const { data: prices = {}, isLoading, isFetching, dataUpdatedAt, refetch } = useQuery({
     queryKey: ['stockPrices', symbols.map(s => s.code).sort()],
-    queryFn: () => fetchInBatches(symbols),
+    queryFn: () => {
+      setProgress(0);
+      return fetchInBatches(symbols, setProgress);
+    },
     // jitter: ±5초 랜덤 오프셋으로 여러 사용자 동시 요청 분산
     refetchInterval: () => refreshInterval * 1000 + (Math.random() * 10_000 - 5_000),
     enabled: symbols.length > 0,
     // naver.ts의 rate-limit 백오프가 재시도를 이미 지연 처리하므로
     // React Query 자동 재시도를 꺼서 중복 요청과 backoff 충돌을 방지
     retry: false,
+    // 매 fetch마다 새 객체 참조 보장 → usePriceFlash가 갱신 감지 가능
+    structuralSharing: false,
   });
 
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
-  return { prices, loading: isLoading, lastUpdated, refresh: refetch };
+  return {
+    prices,
+    loading: isLoading,
+    fetching: isFetching,
+    lastUpdated,
+    refresh: refetch,
+    /** progress ref + subscribe — StatusBar에서 useSyncExternalStore로 구독 */
+    progressRef,
+    subscribeProgress: useCallback((fn: () => void) => {
+      listenersRef.current.add(fn);
+      return () => { listenersRef.current.delete(fn); };
+    }, []),
+  };
 };

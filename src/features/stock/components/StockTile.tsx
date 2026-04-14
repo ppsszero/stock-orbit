@@ -1,18 +1,20 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useMemo, memo, useCallback } from 'react';
-import { FiTrash2 } from 'react-icons/fi';
+import { useMemo, memo, useCallback, useRef, useState, useEffect, useLayoutEffect } from 'react';
+import ReactDOM from 'react-dom';
+import { FiTrash2, FiBarChart2, FiExternalLink } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
-import { spacing, fontSize, fontWeight, radius, transition , shadow } from '@/shared/styles/tokens';
-import { groupHeaderStyle } from '@/shared/styles/sharedStyles';
+import { spacing, fontSize, fontWeight, radius, transition, zIndex } from '@/shared/styles/tokens';
+import { groupHeaderStyle, priceFlash } from '@/shared/styles/sharedStyles';
+import { usePriceFlash } from '../hooks/usePriceFlash';
 import { fmtNum, fmtPercent, getDisplayName } from '@/shared/utils/format';
 import { calcDisplayPrice } from '../utils/currency';
 import { useStockGroups, StockGroup } from '../hooks/useStockGroups';
 import { EmptyState } from './EmptyState';
-import { Tooltip } from '@/shared/ui/Tooltip';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
+import { useBackAction } from '@/shared/hooks/useBackAction';
 
 interface Props {
   symbols: StockSymbol[];
@@ -65,23 +67,68 @@ const getTileColor = (dir: 'up' | 'down' | 'flat', pct: number): TileBg => {
   return scale[0];
 };
 
-export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGroups, onClick, onRemove }: Props) => {
-  const { groups } = useStockGroups(symbols, prices, customGroups);
+/** 이름 텍스트가 ellipsis 상태인지 감지하는 훅 */
+const useIsTruncated = (text: string) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) setTruncated(el.scrollWidth > el.clientWidth);
+  }, [text]);
+  return { ref, truncated };
+};
+
+/** 개별 타일 — memo로 분리하여 리렌더 최소화 */
+const Tile = memo(({
+  sym, price: p, span, bg, currencyMode, usdkrw,
+  open, dimmed, onToggle,
+  onRemove, onClick, onDetail,
+}: {
+  sym: StockSymbol; price: StockPrice | null; span: number; bg: string;
+  currencyMode: 'KRW' | 'USD'; usdkrw: number;
+  open: boolean; dimmed: boolean; onToggle: () => void;
+  onRemove?: (code: string) => void;
+  onClick: (symbol: StockSymbol) => void;
+  onDetail: (symbol: StockSymbol, price: StockPrice) => void;
+}) => {
   const confirm = useConfirm();
   const toast = useToast();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const isLarge = span >= 3;
+  const sizeKey = isLarge ? 'lg' : 'sm';
+  const displayName = p ? getDisplayName(p, sym) : sym.name;
+  const display = p ? calcDisplayPrice(p, currencyMode, usdkrw) : null;
+  const dir = p?.changeDirection || 'flat';
+  const pct = p?.changePercent || 0;
+  const { ref: nameRef } = useIsTruncated(displayName);
+  const flash = usePriceFlash(p, dir);
 
-  const handleRemove = useCallback(async (sym: StockSymbol, e: React.MouseEvent) => {
+  const closePopover = useCallback(() => { if (open) onToggle(); }, [open, onToggle]);
+  useBackAction(open, closePopover);
+
+  // 바깥 클릭 감지 — portal 팝오버도 "내부"로 인식해야 하므로 직접 구현
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      if (popRef.current?.contains(target)) return;
+      onToggle();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open, onToggle]);
+
+  const handleRemove = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
+    onToggle();
     if (!onRemove) return;
-    const displayName = sym.name;
     const ok = await confirm({
       title: `"${displayName}" 삭제`,
       message: '이 종목을 관심목록에서 삭제할까요?',
       confirmText: '삭제', cancelText: '취소', danger: true,
     });
     if (ok) {
-      // View Transitions API — 타일 삭제 + 리셔플을 부드럽게 애니메이션
-      // Chromium 111+ 지원. 미지원 환경(구버전/기타)은 즉시 반영.
       type DocWithTransition = Document & { startViewTransition?: (cb: () => void) => void };
       const doc = document as DocWithTransition;
       if (typeof doc.startViewTransition === 'function') {
@@ -91,10 +138,105 @@ export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGr
       }
       toast.show(`"${displayName}" 종목을 삭제했어요.`, 'delete');
     }
-  }, [onRemove, confirm, toast]);
+  }, [onRemove, onToggle, sym.code, displayName, confirm, toast]);
 
-  // 그룹별 타일 데이터 — 시가총액 내림차순 정렬 (큰 회사가 앞에)
-  // maxCap은 그룹 내 상대 비율 계산용
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle();
+    onClick(sym);
+  }, [onClick, onToggle, sym]);
+
+  const handleDetail = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle();
+    if (p) onDetail(sym, p);
+  }, [onDetail, onToggle, sym, p]);
+
+  const handleTileClick = useCallback(() => onToggle(), [onToggle]);
+
+  // portal 팝오버 위치 계산 — 상하 배치, 화면 밖 넘침 보정
+  const tileRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [popStyle, setPopStyle] = useState<React.CSSProperties>({ left: 0, top: 0 });
+
+  useLayoutEffect(() => {
+    if (!open || !tileRef.current || !popRef.current) return;
+    const tile = tileRef.current.getBoundingClientRect();
+    const pop = popRef.current;
+    const popW = pop.offsetWidth;
+    const popH = pop.offsetHeight;
+    const pad = 6;
+    const gap = 6;
+
+    // 가로: 타일 중앙 정렬, 화면 밖 클램프
+    let x = tile.left + tile.width / 2 - popW / 2;
+    x = Math.max(pad, Math.min(x, window.innerWidth - popW - pad));
+
+    // 세로: 타일 아래 우선, 공간 부족 시 위로
+    let y = tile.bottom + gap;
+    if (y + popH > window.innerHeight - pad) {
+      y = tile.top - popH - gap;
+    }
+    y = Math.max(pad, y);
+
+    setPopStyle({ left: x, top: y });
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} css={s.tileWrap[span]}>
+      <div
+        ref={tileRef}
+        css={[s.tile[span], dimmed && s.tileDimmed]}
+        style={{
+          background: bg,
+          viewTransitionName: `tile-${sym.code.replace(/[^\w]/g, '_')}`,
+        }}
+        onClick={handleTileClick}
+      >
+        <span ref={nameRef} css={s.name[sizeKey]}>{displayName}</span>
+        {display ? (
+          <>
+            <span css={[s.pct[sizeKey], flash && priceFlash[flash]]}>{fmtPercent(dir, pct)}</span>
+            <span css={[s.price[sizeKey], flash && priceFlash[flash]]}>{display.prefix}{fmtNum(display.price, display.currency)}</span>
+          </>
+        ) : (
+          <span css={s.dots}>···</span>
+        )}
+      </div>
+
+      {/* portal — body에 렌더하여 overflow 잘림 방지 */}
+      {open && ReactDOM.createPortal(
+        <div ref={popRef} css={s.popover} style={popStyle} onMouseDown={e => e.stopPropagation()}>
+          <span css={s.popName}>{displayName}</span>
+          <div css={s.popActions}>
+            <button css={s.popBtn} onClick={handleClick} aria-label="외부 링크 열기">
+              <FiExternalLink size={13} />
+            </button>
+            {p && (
+              <button css={s.popBtn} onClick={handleDetail} aria-label="상세 보기">
+                <FiBarChart2 size={13} />
+              </button>
+            )}
+            {onRemove && (
+              <button css={s.popBtnDanger} onClick={handleRemove} aria-label="종목 삭제">
+                <FiTrash2 size={13} />
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+});
+
+export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGroups, onClick, onRemove, onDetail }: Props) => {
+  const { groups } = useStockGroups(symbols, prices, customGroups);
+  const [activeCode, setActiveCode] = useState<string | null>(null);
+  const handleToggle = useCallback((code: string) => {
+    setActiveCode(c => c === code ? null : code);
+  }, []);
+
   const tilesPerGroup = useMemo(() => {
     return groups.map(g => {
       const items = g.items.map(sym => ({ sym, price: prices[sym.code] || null }));
@@ -117,52 +259,22 @@ export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGr
           <div css={s.groupHeader}>{group.label}</div>
           <div css={s.grid}>
             {group.tiles.map(({ sym, price: p }) => {
+              const cap = p?.marketCapRaw || 0;
               const dir = p?.changeDirection || 'flat';
               const pct = p?.changePercent || 0;
-              const cap = p?.marketCapRaw || 0;
               const span = getSpanByCap(cap, group.maxCap);
               const bg = getTileColor(dir, pct);
-              const display = p ? calcDisplayPrice(p, currencyMode, usdkrw) : null;
-              const isLarge = span >= 3; // 3% 이상 → 큰 타일 (2열×2행, 큰 폰트)
-
-              const sizeKey = isLarge ? 'lg' : 'sm';
-              const displayName = p ? getDisplayName(p, sym) : sym.name;
+              const isOpen = activeCode === sym.code;
+              const isDimmed = activeCode !== null && !isOpen;
               return (
-                <Tooltip key={sym.code} content={displayName} position="top" delay={300}>
-                  <div
-                    css={s.tile[span]}
-                    style={{
-                      background: bg,
-                      // View Transitions API 용 — 타일별 고유 이름 (특수문자 제거)
-                      viewTransitionName: `tile-${sym.code.replace(/[^\w]/g, '_')}`,
-                    }}
-                    onClick={() => onClick(sym)}
-                  >
-                    {onRemove && (
-                      <button
-                        css={s.delBtn}
-                        className="tile-del"
-                        onClick={(e) => handleRemove(sym, e)}
-                        aria-label="종목 삭제"
-                      >
-                        <FiTrash2 size={10} />
-                      </button>
-                    )}
-                    <span css={s.name[sizeKey]}>{displayName}</span>
-                    {display ? (
-                      <>
-                        <span css={s.pct[sizeKey]}>
-                          {fmtPercent(dir, pct)}
-                        </span>
-                        <span css={s.price[sizeKey]}>
-                          {display.prefix}{fmtNum(display.price, display.currency)}
-                        </span>
-                      </>
-                    ) : (
-                      <span css={s.dots}>···</span>
-                    )}
-                  </div>
-                </Tooltip>
+                <Tile
+                  key={sym.code}
+                  sym={sym} price={p} span={span} bg={bg}
+                  currencyMode={currencyMode} usdkrw={usdkrw}
+                  open={isOpen} dimmed={isDimmed}
+                  onToggle={() => handleToggle(sym.code)}
+                  onRemove={onRemove} onClick={onClick} onDetail={onDetail}
+                />
               );
             })}
           </div>
@@ -181,45 +293,80 @@ const s = {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: ${spacing.sm}px; padding: 0 ${spacing.md}px ${spacing.md}px;
   `,
+  /** 타일 + 팝오버를 감싸는 position 컨텍스트 — grid span 상속 */
+  tileWrap: {
+    1: css`position: relative; grid-column: span 1; grid-row: span 1;`,
+    2: css`position: relative; grid-column: span 2; grid-row: span 1;`,
+    3: css`position: relative; grid-column: span 2; grid-row: span 2;`,
+    4: css`position: relative; grid-column: span 2; grid-row: span 2;`,
+  } as Record<number, ReturnType<typeof css>>,
   /** span별 타일 레이아웃 — bg는 인라인 style로 분리하여 css() 호출 최소화 */
   tile: (() => {
     const base = `
-      position: relative;
       border-radius: ${radius.lg}px; padding: ${spacing.lg}px;
-      min-width: 0; overflow: hidden;
+      min-width: 0; overflow: hidden; height: 100%;
       cursor: pointer; display: flex; flex-direction: column;
       justify-content: center; align-items: center;
-      transition: filter ${transition.fast};
+      transition: filter ${transition.fast}, outline ${transition.fast};
       &:hover { filter: brightness(1.15); }
-      &:hover .tile-del { opacity: 1; }
     `;
     return {
-      1: css`${base} grid-column: span 1; grid-row: span 1; gap: ${spacing.xs}px; min-height: ${TILE_SIZE.sm};`,
-      2: css`${base} grid-column: span 2; grid-row: span 1; gap: ${spacing.xs}px; min-height: ${TILE_SIZE.sm};`,
-      3: css`${base} grid-column: span 2; grid-row: span 2; gap: ${spacing.sm}px; min-height: ${TILE_SIZE.lg};`,
-      4: css`${base} grid-column: span 2; grid-row: span 2; gap: ${spacing.sm}px; min-height: ${TILE_SIZE.lg};`,
+      1: css`${base} gap: ${spacing.xs}px; min-height: ${TILE_SIZE.sm};`,
+      2: css`${base} gap: ${spacing.xs}px; min-height: ${TILE_SIZE.sm};`,
+      3: css`${base} gap: ${spacing.sm}px; min-height: ${TILE_SIZE.lg};`,
+      4: css`${base} gap: ${spacing.sm}px; min-height: ${TILE_SIZE.lg};`,
     };
   })() as Record<number, ReturnType<typeof css>>,
   name: {
-    sm: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; color: ${sem.heatmap.text}; text-shadow: ${shadow.textSm}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: center;`,
-    lg: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.heatmap.text}; text-shadow: ${shadow.textSm}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: center;`,
+    sm: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; color: ${sem.heatmap.text}; text-shadow: ${sem.heatmap.shadowSm}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: center;`,
+    lg: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.heatmap.text}; text-shadow: ${sem.heatmap.shadowSm}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: center;`,
   },
   pct: {
-    sm: css`font-size: ${fontSize.md}px; font-weight: ${fontWeight.extrabold}; color: ${sem.heatmap.text}; text-shadow: ${shadow.textMd}; font-variant-numeric: tabular-nums; line-height: 1.2;`,
-    lg: css`font-size: ${fontSize['2xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.heatmap.text}; text-shadow: ${shadow.textMd}; font-variant-numeric: tabular-nums; line-height: 1.2;`,
+    sm: css`font-size: ${fontSize.md}px; font-weight: ${fontWeight.extrabold}; color: ${sem.heatmap.text}; text-shadow: ${sem.heatmap.shadowMd}; font-variant-numeric: tabular-nums; line-height: 1.2;`,
+    lg: css`font-size: ${fontSize['2xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.heatmap.text}; text-shadow: ${sem.heatmap.shadowMd}; font-variant-numeric: tabular-nums; line-height: 1.2;`,
   },
   price: {
     sm: css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.medium}; color: ${sem.heatmap.textMuted}; font-variant-numeric: tabular-nums;`,
     lg: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.medium}; color: ${sem.heatmap.textMuted}; font-variant-numeric: tabular-nums;`,
   },
   dots: css`font-size: ${fontSize.md}px; color: ${sem.heatmap.textFaint};`,
-  delBtn: css`
-    position: absolute; top: 4px; right: 4px; z-index: 3;
-    width: 20px; height: 20px; padding: 0;
+  /** 선택된 타일 하이라이트 */
+  /** 다른 타일이 선택됐을 때 흑백 + 어둡게 */
+  tileDimmed: css`
+    filter: grayscale(1) brightness(0.6);
+    transition: filter 0.2s ease;
+  `,
+  /** 타일 하단 팝오버 (portal → body) */
+  popover: css`
+    position: fixed;
+    background: ${sem.surface.popover}; border-radius: ${radius.xl}px;
+    padding: ${spacing.md}px ${spacing.lg}px;
+    box-shadow: ${sem.shadow.popover};
+    z-index: ${zIndex.dropdown};
+    display: flex; flex-direction: column; align-items: center; gap: ${spacing.sm}px;
+    white-space: nowrap;
+  `,
+  popName: css`
+    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold};
+    color: ${sem.surface.popoverText}; max-width: 200px;
+    overflow: hidden; text-overflow: ellipsis;
+    padding: ${spacing.sm}px 0;
+  `,
+  popActions: css`display: flex; align-items: center; gap: ${spacing.sm}px;`,
+  popBtn: css`
+    width: 28px; height: 28px; padding: 0;
     border: none; border-radius: ${radius.md}px;
-    background: ${sem.action.dangerTint}; color: ${sem.action.danger};
+    background: transparent; color: ${sem.surface.popoverText};
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity ${transition.fast}, background ${transition.fast};
-    &:hover { background: ${sem.action.dangerBorder}; }
+    transition: background ${transition.fast};
+    &:hover { background: ${sem.action.primaryHover}; color: ${sem.action.primary}; }
+  `,
+  popBtnDanger: css`
+    width: 28px; height: 28px; padding: 0;
+    border: none; border-radius: ${radius.md}px;
+    background: transparent; color: ${sem.surface.popoverText};
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background ${transition.fast};
+    &:hover { background: ${sem.action.dangerTint}; color: ${sem.action.danger}; }
   `,
 };

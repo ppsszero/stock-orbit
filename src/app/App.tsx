@@ -54,7 +54,7 @@ export const App = () => {
   useSyncElectron();
 
   const displaySymbols = useDisplaySymbols();
-  const { loading: dataLoading, lastUpdated, refresh } = useStockPrices(displaySymbols, settings.refreshInterval);
+  const { loading: dataLoading, fetching, lastUpdated, refresh, progressRef, subscribeProgress } = useStockPrices(displaySymbols, settings.refreshInterval);
   const { items: marqueeItems } = useMarqueeData(settings.refreshInterval * 2);
 
   const openMarquee = useCallback((item: { code: string }) => {
@@ -97,7 +97,10 @@ export const App = () => {
           <StockViewSwitch />
 
           <StatusBar lastUpdated={lastUpdated} loading={dataLoading}
+            fetching={fetching}
             hasSymbols={displaySymbols.length > 0}
+            progressRef={progressRef}
+            subscribeProgress={subscribeProgress}
             onSearch={openSearch} onSettings={openSettings}
             onRefresh={handleRefresh}
             onInvestor={openInvestor}
