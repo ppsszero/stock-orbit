@@ -12,7 +12,7 @@ const NATION_FLAG_URL: Record<string, string> = {
 };
 
 const IMPORTANCE_COLOR: Record<number, string> = {
-  4: sem.action.danger, 3: sem.action.warning, 2: sem.text.tertiary, 1: sem.text.disabled,
+  4: sem.action.danger, 3: sem.action.warning, 2: sem.text.secondary, 1: sem.text.tertiary,
 };
 
 const fmtVal = (val: number, unit: string): string =>
