@@ -1,0 +1,83 @@
+{
+  "name": "orbit",
+  "version": "1.0.0",
+  "description": "Orbit - 실시간 주식 관심종목 관측기",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "tsc && vite build && electron-builder",
+    "release": "tsc && vite build && electron-builder --publish always",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "build": {
+    "appId": "com.orbit.stock",
+    "productName": "Orbit",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "src/assets/logo.png"
+    ],
+    "extraResources": [
+      {
+        "from": "src/assets/logo.png",
+        "to": "logo.png"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "deleteAppDataOnUninstall": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ppsszero",
+      "repo": "stock-orbit",
+      "releaseType": "release"
+    }
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@emotion/react": "^11.14.0",
+    "@tanstack/react-query": "^5.96.2",
+    "electron-updater": "^6.8.3",
+    "eslint": "^10.2.0",
+    "gsap": "^3.14.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.6.0",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@emotion/babel-plugin": "^11.13.5",
+    "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "electron": "^34.5.8",
+    "electron-builder": "^25.1.8",
+    "jsdom": "^29.0.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.58.1",
+    "vite": "^6.0.3",
+    "vitest": "^4.1.3",
+    "wait-on": "^8.0.1"
+  }
+}
