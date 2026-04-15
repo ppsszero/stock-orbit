@@ -134,32 +134,136 @@ export const searchStocks = async (query: string): Promise<NaverAutoCompleteItem
 // 등락 방향은 upDownGb 코드('2'=상승, '5'=하락)로 판단하고,
 // change/changePercent에 부호를 직접 적용 (dir 기반).
 // WARNING: change 값 자체의 부호를 신뢰하면 안 됨 — 이전에 화살표 반전 버그의 원인이었음.
+
+// ── 시장 스케줄 기반 KRX/NXT 분기 ──────────────────
+// 앱 시작 + 일 1회 market/info API로 장 시간 캐싱.
+// 현재 시각과 비교하여 KRX/NXT 분기 — 프로빙 호출 불필요.
+
+interface MarketSchedule {
+  krxOpen: number; krxClose: number;
+  nxtPreOpen: number; nxtPreClose: number;
+  nxtAfterOpen: number; nxtAfterClose: number;
+}
+let scheduleCache: MarketSchedule | null = null;
+let scheduleCacheDate = '';
+
+/** 종목별 NXT 지원 여부 — sosok API, 일 1회 캐싱 */
+const nxtSupportCache = new Map<string, boolean>();
+const nxtPendingChecks = new Map<string, Promise<boolean>>();
+let nxtSupportCacheDate = '';
+
+/** KRX/NXT 장 시간 조회 — 일 1회 캐싱 */
+const getMarketSchedule = async (): Promise<MarketSchedule | null> => {
+  const today = new Date().toDateString();
+  if (scheduleCacheDate === today && scheduleCache) return scheduleCache;
+  try {
+    const [krx, nxt] = await Promise.all([
+      fetchJSON<{ regularMarketOpeningTime: string; regularMarketClosingTime: string }>(
+        `${BASE}/domestic/market/KRX/info`),
+      fetchJSON<{ preMarketOpeningTime: string; preMarketClosingTime: string; afterMarketOpeningTime: string; afterMarketClosingTime: string }>(
+        `${BASE}/domestic/market/NXT/info`),
+    ]);
+    const t = (s: string) => new Date(s).getTime();
+    scheduleCache = {
+      krxOpen: t(krx.regularMarketOpeningTime),
+      krxClose: t(krx.regularMarketClosingTime),
+      nxtPreOpen: t(nxt.preMarketOpeningTime),
+      nxtPreClose: t(nxt.preMarketClosingTime),
+      nxtAfterOpen: t(nxt.afterMarketOpeningTime),
+      nxtAfterClose: t(nxt.afterMarketClosingTime),
+    };
+    scheduleCacheDate = today;
+    return scheduleCache;
+  } catch {
+    // API 실패 시 이전 캐시라도 재사용 (장 시간은 평일 대부분 동일)
+    return scheduleCache;
+  }
+};
+
+/** 현재 시각 기준 활성 시장 판별 — timestamp 비교 (타임존 안전) */
+const getActiveMarket = (s: MarketSchedule): 'KRX' | 'NXT' | null => {
+  const now = Date.now();
+  // KRX 정규장 (09:00~15:30) — NXT 정규장과 겹치지만 KRX 우선
+  if (now >= s.krxOpen && now < s.krxClose) return 'KRX';
+  // NXT 프리장 (08:00~08:50) — KRX 개장 전
+  if (now >= s.nxtPreOpen && now < s.nxtPreClose) return 'NXT';
+  // NXT 시간외 (15:40~20:00) — KRX 폐장 후
+  if (now >= s.nxtAfterOpen && now < s.nxtAfterClose) return 'NXT';
+  return null;
+};
+
+/** sosok API로 NXT 지원 여부 확인 — 일 1회 캐싱, 병렬 중복 호출 방지 */
+const isNxtSupported = async (code: string): Promise<boolean> => {
+  const today = new Date().toDateString();
+  if (nxtSupportCacheDate !== today) {
+    nxtSupportCache.clear();
+    nxtPendingChecks.clear();
+    nxtSupportCacheDate = today;
+  }
+  const cached = nxtSupportCache.get(code);
+  if (cached !== undefined) return cached;
+  const pending = nxtPendingChecks.get(code);
+  if (pending) return pending;
+  const check = fetchJSON<{ isNxtYn?: string }>(`${BASE}/domestic/detail/${code}/sosok`)
+    .then(d => {
+      const supported = d.isNxtYn === 'Y';
+      nxtSupportCache.set(code, supported);
+      return supported;
+    })
+    .catch(() => false)
+    .finally(() => nxtPendingChecks.delete(code));
+  nxtPendingChecks.set(code, check);
+  return check;
+};
+
+/** API 응답을 StockPrice로 변환하는 공통 파서 */
+const parseDomesticResponse = (d: NaverDomesticDetailRaw, code: string, codeType: string): StockPrice => {
+  const change = num(d.prevChangePrice);
+  const pct = parseFloat(d.prevChangeRate || '0');
+  const dir = d.upDownGb === '2' ? 1 : d.upDownGb === '5' ? -1 : 0;
+  const exchange = d.sosok === '0' ? 'KOSPI' : 'KOSDAQ';
+  return {
+    code: d.itemcode || code, name: d.itemname || code,
+    nation: 'KR', market: exchange,
+    currentPrice: num(d.nowPrice), previousClose: num(d.prevClosePrice || d.stdPrice || '0'),
+    change: dir >= 0 ? change : -change, changePercent: dir >= 0 ? pct : -pct,
+    changeDirection: parseDir(dir), currency: 'KRW',
+    marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
+    updatedAt: d.tradeTime || new Date().toISOString(),
+    exchange: codeType === 'NXT' ? `${exchange} NXT` : exchange,
+    openPrice: num(d.openPrice), highPrice: num(d.highPrice), lowPrice: num(d.lowPrice),
+    volume: d.tradeVolume ? Number(d.tradeVolume).toLocaleString() : undefined,
+    tradingValue: d.tradeAmount ? `${(Number(d.tradeAmount) / 100_000_000).toFixed(0)}억` : undefined,
+    marketCap: d.marketSum ? `${(Number(d.marketSum) / 1_000_000_000_000).toFixed(1)}조` : undefined,
+    marketCapRaw: d.marketSum ? Number(d.marketSum) : undefined,
+    per: d.per || undefined, pbr: d.pbr || undefined,
+    week52High: d.week52HighPrice ? num(d.week52HighPrice) : undefined,
+    week52Low: d.week52LowPrice ? num(d.week52LowPrice) : undefined,
+    isTradingHalt: d.tradeStopYn === 'Y' || d.isTradingHalt === 'Y',
+  };
+};
+
+const fetchDomesticByType = async (code: string, codeType: 'KRX' | 'NXT'): Promise<StockPrice | null> => {
+  const d = await fetchJSON<NaverDomesticDetailRaw>(`${BASE}/domestic/detail/${code}/detail?codeType=${codeType}`);
+  return parseDomesticResponse(d, code, codeType);
+};
+
 export const fetchDomesticStock = async (code: string): Promise<StockPrice | null> => {
   try {
-    const d = await fetchJSON<NaverDomesticDetailRaw>(`${BASE}/domestic/detail/${code}/detail?codeType=KRX`);
-    const change = num(d.prevChangePrice);
-    const pct = parseFloat(d.prevChangeRate || '0');
-    const dir = d.upDownGb === '2' ? 1 : d.upDownGb === '5' ? -1 : 0;
-    const exchange = d.sosok === '0' ? 'KOSPI' : 'KOSDAQ';
-    return {
-      code: d.itemcode || code, name: d.itemname || code,
-      nation: 'KR', market: exchange,
-      currentPrice: num(d.nowPrice), previousClose: num(d.prevClosePrice || d.stdPrice || '0'),
-      change: dir >= 0 ? change : -change, changePercent: dir >= 0 ? pct : -pct,
-      changeDirection: parseDir(dir), currency: 'KRW',
-      marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
-      updatedAt: d.tradeTime || new Date().toISOString(),
-      exchange,
-      openPrice: num(d.openPrice), highPrice: num(d.highPrice), lowPrice: num(d.lowPrice),
-      volume: d.tradeVolume ? Number(d.tradeVolume).toLocaleString() : undefined,
-      tradingValue: d.tradeAmount ? `${(Number(d.tradeAmount) / 100_000_000).toFixed(0)}억` : undefined,
-      marketCap: d.marketSum ? `${(Number(d.marketSum) / 1_000_000_000_000).toFixed(1)}조` : undefined,
-      marketCapRaw: d.marketSum ? Number(d.marketSum) : undefined,
-      per: d.per || undefined, pbr: d.pbr || undefined,
-      week52High: d.week52HighPrice ? num(d.week52HighPrice) : undefined,
-      week52Low: d.week52LowPrice ? num(d.week52LowPrice) : undefined,
-      isTradingHalt: d.tradeStopYn === 'Y' || d.isTradingHalt === 'Y',
-    };
+    const schedule = await getMarketSchedule();
+    const active = schedule ? getActiveMarket(schedule) : null;
+
+    // KRX 장중 → KRX 직행
+    if (active === 'KRX') return await fetchDomesticByType(code, 'KRX');
+
+    // NXT 시간외 장중 → NXT 지원 종목만 NXT, 미지원은 KRX
+    if (active === 'NXT') {
+      if (await isNxtSupported(code)) return await fetchDomesticByType(code, 'NXT');
+      return await fetchDomesticByType(code, 'KRX');
+    }
+
+    // 폐장 또는 스케줄 조회 실패 → KRX (가장 최근 종가)
+    return await fetchDomesticByType(code, 'KRX');
   } catch (e) {
     logger.error('국내주식 조회 실패', `${code}: ${(e as Error).message}`);
     return null;

@@ -183,12 +183,16 @@ app.whenReady().then(() => {
     });
 
     // 마우스 뒤로/앞으로 버튼 — webview 내부에 JS 주입, console-message로 수신
+    // 중복 등록 방지: 전역 플래그로 리스너가 이미 있는지 확인
     wc.on('did-finish-load', () => {
       wc.executeJavaScript(`
-        document.addEventListener('mouseup', (e) => {
-          if (e.button === 3) console.log('__orbit_nav:back');
-          if (e.button === 4) console.log('__orbit_nav:forward');
-        });
+        if (!window.__orbitNavInstalled) {
+          window.__orbitNavInstalled = true;
+          document.addEventListener('mouseup', (e) => {
+            if (e.button === 3) console.log('__orbit_nav:back');
+            if (e.button === 4) console.log('__orbit_nav:forward');
+          });
+        }
       `).catch(() => {});
     });
     wc.on('console-message', (_, _level, message) => {
