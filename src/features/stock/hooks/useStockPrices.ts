@@ -39,6 +39,8 @@ const fetchInBatches = async (
     });
   };
 
+  if (symbols.length === 0) { onProgress?.(1); return out; }
+
   if (symbols.length <= BATCH_THRESHOLD) {
     onProgress?.(0.5);
     await runBatch(symbols);
