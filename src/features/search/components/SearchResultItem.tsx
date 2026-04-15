@@ -16,8 +16,13 @@ interface Props {
 }
 
 export const SearchResultItem = memo(({ item, added, selected, onToggle }: Props) => {
-  const nationLabel = mapNationCode(item.nationCode);
+  const tc = item.typeCode || '';
+  const isFutures = tc.includes('FUTURES');
+  const isIndex = tc.includes('INDEX');
+  const nationLabel = isFutures ? '선물' : isIndex ? '지수' : mapNationCode(item.nationCode);
   const b = NATION_BADGE[nationLabel] || { bg: '#8884', fg: '#888' };
+  // 지수/선물은 typeName 대신 간결한 국가 표기만 (WORLD_INDEX 같은 raw 값 숨김)
+  const showTypeName = !isFutures && !isIndex && item.typeName;
 
   return (
     <div
@@ -42,7 +47,7 @@ export const SearchResultItem = memo(({ item, added, selected, onToggle }: Props
         </div>
         <div css={s.sub}>
           <span css={s.code}>{item.reutersCode || item.code}</span>
-          {item.typeName && <span css={s.market}>{item.typeName}</span>}
+          {showTypeName && <span css={s.market}>{item.typeName}</span>}
         </div>
       </div>
       <AddButton

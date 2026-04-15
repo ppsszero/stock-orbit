@@ -9,10 +9,24 @@ export interface StockSymbol {
   code: string;       // 종목번호 (005930) 또는 Reuters code (AAPL.O)
   name: string;       // 종목명 (삼성전자)
   nameEn?: string;    // 영문명
-  market: string;     // KOSPI, KOSDAQ, NASDAQ, NYSE 등
+  market: string;     // KOSPI, KOSDAQ, NASDAQ, NYSE 등 (지수/선물은 빈 문자열 가능)
   nation: string;     // KR, US, JP, CN 등
   reutersCode?: string; // 해외주식용 Reuters code
+  /** 심볼 분류 — 기본값 'stock' (일반 주식). 지수/선물은 별도 API 호출 필요 */
+  category?: 'stock' | 'index' | 'futures';
 }
+
+/** category가 없는 과거 저장 심볼을 위해 market/code 필드에서 추론 */
+export const inferCategory = (sym: StockSymbol): 'stock' | 'index' | 'futures' => {
+  if (sym.category) return sym.category;
+  const m = (sym.market || '').toUpperCase();
+  const c = (sym.code || '').toUpperCase();
+  // 선물: typeCode 또는 코드에서 FUT/FUTURE 감지
+  if (m.includes('FUT') || c === 'FUT' || /CV\d+$/.test(c)) return 'futures';
+  // 지수: typeCode 또는 알려진 지수 코드
+  if (m.includes('INDEX') || c === 'KOSPI' || c === 'KOSDAQ' || c === 'KPI200' || c.startsWith('.')) return 'index';
+  return 'stock';
+};
 
 export interface AppSettings {
   theme: 'light' | 'dark';

@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { useMemo, memo, useCallback, useRef, useState, useEffect } from 'react';
 import { FiTrash2, FiBarChart2 } from 'react-icons/fi';
 import { IconButton } from '@/shared/ui';
-import { StockSymbol, StockPrice } from '@/shared/types';
+import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { groupHeaderStyle, priceFlash } from '@/shared/styles/sharedStyles';
@@ -168,12 +168,19 @@ export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGr
   const tilesPerGroup = useMemo(() => {
     return groups.map(g => {
       const items = g.items.map(sym => ({ sym, price: prices[sym.code] || null }));
-      const caps = items.map(t => t.price?.marketCapRaw || 0);
+      // 지수/선물 그룹은 시총 개념이 없으므로 maxCap=0 → 전부 span=1 동일 크기
+      const isIndexFutures = g.items.every(s => {
+        const cat = inferCategory(s);
+        return cat === 'index' || cat === 'futures';
+      });
+      const caps = isIndexFutures ? [] : items.map(t => t.price?.marketCapRaw || 0);
       const maxCap = Math.max(...caps, 0);
       return {
         label: g.label,
         maxCap,
-        tiles: items.sort((a, b) => (b.price?.marketCapRaw || 0) - (a.price?.marketCapRaw || 0)),
+        tiles: isIndexFutures
+          ? items
+          : items.sort((a, b) => (b.price?.marketCapRaw || 0) - (a.price?.marketCapRaw || 0)),
       };
     });
   }, [groups, prices]);

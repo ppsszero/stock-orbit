@@ -53,9 +53,17 @@ export const useSearchSheet = ({
       toast.show(`${presetName || '그룹'}에서 삭제했어요.`, 'delete');
     } else {
       const nation = mapNationCode(item.nationCode);
+      // typeCode로 지수/선물 판별
+      const tc = (item.typeCode || '').toUpperCase();
+      const cd = (item.code || '').toUpperCase();
+      const category: 'stock' | 'index' | 'futures' =
+        tc.includes('FUT') || cd === 'FUT' || /CV\d+$/.test(cd) ? 'futures' :
+        tc.includes('INDEX') || cd === 'KOSPI' || cd === 'KOSDAQ' || cd.startsWith('.') ? 'index' :
+        'stock';
       const ok = onAdd({
         code: item.code, name: item.name, market: item.typeCode || '', nation,
-        reutersCode: nation !== 'KR' ? item.reutersCode : undefined,
+        reutersCode: item.reutersCode,
+        category,
       });
       if (ok) {
         toast.show(`${presetName || '그룹'}에 추가했어요.`);

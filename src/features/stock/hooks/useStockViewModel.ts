@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StockSymbol, StockPrice } from '@/shared/types';
+import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { calcDisplayPrice } from '../utils/currency';
 import { fmtNum, dirArrow, dirSign, fmtPercent, NATION_BADGE, getLogoUrlFromSymbol, getDisplayName } from '@/shared/utils/format';
 
@@ -12,6 +12,8 @@ export interface StockViewModel {
 
   // 국가 뱃지
   badge: { bg: string; fg: string };
+  /** 실제 표시할 국가 코드 (가격 응답의 nation 우선) */
+  nation: string;
 
   // 거래소/시장
   exchange: string;
@@ -50,14 +52,20 @@ export const useStockViewModel = (
     const p = price;
     const dir = p?.changeDirection || 'flat';
     const display = p ? calcDisplayPrice(p, currencyMode, usdkrw) : null;
-    const badge = NATION_BADGE[sym.nation] || { bg: '#8884', fg: '#888' };
+    // 가격 응답의 nation이 있으면 우선 (자동완성에서 INT로 저장된 심볼 보정)
+    const effectiveNation = (p?.nation && p.nation !== 'INT') ? p.nation : sym.nation;
+    const badge = NATION_BADGE[effectiveNation] || { bg: '#8884', fg: '#888' };
+    const cat = inferCategory(sym);
+    const isIndexOrFutures = cat === 'index' || cat === 'futures';
 
     return {
       displayName: p ? getDisplayName(p, sym) : sym.name,
       displayCode: sym.reutersCode || sym.code,
       logoUrl: getLogoUrlFromSymbol(sym) || '',
       badge,
-      exchange: p?.exchange || p?.market || sym.market,
+      nation: effectiveNation,
+      // 지수/선물은 exchange 뱃지 숨김 (category 뱃지가 역할을 대신)
+      exchange: isIndexOrFutures ? '' : (p?.exchange || p?.market || sym.market),
       priceLabel: display ? `${display.prefix}${fmtNum(display.price, display.currency)}` : '',
       changeLabel: display
         ? `${dirArrow(dir)} ${fmtNum(display.change, display.currency)} (${fmtPercent(dir, p!.changePercent)})`

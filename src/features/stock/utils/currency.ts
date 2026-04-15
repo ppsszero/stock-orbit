@@ -14,6 +14,15 @@ export const calcDisplayPrice = (
   currencyMode: 'KRW' | 'USD',
   usdkrw: number,
 ): DisplayPrice => {
+  // 지수/선물은 화폐 단위 없음 (currency가 빈 문자열)
+  if (!p.currency) {
+    return {
+      price: p.currentPrice,
+      change: Math.abs(p.change),
+      currency: '',
+      prefix: '',
+    };
+  }
   const isKR = p.currency === 'KRW';
   const showKRW = isKR || currencyMode === 'KRW';
   const rate = (!isKR && currencyMode === 'KRW' && usdkrw > 0) ? usdkrw : 1;

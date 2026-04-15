@@ -8,6 +8,22 @@ let tray = null;
 
 const isDev = !app.isPackaged;
 
+// 단일 인스턴스 락 — 앱을 중복 실행하면 새 프로세스가 뜨지 않고
+// 기존 창을 복원·포커스함. 락을 못 얻으면 (= 이미 실행 중) 즉시 종료.
+// 없으면 트레이/바로가기에서 재실행할 때마다 작업관리자에 프로세스가 쌓임.
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+}
+
 /** mainWindow가 살아있을 때만 콜백 실행. IPC 핸들러 안전장치. */
 const withWindow = (fn) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -157,8 +173,40 @@ function createTray() {
   tray.setToolTip('Orbit');
   tray.setContextMenu(buildTrayMenu(true));
 
-  tray.on('double-click', () => {
-    withWindow(w => { w.show(); w.focus(); });
+  // 싱글 클릭으로 창 보이기.
+  // WARNING: transparent + frameless 창은 show() 시 DWM 알파 합성과 렌더러 페인트가
+  // 비동기로 진행되는 사이 구 프레임이 보여서 "깜빡임"이 발생함.
+  //
+  // 해결: opacity 0으로 show → 렌더러가 실제로 2프레임 페인트한 뒤 opacity 1로 복원.
+  // - executeJavaScript의 RAF×2는 "레이아웃→페인트→합성" 사이클이 완료됐음을 보장.
+  // - 폴백 setTimeout(200ms): 렌더러가 응답 없을 때도 언젠가는 창이 나타나야 함.
+  //   (혹시 웹뷰 로드 지연 등으로 RAF가 안 불리는 케이스 대비)
+  tray.on('click', () => {
+    withWindow(w => {
+      if (w.isMinimized()) w.restore();
+      if (!w.isVisible()) {
+        w.setOpacity(0);
+        w.show();
+
+        let revealed = false;
+        const reveal = () => {
+          if (revealed) return;
+          revealed = true;
+          if (!w.isDestroyed()) w.setOpacity(1);
+        };
+
+        // 렌더러가 2프레임 완전히 그릴 때까지 대기 → 깜빡임 원천 차단
+        w.webContents
+          .executeJavaScript('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')
+          .then(reveal)
+          .catch(reveal);
+
+        // 안전장치: 어떤 이유로든 RAF가 돌아오지 않으면 200ms 뒤 강제 노출
+        setTimeout(reveal, 200);
+      } else {
+        w.focus();
+      }
+    });
   });
 }
 

@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { StockPrice, StockSymbol } from '@/shared/types';
-import { fetchDomesticStock, fetchOverseasStock } from '@/shared/naver';
+import { StockPrice, StockSymbol, inferCategory } from '@/shared/types';
+import { fetchDomesticStock, fetchOverseasStock, fetchIndex, fetchOverseasIndex, fetchFutures } from '@/shared/naver';
 
 /** 한 배치당 요청 수 */
 const BATCH_SIZE = 10;
@@ -14,10 +14,27 @@ const BATCH_DELAY_MS = 3_000;
 /** 이 수 이하면 배치 없이 한 번에 요청 */
 const BATCH_THRESHOLD = 10;
 
-const fetchOne = (sym: StockSymbol): Promise<StockPrice | null> =>
-  sym.nation === 'KR'
+const fetchOne = (sym: StockSymbol): Promise<StockPrice | null> => {
+  const category = inferCategory(sym);
+
+  // 지수/선물은 별도 API 사용 (주식 API로 호출 시 앱 깨짐)
+  // nation 대신 code/reutersCode 패턴으로 국내/해외 판별
+  // (자동완성 API가 'KOR'을 안 줄 때 대비, code="IXIC"인데 reutersCode=".IXIC"인 경우도 처리)
+  if (category === 'index' || category === 'futures') {
+    const c = sym.code.toUpperCase();
+    const rc = (sym.reutersCode || '').toUpperCase();
+    // 해외 지수: . 접두사 (.IXIC, .DJI, .NDX 등)
+    if (c.startsWith('.') || rc.startsWith('.')) return fetchOverseasIndex(sym.reutersCode || sym.code);
+    // 해외 선물: CV{숫자} 패턴 (NQcv1, ESv1 등)
+    if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) return fetchFutures(sym.reutersCode || sym.code);
+    // 그 외 = 국내 지수/선물 (KOSPI, KOSDAQ, KPI100, KPI200, FUT 등)
+    return fetchIndex(sym.code);
+  }
+  // 일반 주식
+  return sym.nation === 'KR'
     ? fetchDomesticStock(sym.code)
     : fetchOverseasStock(sym.reutersCode || sym.code);
+};
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 

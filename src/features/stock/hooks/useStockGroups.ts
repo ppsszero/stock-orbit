@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StockSymbol, StockPrice } from '@/shared/types';
+import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 
 export interface StockGroup {
   label: string;
@@ -33,13 +33,18 @@ export const useStockGroups = (
     }
 
     const valid = symbols.filter(sym => sym?.code && sym?.nation);
-    const domestic = valid.filter(sym => sym.nation === 'KR');
-    const overseas = valid.filter(sym => sym.nation !== 'KR');
+    // 지수/선물은 별도 그룹으로 분리 (category 없는 과거 심볼도 market 필드로 추론)
+    const indexFutures = valid.filter(sym => {
+      const cat = inferCategory(sym);
+      return cat === 'index' || cat === 'futures';
+    });
+    const stocks = valid.filter(sym => inferCategory(sym) === 'stock');
+    const domestic = stocks.filter(sym => sym.nation === 'KR');
+    const overseas = stocks.filter(sym => sym.nation !== 'KR');
 
     const groups: StockGroup[] = [];
 
     // NOTE: sortByMarketOpen — 현재 개장 중인 시장을 위로 올림.
-    // 한국 시간 9-15시엔 국내가 위, 미국 장 열리면 해외가 위로 자동 전환.
     if (options?.sortByMarketOpen) {
       const domesticLive = domestic.some(sym => prices[sym.code]?.marketStatus === 'OPEN');
       const overseasLive = overseas.some(sym => prices[sym.code]?.marketStatus === 'OPEN');
@@ -53,6 +58,11 @@ export const useStockGroups = (
     } else {
       if (domestic.length > 0) groups.push({ label: '국내주식', items: domestic });
       if (overseas.length > 0) groups.push({ label: '해외주식', items: overseas });
+    }
+
+    // 지수/선물은 항상 하단
+    if (indexFutures.length > 0) {
+      groups.push({ label: '지수 · 선물', items: indexFutures });
     }
 
     return { validSymbols: valid, groups };

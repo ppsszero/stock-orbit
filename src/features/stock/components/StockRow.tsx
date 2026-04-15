@@ -4,7 +4,7 @@ import { useState, useCallback, memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FiTrash2, FiMenu, FiBarChart2, FiExternalLink } from 'react-icons/fi';
-import { StockSymbol, StockPrice } from '@/shared/types';
+import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition, zIndex , sp } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
@@ -93,7 +93,13 @@ export const StockRow = memo(({
       <div css={s.left}>
         <div css={s.nameRow}>
           <span css={s.name}>{vm.displayName}</span>
-          <Badge bg={vm.badge.bg} fg={vm.badge.fg}>{sym.nation}</Badge>
+          {vm.nation !== 'INT' && <Badge bg={vm.badge.bg} fg={vm.badge.fg}>{vm.nation}</Badge>}
+          {(() => {
+            const cat = inferCategory(sym);
+            if (cat === 'index') return <Badge bg="#16A08520" fg="#16A085">지수</Badge>;
+            if (cat === 'futures') return <Badge bg="#8E44AD20" fg="#8E44AD">선물</Badge>;
+            return null;
+          })()}
           {vm.exchange && <Badge bg={sem.bg.elevated} fg={sem.text.tertiary}>{vm.exchange}</Badge>}
         </div>
         <div css={s.sub}>

@@ -1,4 +1,4 @@
-import { NaverAutoCompleteResponse, NaverAutoCompleteItem, StockPrice, MarqueeItem } from '@/shared/types';
+import { NaverAutoCompleteResponse, NaverAutoCompleteItem, StockPrice, StockSymbol, MarqueeItem, inferCategory } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
 import type {
   NaverDomesticDetailRaw,
@@ -266,6 +266,134 @@ export const fetchDomesticStock = async (code: string): Promise<StockPrice | nul
     return await fetchDomesticByType(code, 'KRX');
   } catch (e) {
     logger.error('국내주식 조회 실패', `${code}: ${(e as Error).message}`);
+    return null;
+  }
+};
+
+// === Index / Futures ===
+// 국내 지수: /securityFe/api/index/{code}/basic
+// 해외 지수·선물: /securityFe/api/futures/{code}/basic
+// 응답 필드가 주식과 완전히 다르므로 별도 파서 사용.
+
+interface NaverExchangeType {
+  nameKor?: string;
+  nameEng?: string;
+  name?: string;
+  nationCode?: string;
+  nationName?: string;
+}
+
+interface NaverTypeInfo {
+  name?: string;
+  fullName?: string;
+  stockExchangeType?: NaverExchangeType;
+}
+
+interface NaverIndexRaw {
+  itemCode?: string;
+  stockName?: string;        // 국내 지수/선물 이름
+  closePrice?: string;
+  compareToPreviousClosePrice?: string;
+  compareToPreviousPrice?: { code?: string; name?: string } | string;
+  fluctuationsRatio?: string;
+  marketStatus?: string;
+  localTradedAt?: string;
+  nationType?: string;
+  reutersCode?: string;
+  symbolCode?: string;
+  stockExchangeType?: NaverExchangeType;
+  /** 해외 지수 상세 정보 */
+  indexType?: NaverTypeInfo;
+  /** 해외 선물 상세 정보 */
+  futuresType?: NaverTypeInfo;
+}
+
+const parseIndexResponse = (d: NaverIndexRaw, code: string, category: 'index' | 'futures'): StockPrice => {
+  const change = num(d.closePrice ? (d.compareToPreviousClosePrice || '0') : '0');
+  const pct = parseFloat(d.fluctuationsRatio || '0');
+  const ctp = d.compareToPreviousPrice;
+  let dir = 0;
+  if (typeof ctp === 'object' && ctp?.code) {
+    dir = (ctp.code === '1' || ctp.code === '2') ? 1 : (ctp.code === '4' || ctp.code === '5') ? -1 : 0;
+  } else if (ctp === 'RISING') dir = 1;
+  else if (ctp === 'FALLING') dir = -1;
+  if (dir === 0 && pct !== 0) dir = pct > 0 ? 1 : -1;
+
+  // 응답 구조:
+  // - 국내 지수/선물: stockName (루트)
+  // - 해외 지수: indexType.fullName > indexType.name
+  // - 해외 선물: futuresType.fullName > futuresType.name
+  const typeInfo = d.indexType || d.futuresType;
+  const name = d.stockName
+    || typeInfo?.fullName || typeInfo?.name
+    || d.stockExchangeType?.nameKor || d.stockExchangeType?.name
+    || code;
+
+  // 국가: 루트 > indexType/futuresType 내부 exchange > 루트 exchange
+  const nationRaw = d.nationType
+    || typeInfo?.stockExchangeType?.nationCode
+    || d.stockExchangeType?.nationCode
+    || 'USA';
+  const nation = nationRaw === 'KOR' ? 'KR' : nationRaw === 'USA' ? 'US' : nationRaw;
+
+  const exchange = d.stockExchangeType?.nameKor
+    || typeInfo?.stockExchangeType?.nameKor
+    || d.stockExchangeType?.name
+    || '';
+
+  return {
+    code: d.itemCode || d.symbolCode || code,
+    name,
+    nation,
+    market: category === 'index' ? '지수' : '선물',
+    currentPrice: num(d.closePrice || '0'),
+    previousClose: 0,
+    change: dir >= 0 ? Math.abs(change) : -Math.abs(change),
+    changePercent: dir >= 0 ? Math.abs(pct) : -Math.abs(pct),
+    changeDirection: parseDir(dir),
+    currency: '',
+    marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
+    updatedAt: d.localTradedAt || new Date().toISOString(),
+    reutersCode: d.reutersCode,
+    exchange,
+    isTradingHalt: false,
+  };
+};
+
+/** 국내 지수 — KOSPI, KOSDAQ 등 */
+export const fetchIndex = async (code: string): Promise<StockPrice | null> => {
+  try {
+    const d = await fetchJSON<NaverIndexRaw>(
+      `https://stock.naver.com/api/securityFe/api/index/${encodeURIComponent(code)}/basic`
+    );
+    return parseIndexResponse(d, code, 'index');
+  } catch (e) {
+    logger.error('국내지수 조회 실패', `${code}: ${(e as Error).message}`);
+    return null;
+  }
+};
+
+/** 해외 지수 — .IXIC, .DJI 등 (reutersCode가 . 접두사 포함) */
+export const fetchOverseasIndex = async (code: string): Promise<StockPrice | null> => {
+  try {
+    const d = await fetchJSON<NaverIndexRaw>(
+      `https://stock.naver.com/api/securityService/index/${encodeURIComponent(code)}/basic`
+    );
+    return parseIndexResponse(d, code, 'index');
+  } catch (e) {
+    logger.error('해외지수 조회 실패', `${code}: ${(e as Error).message}`);
+    return null;
+  }
+};
+
+export const fetchFutures = async (code: string): Promise<StockPrice | null> => {
+  try {
+    const d = await fetchJSON<NaverIndexRaw>(
+      `https://stock.naver.com/api/securityFe/api/futures/${encodeURIComponent(code)}/basic`
+    );
+    return parseIndexResponse(d, code, 'futures');
+  } catch (e) {
+    logger.error('선물 조회 실패', `${code}: ${(e as Error).message}`);
     return null;
   }
 };
@@ -612,10 +740,33 @@ export const fetchMoneyStory = async (size: number = 50): Promise<MoneyStory[]> 
 export const getNewsUrl = (officeId: string, articleId: string) =>
   `https://n.news.naver.com/article/${officeId}/${articleId}`;
 
-export const getNaverStockUrl = (symbol: { code: string; nation: string; reutersCode?: string }) =>
-  symbol.nation === 'KR'
+export const getNaverStockUrl = (symbol: Pick<StockSymbol, 'code' | 'nation' | 'reutersCode'> & Partial<Pick<StockSymbol, 'market' | 'category'>>) => {
+  // StockSymbol 전체가 아니어도 동작 — market/category는 있으면 inferCategory에 쓰임
+  const cat = inferCategory(symbol as StockSymbol);
+
+  // 지수/선물: fetchOne과 동일한 code-pattern 기반 라우팅.
+  // nation 기반 라우팅을 쓰면 자동완성 API가 KPI100에 'INT' 같은 값을 주는 경우 깨짐.
+  if (cat === 'index' || cat === 'futures') {
+    const c = (symbol.code || '').toUpperCase();
+    const rc = (symbol.reutersCode || '').toUpperCase();
+    const ref = symbol.reutersCode || symbol.code;
+    // 해외 지수: . 접두사 (.IXIC, .NDX, .DJI 등)
+    if (c.startsWith('.') || rc.startsWith('.')) {
+      return `https://m.stock.naver.com/worldstock/index/${ref}/price`;
+    }
+    // 해외 선물: CV{숫자} 패턴 (NQcv1, ESv1 등) — 경로가 /futures/ 임에 주의
+    if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) {
+      return `https://m.stock.naver.com/worldstock/futures/${ref}/price`;
+    }
+    // 그 외 = 국내 지수/선물 (KPI100, KPI200, KOSPI, KOSDAQ, FUT 등)
+    return `https://m.stock.naver.com/domestic/index/${symbol.code}/price`;
+  }
+
+  // 일반 주식 — 모바일 도메인
+  return symbol.nation === 'KR'
     ? `https://m.stock.naver.com/domestic/stock/${symbol.code}/total`
     : `https://m.stock.naver.com/worldstock/stock/${symbol.reutersCode || symbol.code}/total`;
+};
 
 // === 경제 캘린더 ===
 export interface EconomicIndicator {
