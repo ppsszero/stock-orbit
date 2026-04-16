@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useMemo, memo, useCallback, useRef, useState, useEffect } from 'react';
-import { FiTrash2, FiBarChart2 } from 'react-icons/fi';
+import { FiTrash2, FiInfo } from 'react-icons/fi';
 import { IconButton } from '@/shared/ui';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
@@ -136,7 +136,7 @@ const Tile = memo(({
       {/* 호버 시 우하단 액션 버튼 */}
       <div css={s.actions} className="tile-actions">
         {p && (
-          <IconButton icon={<FiBarChart2 size={11} />} size={22} onClick={handleDetail} ariaLabel="상세 보기" />
+          <IconButton icon={<FiInfo size={11} />} size={22} onClick={handleDetail} ariaLabel="상세 보기" />
         )}
         {onRemove && (
           <IconButton icon={<FiTrash2 size={11} />} size={22} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />

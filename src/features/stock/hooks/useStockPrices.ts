@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StockPrice, StockSymbol, inferCategory } from '@/shared/types';
-import { fetchDomesticStock, fetchOverseasStock, fetchIndex, fetchOverseasIndex, fetchFutures } from '@/shared/naver';
+import { fetchDomesticStock, fetchOverseasStock, fetchDomesticIndex, fetchOverseasIndex, fetchOverseasFutures } from '@/shared/naver';
 
 /** 한 배치당 요청 수 */
 const BATCH_SIZE = 10;
@@ -26,9 +26,9 @@ const fetchOne = (sym: StockSymbol): Promise<StockPrice | null> => {
     // 해외 지수: . 접두사 (.IXIC, .DJI, .NDX 등)
     if (c.startsWith('.') || rc.startsWith('.')) return fetchOverseasIndex(sym.reutersCode || sym.code);
     // 해외 선물: CV{숫자} 패턴 (NQcv1, ESv1 등)
-    if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) return fetchFutures(sym.reutersCode || sym.code);
+    if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) return fetchOverseasFutures(sym.reutersCode || sym.code);
     // 그 외 = 국내 지수/선물 (KOSPI, KOSDAQ, KPI100, KPI200, FUT 등)
-    return fetchIndex(sym.code);
+    return fetchDomesticIndex(sym.code);
   }
   // 일반 주식
   return sym.nation === 'KR'

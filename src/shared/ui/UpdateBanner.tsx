@@ -1,11 +1,11 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
 import { useEffect, useState, useCallback } from 'react';
-import { FiDownload, FiRefreshCw, FiAlertCircle, FiX } from 'react-icons/fi';
+import { FiDownload, FiRefreshCw, FiAlertCircle, FiX, FiCheckCircle } from 'react-icons/fi';
 import { sem } from '@/shared/styles/semantic';
 import { fontSize, fontWeight, spacing, radius, transition, sp } from '@/shared/styles/tokens';
 
-type Phase = 'idle' | 'available' | 'downloading' | 'ready' | 'installing' | 'error';
+type Phase = 'idle' | 'available' | 'downloading' | 'ready' | 'installing' | 'error' | 'up-to-date';
 
 interface State {
   phase: Phase;
@@ -44,10 +44,14 @@ export const UpdateBanner = () => {
       const off3 = api.onUpdateDownloaded((info) => {
         setState({ phase: 'ready', version: info.version, percent: 100, dismissed: false });
       });
-      const off4 = api.onUpdateError((info) => {
+      const off4 = api.onUpdateNotAvailable?.(() => {
+        setState({ phase: 'up-to-date', dismissed: false });
+      });
+      const off5 = api.onUpdateError((info) => {
         setState(prev => ({ ...prev, phase: 'error', errorMessage: info.message }));
       });
-      cleanups.push(off1, off2, off3, off4);
+      cleanups.push(off1, off2, off3, off5);
+      if (off4) cleanups.push(off4);
     }
 
     // DEV: DevTools 콘솔에서 __testUpdateBanner('ready') 같이 트리거 가능
@@ -107,13 +111,26 @@ export const UpdateBanner = () => {
             <FiX size={14} />
           </button>
         )}
-        {renderContent(state, handleInstall)}
+        {renderContent(state, handleInstall, handleDismiss)}
       </div>
     </div>
   );
 };
 
-const renderContent = (state: State, onInstall: () => void) => {
+const renderContent = (state: State, onInstall: () => void, onDismiss: () => void) => {
+  if (state.phase === 'up-to-date') {
+    return (
+      <>
+        <div css={[s.iconCircle, s.iconSuccess]}>
+          <FiCheckCircle size={24} />
+        </div>
+        <div css={s.title}>최신 버전이에요</div>
+        <div css={s.desc}>현재 사용 중인 버전이 최신입니다</div>
+        <button css={s.primaryBtn} onClick={onDismiss}>확인</button>
+      </>
+    );
+  }
+
   if (state.phase === 'error') {
     return (
       <>

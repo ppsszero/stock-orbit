@@ -1,7 +1,6 @@
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  minimize: () => ipcRenderer.send('window-minimize'),
   close: () => ipcRenderer.send('window-close'),
   setAlwaysOnTop: (value) => ipcRenderer.send('set-always-on-top', value),
   setAutoLaunch: (value) => ipcRenderer.send('set-auto-launch', value),
@@ -45,6 +44,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_, v) => cb(v);
     ipcRenderer.on('update-downloaded', handler);
     return () => ipcRenderer.removeListener('update-downloaded', handler);
+  },
+  onUpdateNotAvailable: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('update-not-available', handler);
+    return () => ipcRenderer.removeListener('update-not-available', handler);
   },
   onUpdateError: (cb) => {
     const handler = (_, v) => cb(v);

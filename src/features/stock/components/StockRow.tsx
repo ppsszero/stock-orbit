@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useCallback, memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FiTrash2, FiMenu, FiBarChart2, FiExternalLink } from 'react-icons/fi';
+import { FiTrash2, FiMenu, FiInfo, FiExternalLink } from 'react-icons/fi';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition, zIndex , sp } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
@@ -116,7 +116,7 @@ export const StockRow = memo(({
         {hovered && vm.hasPrice ? (
           <div css={s.hoverActions}>
             <IconButton icon={<FiExternalLink size={13} />} size={28} onClick={handleClick} ariaLabel="외부 링크 열기" />
-            <IconButton icon={<FiBarChart2 size={13} />} size={28} onClick={handleDetail} ariaLabel="차트 보기" />
+            <IconButton icon={<FiInfo size={13} />} size={28} onClick={handleDetail} ariaLabel="상세 보기" />
             <IconButton icon={<FiTrash2 size={13} />} size={28} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />
           </div>
         ) : vm.hasPrice ? (

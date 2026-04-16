@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css, Global } from '@emotion/react';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { globalStyles } from '@/shared/styles/global';
 import { useStore } from './store';
 import { useTheme, useIsDark, useDisplaySymbols } from './store/selectors';
@@ -13,7 +13,7 @@ import { StatusBar } from './layout/StatusBar';
 import { SheetManager } from './SheetManager';
 import { StockViewSwitch } from './StockViewSwitch';
 import { ToastProvider } from '@/shared/ui/Toast';
-import { ConfirmProvider } from '@/shared/ui/ConfirmDialog';
+import { ConfirmProvider, useConfirm } from '@/shared/ui/ConfirmDialog';
 import { MarqueeTicker } from '@/features/marquee';
 import { PresetTabs } from '@/features/preset';
 import { ScreenshotListener } from './ScreenshotListener';
@@ -21,7 +21,21 @@ import { OfflineBanner } from '@/shared/ui/OfflineBanner';
 import { UpdateBanner } from '@/shared/ui/UpdateBanner';
 import { sem } from '@/shared/styles/semantic';
 
-export const App = () => {
+/**
+ * 최초 X 클릭 시 "트레이로 숨어요" 안내를 한 번만 표시.
+ * localStorage 플래그로 이후에는 스킵.
+ */
+const TRAY_HIDE_NOTICE_KEY = 'orbit-tray-hide-notice-shown';
+
+export const App = () => (
+  <ToastProvider>
+    <ConfirmProvider>
+      <AppContent />
+    </ConfirmProvider>
+  </ToastProvider>
+);
+
+const AppContent = () => {
   const theme = useTheme();
   const isDark = useIsDark();
   const settings = useStore(s => s.settings);
@@ -33,6 +47,7 @@ export const App = () => {
   const setSheet = useStore(s => s.setSheet);
   const setHighlightCode = useStore(s => s.setHighlightCode);
   const updateSettings = useStore(s => s.updateSettings);
+  const confirm = useConfirm();
 
   const toggleTheme = useCallback(() => {
     const next = settings.theme === 'dark' ? 'light' : 'dark';
@@ -69,48 +84,62 @@ export const App = () => {
   const openRanking = useCallback(() => setSheet('ranking'), [setSheet]);
   const openNews = useCallback(() => setSheet('news'), [setSheet]);
   const handleRefresh = useCallback(() => refresh(), [refresh]);
-  const handleMinimize = useCallback(() => window.electronAPI?.minimize(), []);
-  const handleClose = useCallback(() => window.electronAPI?.close(), []);
+  const closingRef = useRef(false);
+  const handleClose = useCallback(async () => {
+    // 다이얼로그가 열려있는 동안 X 연타 방지
+    if (closingRef.current) return;
+    // 최초 1회만 안내. ESC/외부 클릭으로 닫으면 플래그 미설정 → 다음에 재안내.
+    if (!localStorage.getItem(TRAY_HIDE_NOTICE_KEY)) {
+      closingRef.current = true;
+      const ok = await confirm({
+        title: '트레이로 숨어요',
+        message: '앱을 완전히 종료하려면\n트레이 아이콘 "우클릭 → 종료"를 클릭하세요.',
+        confirmText: '확인',
+        hideCancel: true,
+      });
+      closingRef.current = false;
+      if (!ok) return;
+      localStorage.setItem(TRAY_HIDE_NOTICE_KEY, '1');
+    }
+    window.electronAPI?.close();
+  }, [confirm]);
 
   return (
-    <ToastProvider>
-      <ConfirmProvider>
-        <Global styles={globalStyles(theme, isDark)} />
-        <ScreenshotListener />
-        <div css={s.app}>
-          <OfflineBanner />
-          <UpdateBanner />
-          <TitleBar isDark={isDark} opacity={settings.opacity}
-            onToggleTheme={toggleTheme}
-            onOpacityChange={updateOpacity}
-            onMinimize={handleMinimize}
-            onClose={handleClose} />
+    <>
+      <Global styles={globalStyles(theme, isDark)} />
+      <ScreenshotListener />
+      <div css={s.app}>
+        <OfflineBanner />
+        <UpdateBanner />
+        <TitleBar isDark={isDark} opacity={settings.opacity}
+          onToggleTheme={toggleTheme}
+          onOpacityChange={updateOpacity}
+          onClose={handleClose} />
 
-          <MarqueeTicker items={marqueeItems} speed={settings.tickerSpeed}
-            onItemClick={openMarquee} />
+        <MarqueeTicker items={marqueeItems} speed={settings.tickerSpeed}
+          onItemClick={openMarquee} />
 
-          <PresetTabs presets={presets} activeId={activeId}
-            onSelect={setActiveId} onRename={renamePreset} onRemove={removePreset} onAddPreset={addPreset}
-            showAllTab currencyMode={settings.currencyMode} onCurrencyToggle={toggleCurrency}
-            viewMode={settings.viewMode} onViewModeToggle={cycleViewMode} />
+        <PresetTabs presets={presets} activeId={activeId}
+          onSelect={setActiveId} onRename={renamePreset} onRemove={removePreset} onAddPreset={addPreset}
+          showAllTab currencyMode={settings.currencyMode} onCurrencyToggle={toggleCurrency}
+          viewMode={settings.viewMode} onViewModeToggle={cycleViewMode} />
 
-          <StockViewSwitch />
+        <StockViewSwitch />
 
-          <StatusBar lastUpdated={lastUpdated} loading={dataLoading}
-            fetching={fetching}
-            hasSymbols={displaySymbols.length > 0}
-            progressRef={progressRef}
-            subscribeProgress={subscribeProgress}
-            onSearch={openSearch} onSettings={openSettings}
-            onRefresh={handleRefresh}
-            onInvestor={openInvestor}
-            onRanking={openRanking}
-            onNews={openNews} />
+        <StatusBar lastUpdated={lastUpdated} loading={dataLoading}
+          fetching={fetching}
+          hasSymbols={displaySymbols.length > 0}
+          progressRef={progressRef}
+          subscribeProgress={subscribeProgress}
+          onSearch={openSearch} onSettings={openSettings}
+          onRefresh={handleRefresh}
+          onInvestor={openInvestor}
+          onRanking={openRanking}
+          onNews={openNews} />
 
-          <SheetManager marqueeItems={marqueeItems} />
-        </div>
-      </ConfirmProvider>
-    </ToastProvider>
+        <SheetManager marqueeItems={marqueeItems} />
+      </div>
+    </>
   );
 };
 

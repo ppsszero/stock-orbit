@@ -14,7 +14,7 @@ export const MAX_TOTAL_SYMBOLS = 30;
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   opacity: 0.95,
-  alwaysOnTop: true,
+  alwaysOnTop: false,
   refreshInterval: 30,
   tickerSpeed: 50,
   currencyMode: 'KRW',

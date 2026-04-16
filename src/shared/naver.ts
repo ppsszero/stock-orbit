@@ -283,117 +283,128 @@ interface NaverExchangeType {
   nationName?: string;
 }
 
-interface NaverTypeInfo {
-  name?: string;
-  fullName?: string;
-  stockExchangeType?: NaverExchangeType;
-}
+// === 지수 · 선물 Polling API ===
+// 엔드포인트:
+//   국내 지수/선물: /api/polling/domestic/index?itemCodes={code}        (KOSPI, KPI100, FUT 등)
+//   해외 지수:      /api/polling/worldstock/index?reutersCodes={code}   (.IXIC, .DJI 등)
+//   해외 선물:      /api/polling/worldstock/futures?reutersCodes={code} (NQcv1, ESv1 등)
 
-interface NaverIndexRaw {
+interface NaverPollingData {
   itemCode?: string;
-  stockName?: string;        // 국내 지수/선물 이름
-  closePrice?: string;
-  compareToPreviousClosePrice?: string;
-  compareToPreviousPrice?: { code?: string; name?: string } | string;
-  fluctuationsRatio?: string;
-  marketStatus?: string;
-  localTradedAt?: string;
-  nationType?: string;
   reutersCode?: string;
   symbolCode?: string;
+  stockName?: string;       // 국내 지수/선물
+  indexName?: string;        // 해외 지수
+  futuresName?: string;      // 해외 선물
+  closePriceRaw?: string;
+  compareToPreviousClosePriceRaw?: string;
+  compareToPreviousPrice?: { code?: string; text?: string; name?: string };
+  fluctuationsRatioRaw?: string;
+  openPriceRaw?: string;
+  highPriceRaw?: string;
+  lowPriceRaw?: string;
+  accumulatedTradingVolume?: string;   // "513,186천주" (단위 포함 포맷)
+  accumulatedTradingValue?: string;    // "12,360,108백만" (단위 포함 포맷)
+  accumulatedTradingVolumeRaw?: string;
+  accumulatedTradingValueRaw?: string;
+  marketStatus?: string;
+  localTradedAt?: string;
   stockExchangeType?: NaverExchangeType;
-  /** 해외 지수 상세 정보 */
-  indexType?: NaverTypeInfo;
-  /** 해외 선물 상세 정보 */
-  futuresType?: NaverTypeInfo;
 }
 
-const parseIndexResponse = (d: NaverIndexRaw, code: string, category: 'index' | 'futures'): StockPrice => {
-  const change = num(d.closePrice ? (d.compareToPreviousClosePrice || '0') : '0');
-  const pct = parseFloat(d.fluctuationsRatio || '0');
-  const ctp = d.compareToPreviousPrice;
+interface NaverPollingResponse {
+  datas?: NaverPollingData[];
+}
+
+const parsePollingData = (d: NaverPollingData, code: string, category: 'index' | 'futures'): StockPrice => {
+  const price = parseFloat(d.closePriceRaw || '0') || 0;
+  const change = parseFloat(d.compareToPreviousClosePriceRaw || '0') || 0;
+  const pct = parseFloat(d.fluctuationsRatioRaw || '0') || 0;
+  const dirCode = d.compareToPreviousPrice?.code;
   let dir = 0;
-  if (typeof ctp === 'object' && ctp?.code) {
-    dir = (ctp.code === '1' || ctp.code === '2') ? 1 : (ctp.code === '4' || ctp.code === '5') ? -1 : 0;
-  } else if (ctp === 'RISING') dir = 1;
-  else if (ctp === 'FALLING') dir = -1;
+  if (dirCode === '1' || dirCode === '2') dir = 1;
+  else if (dirCode === '4' || dirCode === '5') dir = -1;
   if (dir === 0 && pct !== 0) dir = pct > 0 ? 1 : -1;
 
-  // 응답 구조:
-  // - 국내 지수/선물: stockName (루트)
-  // - 해외 지수: indexType.fullName > indexType.name
-  // - 해외 선물: futuresType.fullName > futuresType.name
-  const typeInfo = d.indexType || d.futuresType;
-  const name = d.stockName
-    || typeInfo?.fullName || typeInfo?.name
-    || d.stockExchangeType?.nameKor || d.stockExchangeType?.name
-    || code;
+  // 이름: futuresName(해외선물) > indexName(해외지수) > stockName(국내) > symbolCode
+  const name = d.futuresName || d.indexName || d.stockName || d.symbolCode || code;
 
-  // 국가: 루트 > indexType/futuresType 내부 exchange > 루트 exchange
-  const nationRaw = d.nationType
-    || typeInfo?.stockExchangeType?.nationCode
-    || d.stockExchangeType?.nationCode
-    || 'USA';
+  const nationRaw = d.stockExchangeType?.nationCode || 'USA';
   const nation = nationRaw === 'KOR' ? 'KR' : nationRaw === 'USA' ? 'US' : nationRaw;
 
-  const exchange = d.stockExchangeType?.nameKor
-    || typeInfo?.stockExchangeType?.nameKor
-    || d.stockExchangeType?.name
-    || '';
+  const exchange = d.stockExchangeType?.nameKor || d.stockExchangeType?.name || '';
+  // 단위 포함 포맷 값 우선 ("513,186천주"), 없으면 raw 폴백
+  const vol = d.accumulatedTradingVolume || d.accumulatedTradingVolumeRaw;
+  const val = d.accumulatedTradingValue || d.accumulatedTradingValueRaw;
 
   return {
     code: d.itemCode || d.symbolCode || code,
     name,
     nation,
     market: category === 'index' ? '지수' : '선물',
-    currentPrice: num(d.closePrice || '0'),
-    previousClose: 0,
+    currentPrice: price,
+    previousClose: price - change,
     change: dir >= 0 ? Math.abs(change) : -Math.abs(change),
     changePercent: dir >= 0 ? Math.abs(pct) : -Math.abs(pct),
     changeDirection: parseDir(dir),
-    currency: '',
+    currency: '',   // 지수/선물은 통화 단위 없음
     marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
     updatedAt: d.localTradedAt || new Date().toISOString(),
     reutersCode: d.reutersCode,
     exchange,
     isTradingHalt: false,
+    // 보조 데이터 — 종목상세 모달에서 표시
+    openPrice: parseFloat(d.openPriceRaw || '0') || undefined,
+    highPrice: parseFloat(d.highPriceRaw || '0') || undefined,
+    lowPrice: parseFloat(d.lowPriceRaw || '0') || undefined,
+    volume: vol && vol !== '' && vol !== '-' ? vol : undefined,
+    tradingValue: val && val !== '' && val !== '-' ? val : undefined,
   };
 };
 
-/** 국내 지수 — KOSPI, KOSDAQ 등 */
-export const fetchIndex = async (code: string): Promise<StockPrice | null> => {
+/** 국내 지수/선물 — KOSPI, KPI100, KOSDAQ, FUT 등 (같은 엔드포인트) */
+export const fetchDomesticIndex = async (code: string): Promise<StockPrice | null> => {
   try {
-    const d = await fetchJSON<NaverIndexRaw>(
-      `https://stock.naver.com/api/securityFe/api/index/${encodeURIComponent(code)}/basic`
+    const resp = await fetchJSON<NaverPollingResponse>(
+      `${BASE}/polling/domestic/index?itemCodes=${encodeURIComponent(code)}`
     );
-    return parseIndexResponse(d, code, 'index');
+    const d = resp.datas?.[0];
+    if (!d) return null;
+    // code에서 카테고리 추론: FUT은 선물, 나머지는 지수
+    const cat = code.toUpperCase() === 'FUT' ? 'futures' : 'index';
+    return parsePollingData(d, code, cat);
   } catch (e) {
-    logger.error('국내지수 조회 실패', `${code}: ${(e as Error).message}`);
+    logger.error('국내지수/선물 조회 실패', `${code}: ${(e as Error).message}`);
     return null;
   }
 };
 
-/** 해외 지수 — .IXIC, .DJI 등 (reutersCode가 . 접두사 포함) */
+/** 해외 지수 — .IXIC, .DJI, .NDX 등 */
 export const fetchOverseasIndex = async (code: string): Promise<StockPrice | null> => {
   try {
-    const d = await fetchJSON<NaverIndexRaw>(
-      `https://stock.naver.com/api/securityService/index/${encodeURIComponent(code)}/basic`
+    const resp = await fetchJSON<NaverPollingResponse>(
+      `${BASE}/polling/worldstock/index?reutersCodes=${encodeURIComponent(code)}`
     );
-    return parseIndexResponse(d, code, 'index');
+    const d = resp.datas?.[0];
+    if (!d) return null;
+    return parsePollingData(d, code, 'index');
   } catch (e) {
     logger.error('해외지수 조회 실패', `${code}: ${(e as Error).message}`);
     return null;
   }
 };
 
-export const fetchFutures = async (code: string): Promise<StockPrice | null> => {
+/** 해외 선물 — NQcv1, ESv1 등 */
+export const fetchOverseasFutures = async (code: string): Promise<StockPrice | null> => {
   try {
-    const d = await fetchJSON<NaverIndexRaw>(
-      `https://stock.naver.com/api/securityFe/api/futures/${encodeURIComponent(code)}/basic`
+    const resp = await fetchJSON<NaverPollingResponse>(
+      `${BASE}/polling/worldstock/futures?reutersCodes=${encodeURIComponent(code)}`
     );
-    return parseIndexResponse(d, code, 'futures');
+    const d = resp.datas?.[0];
+    if (!d) return null;
+    return parsePollingData(d, code, 'futures');
   } catch (e) {
-    logger.error('선물 조회 실패', `${code}: ${(e as Error).message}`);
+    logger.error('해외선물 조회 실패', `${code}: ${(e as Error).message}`);
     return null;
   }
 };

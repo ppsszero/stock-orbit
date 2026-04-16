@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useState, useRef, useCallback, memo } from 'react';
-import { FiMinus, FiX } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 import { Tooltip } from '@/shared/ui/Tooltip';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
 import { useBackAction } from '@/shared/hooks/useBackAction';
@@ -14,7 +14,6 @@ interface Props {
   opacity: number;
   onToggleTheme: () => void;
   onOpacityChange: (v: number) => void;
-  onMinimize: () => void;
   onClose: () => void;
 }
 
@@ -27,7 +26,7 @@ interface Props {
  * 3. CSS 변수 기반 스타일링 (런타임 CSS 생성 제거)
  */
 export const TitleBar = memo(({
-  isDark, opacity, onToggleTheme, onOpacityChange, onMinimize, onClose,
+  isDark, opacity, onToggleTheme, onOpacityChange, onClose,
 }: Props) => {
   const [showOpacity, setShowOpacity] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
@@ -69,10 +68,7 @@ export const TitleBar = memo(({
             </div>
           )}
         </div>
-        <Tooltip content="트레이로 최소화" position="bottom" display="inline-flex">
-          <button css={s.btn} onClick={onMinimize}><FiMinus size={14} /></button>
-        </Tooltip>
-        <Tooltip content="종료" position="bottom" display="inline-flex">
+        <Tooltip content="트레이로 숨김" position="bottom" display="inline-flex">
           <button css={s.closeBtn} onClick={onClose}><FiX size={14} /></button>
         </Tooltip>
       </div>
