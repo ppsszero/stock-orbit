@@ -4,7 +4,7 @@ import { useRef, useEffect, createContext, useContext, useState, useCallback, Re
 import ReactDOM from 'react-dom';
 import gsap from 'gsap';
 import { sem } from '@/shared/styles/semantic';
-import { spacing, fontSize, fontWeight, radius, transition, zIndex, shadow , sp } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, zIndex, shadow, sp, opacity } from '@/shared/styles/tokens';
 
 interface ConfirmOptions {
   title: string;
@@ -105,7 +105,7 @@ const ConfirmModal = ({ opts, onResult }: {
 const s = {
   overlay: css`
     position: fixed; inset: 0; z-index: ${zIndex.modal};
-    background: rgba(0,0,0,0.5); border-radius: ${radius['2xl']}px;
+    background: ${sem.overlay.dim}; border-radius: ${radius['2xl']}px;
     display: flex; align-items: center; justify-content: center;
     padding: ${spacing['4xl']}px;
   `,
@@ -140,6 +140,6 @@ const s = {
     background: ${danger ? sem.action.danger : sem.action.primary};
     color: ${sem.text.inverse}; border-radius: ${radius.xl}px; font-size: ${fontSize.lg}px; font-weight: ${fontWeight.semibold};
     font-family: inherit; cursor: pointer; transition: opacity ${transition.fast};
-    &:hover { opacity: 0.9; }
+    &:hover { opacity: ${opacity.hover}; }
   `,
 };

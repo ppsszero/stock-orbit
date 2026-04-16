@@ -92,7 +92,7 @@ const s = {
   searchWrap: css`padding:0 ${spacing.lg}px ${spacing.lg}px;flex-shrink:0;`,
   field: css`display:flex;align-items:center;background:${sem.bg.surface};border-radius:${radius['2xl']}px;padding:0 ${spacing.lg + 2}px;height:44px;gap:${spacing.md + 2}px;`,
   input: css`flex:1;border:none;background:transparent;font-size:${fontSize.xl}px;color:${sem.text.primary};outline:none;&::placeholder{color:${sem.text.tertiary};}`,
-  clearBtn: css`border:none;background:${sem.bg.elevated};width:22px;height:22px;border-radius:${radius.full}px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:${sem.text.secondary};flex-shrink:0;&:hover{background:${sem.border.default};}`,
+  clearBtn: css`border:none;background:${sem.bg.elevated};width:22px;height:22px;border-radius:${radius.full}px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:${sem.text.secondary};flex-shrink:0;&:hover{background:${sem.bg.surface};}`,
   results: css`flex:1;overflow-y:auto;display:flex;flex-direction:column;`,
   center: css`display:flex;justify-content:center;padding:${spacing['4xl']}px 0;color:${sem.text.tertiary};`,
   spin: spinCss,

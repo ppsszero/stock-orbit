@@ -90,6 +90,16 @@ type SpaceKey = keyof typeof spacing;
 export const sp = (...keys: SpaceKey[]): string =>
   keys.reduce((acc, k) => acc + spacing[k], 0) + 'px';
 
+/** 불투명도 */
+export const opacity = {
+  hover: 0.9,       // 버튼 hover 살짝 눌림
+  muted: 0.7,       // 보조 텍스트, 아이콘
+  mutedStrong: 0.85, // 보조 텍스트 강조
+  disabled: 0.5,    // 비활성 기본
+  disabledWeak: 0.35, // 비활성 약함
+  pulse: 0.4,       // 펄스 애니메이션 중간
+} as const;
+
 /** z-index 레이어 */
 export const zIndex = {
   base: 1,
@@ -112,6 +122,7 @@ export const tokens = {
   letterSpacing,
   transition,
   shadow,
+  opacity,
   zIndex,
 } as const;
 

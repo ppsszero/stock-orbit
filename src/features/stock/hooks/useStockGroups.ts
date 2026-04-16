@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
+import { StockSymbol, StockPrice, SortKey, SortDir, inferCategory } from '@/shared/types';
 
 export interface StockGroup {
   label: string;
@@ -7,7 +7,41 @@ export interface StockGroup {
 }
 
 /**
- * 종목을 그룹별로 분류하는 hook.
+ * 그룹 내 종목을 정렬하는 비교 함수.
+ * 'custom'이면 원본 순서(드래그 순서) 유지.
+ */
+const buildComparator = (
+  prices: Record<string, StockPrice>,
+  sortKey: SortKey,
+  sortDir: SortDir,
+) => {
+  if (sortKey === 'custom') return undefined;
+
+  const dir = sortDir === 'asc' ? 1 : -1;
+
+  return (a: StockSymbol, b: StockSymbol): number => {
+    const pa = prices[a.code];
+    const pb = prices[b.code];
+
+    switch (sortKey) {
+      case 'name': {
+        const na = (pa?.name || a.name).toLowerCase();
+        const nb = (pb?.name || b.name).toLowerCase();
+        return na.localeCompare(nb, 'ko') * dir;
+      }
+      case 'change': {
+        const va = pa?.changePercent ?? 0;
+        const vb = pb?.changePercent ?? 0;
+        return (va - vb) * dir;
+      }
+      default:
+        return 0;
+    }
+  };
+};
+
+/**
+ * 종목을 그룹별로 분류하고, 그룹 내에서 정렬하는 hook.
  * customGroups가 있으면 그대로 사용, 없으면 국내/해외 자동 분류.
  *
  * 왜 분리했는가:
@@ -21,14 +55,28 @@ export const useStockGroups = (
   symbols: StockSymbol[],
   prices: Record<string, StockPrice>,
   customGroups?: StockGroup[],
-  options?: { sortByMarketOpen?: boolean },
+  options?: { sortByMarketOpen?: boolean; sortKey?: SortKey; sortDir?: SortDir },
 ): { validSymbols: StockSymbol[]; groups: StockGroup[] } => {
   return useMemo(() => {
+    const sortKey = options?.sortKey || 'custom';
+    const sortDir = options?.sortDir || 'desc';
+    const comparator = buildComparator(prices, sortKey, sortDir);
+
+    /** 그룹 내 items를 정렬한 새 그룹 배열 반환 */
+    const sortGroups = (groups: StockGroup[]): StockGroup[] => {
+      if (!comparator) return groups;
+      return groups.map(g => ({
+        ...g,
+        items: [...g.items].sort(comparator),
+      }));
+    };
+
     if (customGroups) {
       const allItems = customGroups.flatMap(g => g.items).filter(sym => sym?.code && sym?.nation);
+      const filtered = customGroups.filter(g => g.items.length > 0);
       return {
         validSymbols: allItems,
-        groups: customGroups.filter(g => g.items.length > 0),
+        groups: sortGroups(filtered),
       };
     }
 
@@ -65,6 +113,6 @@ export const useStockGroups = (
       groups.push({ label: '지수 · 선물', items: indexFutures });
     }
 
-    return { validSymbols: valid, groups };
-  }, [symbols, prices, customGroups, options?.sortByMarketOpen]);
+    return { validSymbols: valid, groups: sortGroups(groups) };
+  }, [symbols, prices, customGroups, options?.sortByMarketOpen, options?.sortKey, options?.sortDir]);
 };

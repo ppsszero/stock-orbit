@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FiTrash2, FiInfo, FiExternalLink, FiMenu } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
-import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, shadow, opacity } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
 import { IconButton } from '@/shared/ui';
@@ -137,7 +137,7 @@ const s = {
       flat: css`${base}`,
     };
   })() as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
-  dragging: css`opacity: 0.5; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.2);`,
+  dragging: css`opacity: ${opacity.disabled}; z-index: 10; box-shadow: ${shadow.lg};`,
   actions: css`
     position: absolute; bottom: 6px; right: 6px; z-index: 3;
     display: flex; gap: ${spacing.xs}px; opacity: 0; transition: opacity ${transition.fast};
@@ -160,7 +160,7 @@ const s = {
   handleOverlay: css`
     position: absolute; inset: 0; border-radius: 50%; z-index: 2;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.5); color: #fff;
+    background: ${sem.overlay.dim}; color: ${sem.text.inverse};
     opacity: 0; transition: opacity ${transition.fast};
   `,
   nameArea: css`display: flex; flex-direction: column; min-width: 0; flex: 1;`,

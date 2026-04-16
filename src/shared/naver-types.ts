@@ -21,64 +21,6 @@ export interface NaverPriceDirection {
   name?: string;
 }
 
-// ── 국내 주식 상세 ───────────────────────────────────────────────────────
-
-export interface NaverDomesticDetailRaw {
-  itemcode?: string;
-  itemname?: string;
-  nowPrice: string;
-  prevClosePrice?: string;
-  stdPrice?: string;
-  prevChangePrice: string;
-  prevChangeRate?: string;
-  /** '2'=상승, '5'=하락, 그 외=보합 */
-  upDownGb?: NaverUpDownCode | string;
-  /** '0'=KOSPI, '1'=KOSDAQ */
-  sosok?: '0' | '1' | string;
-  marketStatus?: string;
-  tradeTime?: string;
-  openPrice: string;
-  highPrice: string;
-  lowPrice: string;
-  tradeVolume?: string;
-  tradeAmount?: string;
-  marketSum?: string;
-  per?: string;
-  pbr?: string;
-  week52HighPrice?: string;
-  week52LowPrice?: string;
-  tradeStopYn?: 'Y' | 'N';
-  isTradingHalt?: 'Y' | 'N';
-}
-
-// ── 해외 주식 상세 ───────────────────────────────────────────────────────
-
-/** stockItemTotalInfos 배열 요소 */
-export interface NaverStockItemInfo {
-  code: string;
-  value: string;
-  valueDesc?: string;
-}
-
-export interface NaverOverseasDetailRaw {
-  symbolCode?: string;
-  stockName?: string;
-  stockNameEng?: string;
-  closePrice: string;
-  compareToPreviousClosePrice: string;
-  fluctuationsRatio?: string;
-  /** 문자열('RISING'/'FALLING') 또는 코드 객체로 올 수 있음 */
-  compareToPreviousPrice?: NaverPriceDirection | string;
-  stockItemTotalInfos?: NaverStockItemInfo[];
-  stockExchangeType?: { name: string; nationCode: string };
-  stockExchangeName?: string;
-  currencyType?: { code: string };
-  marketStatus?: string;
-  localTradedAt?: string;
-  nationType?: string;
-  tradeStopType?: { code: string };
-}
-
 // ── 폴링: 국내·세계 지수 ─────────────────────────────────────────────────
 
 export interface NaverIndexItemRaw {

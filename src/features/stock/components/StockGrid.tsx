@@ -5,6 +5,7 @@ import { DndContext, closestCenter, MouseSensor, KeyboardSensor, useSensor, useS
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { StockSymbol, StockPrice } from '@/shared/types';
+import { useStore } from '@/app/store';
 import { spacing } from '@/shared/styles/tokens';
 import { groupHeaderStyle } from '@/shared/styles/sharedStyles';
 import { useStockGroups, StockGroup } from '../hooks/useStockGroups';
@@ -27,7 +28,9 @@ export const StockGrid = memo(({
   symbols, prices, currencyMode, usdkrw,
   customGroups, onRemove, onClick, onReorder, onDetail,
 }: Props) => {
-  const { groups } = useStockGroups(symbols, prices, customGroups);
+  const sortKey = useStore(s => s.settings.sortKey);
+  const sortDir = useStore(s => s.settings.sortDir);
+  const { groups } = useStockGroups(symbols, prices, customGroups, { sortKey, sortDir });
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),

@@ -46,7 +46,7 @@ export const NoticeSheet = ({ open, notices, loading, onClose, onRefresh }: Prop
           notices.map((n, i) => {
             const isLatest = i === 0;
             const dotStyle = css`
-              background: ${isLatest ? sem.action.primary : sem.text.tertiary};
+              background: ${isLatest ? sem.action.primary : sem.feedback.flat};
               ${isLatest ? `box-shadow: 0 0 0 3px ${sem.action.primary}25;` : ''}
             `;
 

@@ -244,14 +244,28 @@ app.whenReady().then(() => {
   });
   mainWindow.on('unresponsive', () => console.error('Window unresponsive'));
 
+  // 활성 webview 추적 — 호스트에서 F5를 눌러도 웹뷰를 새로고침하기 위해 필요
+  let activeWebview = null;
+
   // webview가 attach될 때마다 ESC를 가로채서 호스트로 전달.
   // webview는 격리된 context라 window.addEventListener로는 못 잡기 때문.
   // 리스너는 webContents 수명에 바인딩되어 자동 정리됨.
   mainWindow.webContents.on('did-attach-webview', (_, wc) => {
+    activeWebview = wc;
+    wc.on('destroyed', () => { if (activeWebview === wc) activeWebview = null; });
+
     wc.on('before-input-event', (_event, input) => {
-      if (input.type !== 'keyDown' || input.key !== 'Escape') return;
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send('webview-back');
+      if (input.type !== 'keyDown') return;
+      // ESC → 호스트의 backStack으로 전달
+      if (input.key === 'Escape') {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        mainWindow.webContents.send('webview-back');
+        return;
+      }
+      // F5 → 웹뷰 새로고침 (웹뷰 내부 포커스)
+      if (input.key === 'F5' && !wc.isDestroyed()) {
+        wc.reload();
+      }
     });
 
     // 마우스 뒤로/앞으로 버튼 — webview 내부에 JS 주입, console-message로 수신
@@ -278,6 +292,11 @@ app.whenReady().then(() => {
   // X 버튼 = 트레이로 숨김 (완전 종료는 트레이 우클릭 → 종료).
   // 상시 실행 위젯 UX에 맞춘 Slack/Discord 스타일.
   ipcMain.on('window-close', () => withWindow(w => w.hide()));
+
+  // 호스트에서 F5 → 활성 웹뷰 새로고침 (웹뷰에 포커스가 없어도 동작)
+  ipcMain.on('reload-webview', () => {
+    if (activeWebview && !activeWebview.isDestroyed()) activeWebview.reload();
+  });
 
   ipcMain.on('set-auto-launch', (_, value) => {
     app.setLoginItemSettings({ openAtLogin: value });

@@ -23,6 +23,7 @@ export const v = {
   borderFaint: 'var(--c-border-faint)',
   borderSubtle: 'var(--c-border-subtle)',
   borderStrong: 'var(--c-border-strong)',
+  borderMuted: 'var(--c-border-muted)',
   accent: 'var(--c-accent)',
   accentSeg: 'var(--c-accent-seg)',
   accentSegText: 'var(--c-accent-seg-text)',
@@ -87,6 +88,7 @@ export const themeToVars = (colors: Record<string, string>): string => `
   --c-border-faint: ${colors.borderFaint};
   --c-border-subtle: ${colors.borderSubtle};
   --c-border-strong: ${colors.borderStrong};
+  --c-border-muted: ${colors.borderMuted};
   --c-accent: ${colors.accent};
   --c-accent-seg: ${colors.accentSeg};
   --c-accent-seg-text: ${colors.accentSegText};

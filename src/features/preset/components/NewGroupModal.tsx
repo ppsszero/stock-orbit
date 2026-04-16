@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import gsap from 'gsap';
-import { spacing, fontSize, fontWeight, radius, zIndex, transition , sp } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, zIndex, transition, shadow, sp, opacity } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface Props {
@@ -90,7 +90,7 @@ export const NewGroupModal = ({ open, mode = 'add', initialName = '', onConfirm,
 const s = {
   overlay: css`
     position: fixed; inset: 0; z-index: ${zIndex.modal};
-    background: rgba(0,0,0,0.5); border-radius: ${radius['2xl']}px;
+    background: ${sem.overlay.dim}; border-radius: ${radius['2xl']}px;
     display: flex; align-items: center; justify-content: center;
     padding: ${spacing['4xl']}px;
   `,
@@ -98,7 +98,7 @@ const s = {
     background: ${sem.surface.card}; border-radius: 14px;
     width: 100%; max-width: 300px;
     padding: ${spacing['3xl']}px ${spacing['2xl']}px ${spacing.xl}px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+    box-shadow: ${shadow.lg};
     border: 1px solid ${sem.border.default};
   `,
   title: css`
@@ -138,7 +138,7 @@ const s = {
     background: ${sem.action.primary}; color: ${sem.text.inverse};
     border-radius: ${radius.xl}px; font-size: ${fontSize.lg}px; font-weight: ${fontWeight.semibold};
     cursor: pointer; transition: opacity ${transition.fast};
-    &:hover { opacity: 0.9; }
-    &:disabled { opacity: 0.4; cursor: default; }
+    &:hover { opacity: ${opacity.hover}; }
+    &:disabled { opacity: ${opacity.pulse}; cursor: default; }
   `,
 };

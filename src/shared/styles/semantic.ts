@@ -7,6 +7,8 @@ export const sem = {
     tertiary:  v.textTertiary,
     disabled:  v.textDisabled,
     inverse:   v.inverse,
+    seg:       v.accentSegText,
+    popover:   v.popoverText,
   },
   bg: {
     base:     v.bg,
@@ -18,6 +20,7 @@ export const sem = {
     faint:   v.borderFaint,     // 15% — 가장 얇은 구분선 (StockRow)
     subtle:  v.borderSubtle,    // 20% — 일반 리스트 구분선
     strong:  v.borderStrong,    // 30% — 강한 구분선 (GridCard border, divider)
+    muted:   v.borderMuted,    // 팝오버/드롭다운 내부 구분선
     focus:   v.accent,          // 포커스 링
     accent:  v.accentBorder,    // accent 20% — 강조 카드 테두리
   },
@@ -71,9 +74,7 @@ export const sem = {
     titleBar:    v.titleBarBg,
     marquee:     v.marqueeBg,
     seg:         v.accentSeg,
-    segText:     v.accentSegText,
     popover:     v.popoverBg,
-    popoverText: v.popoverText,
   },
   shadow: {
     default: v.shadow,

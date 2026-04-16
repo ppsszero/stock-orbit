@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { FiTrash2, FiCopy } from 'react-icons/fi';
-import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, opacity } from '@/shared/styles/tokens';
 import { LogEntry, LogLevel } from '@/shared/utils/logger';
 import { SheetLayout, SegmentedControl } from '@/shared/ui';
 import { useLogSheet, FilterKey } from '../hooks/useLogSheet';
@@ -105,7 +105,7 @@ const st = {
     background: ${color}18; color: ${color}; font-family: monospace;
   `,
   timestamp: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
-  copyIcon: css`color: ${sem.text.tertiary}; opacity: 0; margin-left: auto; transition: opacity ${transition.fast}; *:hover > & { opacity: 0.6; }`,
+  copyIcon: css`color: ${sem.text.tertiary}; opacity: 0; margin-left: auto; transition: opacity ${transition.fast}; *:hover > & { opacity: ${opacity.muted}; }`,
   logMsg: css`font-size: ${fontSize.md}px; color: ${sem.text.primary}; line-height: 1.4;`,
   logDetail: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; margin-top: ${spacing.xs}px; word-break: break-all;`,
 };

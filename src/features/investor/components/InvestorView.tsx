@@ -94,7 +94,7 @@ const st = {
   empty: css`padding: ${spacing['5xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
   section: css`margin-bottom: ${spacing.md}px;`,
   secT: sectionTitleStyle,
-  grid3: css`display: grid; grid-template-columns: repeat(3, 1fr); gap: ${radius.md}px; padding: 0 ${spacing.xl}px;`,
+  grid3: css`display: grid; grid-template-columns: repeat(3, 1fr); gap: ${spacing.sm + spacing.xs}px; padding: 0 ${spacing.xl}px;`,
   card: css`
     background: ${sem.surface.card}; border: 1px solid ${sem.border.default}; border-radius: ${radius.xl}px;
     padding: ${spacing.xl - 6}px; display: flex; flex-direction: column; align-items: center; gap: ${spacing.sm}px;

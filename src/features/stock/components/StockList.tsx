@@ -5,6 +5,7 @@ import { DndContext, closestCenter, MouseSensor, KeyboardSensor, useSensor, useS
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { StockSymbol, StockPrice } from '@/shared/types';
+import { useStore } from '@/app/store';
 import { groupHeaderStyle } from '@/shared/styles/sharedStyles';
 import { useStockGroups, StockGroup } from '../hooks/useStockGroups';
 import { StockRow } from './StockRow';
@@ -31,7 +32,9 @@ export const StockList = memo(({
   symbols, prices, currencyMode, usdkrw,
   customGroups, onRemove, onClick, onReorder, onDetail,
 }: Props) => {
-  const { groups } = useStockGroups(symbols, prices, customGroups, { sortByMarketOpen: true });
+  const sortKey = useStore(s => s.settings.sortKey);
+  const sortDir = useStore(s => s.settings.sortDir);
+  const { groups } = useStockGroups(symbols, prices, customGroups, { sortByMarketOpen: true, sortKey, sortDir });
 
   // NOTE: PointerSensor 대신 MouseSensor 사용 — Electron에서 setPointerCapture 이슈 회피
   const sensors = useSensors(

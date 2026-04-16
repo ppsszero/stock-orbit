@@ -4,6 +4,7 @@ import { useMemo, memo, useCallback, useRef, useState, useEffect } from 'react';
 import { FiTrash2, FiInfo } from 'react-icons/fi';
 import { IconButton } from '@/shared/ui';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
+import { useStore } from '@/app/store';
 import { sem } from '@/shared/styles/semantic';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { groupHeaderStyle, priceFlash } from '@/shared/styles/sharedStyles';
@@ -163,7 +164,9 @@ const Tile = memo(({
 });
 
 export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGroups, onClick, onRemove, onDetail }: Props) => {
-  const { groups } = useStockGroups(symbols, prices, customGroups);
+  const sortKey = useStore(s => s.settings.sortKey);
+  const sortDir = useStore(s => s.settings.sortDir);
+  const { groups } = useStockGroups(symbols, prices, customGroups, { sortKey, sortDir });
 
   const tilesPerGroup = useMemo(() => {
     return groups.map(g => {

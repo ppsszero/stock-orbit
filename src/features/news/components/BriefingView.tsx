@@ -2,7 +2,7 @@
 import { css, keyframes } from '@emotion/react';
 import { FiExternalLink } from 'react-icons/fi';
 
-import { spacing, fontSize, fontWeight, radius, letterSpacing } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, letterSpacing, opacity } from '@/shared/styles/tokens';
 import { MarketBriefing, getNewsUrl } from '@/shared/naver';
 import { parseDetail } from '../utils/parseDetail';
 import { sem } from '@/shared/styles/semantic';
@@ -49,17 +49,17 @@ export const BriefingView = ({ briefing: b, onLinkClick }: Props) => {
   );
 };
 
-const aiPulse = keyframes`0%,100%{opacity:1}50%{opacity:0.4}`;
+const aiPulse = keyframes`0%,100%{opacity:1}50%{opacity:${opacity.pulse}}`;
 const s = {
   wrap: css`padding:${spacing.xl}px ${spacing.xl}px ${spacing['3xl']}px;`,
   topRow: css`display:flex;align-items:center;justify-content:space-between;margin-bottom:${spacing.lg + 2}px;`,
   badge: css`
     display:inline-flex;align-items:center;gap:${spacing.sm}px;
-    padding:${spacing.sm}px ${spacing.md + 2}px;border-radius:${spacing['2xl']}px;
+    padding:${spacing.sm}px ${spacing.md + 2}px;border-radius:${radius['2xl']}px;
     background:linear-gradient(135deg, #4593FC, #7B61FF);
-    color:#fff;font-size:${fontSize.xs}px;font-weight:${fontWeight.bold};letter-spacing:${letterSpacing.wide}px;
+    color:${sem.text.inverse};font-size:${fontSize.xs}px;font-weight:${fontWeight.bold};letter-spacing:${letterSpacing.wide}px;
   `,
-  dot: css`width:5px;height:5px;border-radius:50%;background:#00E676;box-shadow:0 0 6px #00E676;animation:${aiPulse} 2s ease infinite;`,
+  dot: css`width:5px;height:5px;border-radius:50%;background:${sem.action.success};box-shadow:0 0 6px ${sem.action.success};animation:${aiPulse} 2s ease infinite;`,
   date: css`font-size:${fontSize.sm}px;color:${sem.text.tertiary};`,
   title: css`font-size:${fontSize['2xl']}px;font-weight:${fontWeight.extrabold};color:${sem.text.primary};margin:0 0 ${spacing.lg}px;line-height:1.5;letter-spacing:${letterSpacing.tight}px;`,
   summary: css`font-size:${fontSize.lg}px;color:${sem.text.secondary};line-height:1.9;letter-spacing:0.1px;margin:0;word-break:keep-all;`,

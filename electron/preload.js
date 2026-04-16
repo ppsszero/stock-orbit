@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   close: () => ipcRenderer.send('window-close'),
+  reloadWebview: () => ipcRenderer.send('reload-webview'),
   setAlwaysOnTop: (value) => ipcRenderer.send('set-always-on-top', value),
   setAutoLaunch: (value) => ipcRenderer.send('set-auto-launch', value),
   setOpacity: (value) => ipcRenderer.send('set-opacity', value),

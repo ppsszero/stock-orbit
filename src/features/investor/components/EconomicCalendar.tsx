@@ -2,7 +2,7 @@
 import { css } from '@emotion/react';
 import { useState, useCallback } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, opacity } from '@/shared/styles/tokens';
 import { useEconomicCalendar } from '@/features/investor/hooks/useEconomicCalendar';
 import { DatePicker } from '@/features/investor/components/DatePicker';
 import { TimelineItem } from '@/features/investor/components/TimelineItem';
@@ -92,7 +92,7 @@ const s = {
     font-family: inherit; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold};
     transition: all ${transition.fast};
     &:hover:not(:disabled) { background: ${sem.bg.surface}; color: ${sem.text.primary}; }
-    &:disabled { opacity: 0.3; cursor: default; }
+    &:disabled { opacity: ${opacity.disabledWeak}; cursor: default; }
   `,
   dateArea: css`
     position: relative; display: flex; align-items: center; gap: ${spacing.sm}px;
@@ -102,7 +102,7 @@ const s = {
     background: transparent; border: none; cursor: pointer;
     font-family: inherit; font-size: ${fontSize.base}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary};
     padding: 0; transition: opacity ${transition.fast};
-    &:hover { opacity: 0.7; }
+    &:hover { opacity: ${opacity.muted}; }
   `,
 
   body: css`flex: 1; overflow-y: auto; padding: 0 ${spacing.xl}px ${spacing.xl}px;`,

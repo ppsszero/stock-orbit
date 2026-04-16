@@ -14,8 +14,6 @@ const price: StockPrice = {
   isTradingHalt: false, exchange: 'KOSPI',
   openPrice: 74_500, highPrice: 76_000, lowPrice: 73_500,
   volume: '12,345,678', tradingValue: '9,234억', marketCap: '448.3조',
-  per: '12.5', pbr: '1.3',
-  week52High: 80_000, week52Low: 60_000,
 };
 
 describe('StockDetailModal', () => {
@@ -49,15 +47,6 @@ describe('StockDetailModal', () => {
     expect(screen.getByText('거래 정보')).toBeInTheDocument();
     expect(screen.getByText('거래량')).toBeInTheDocument();
     expect(screen.getByText('시가총액')).toBeInTheDocument();
-  });
-
-  it('투자 지표 섹션을 표시한다', () => {
-    render(<StockDetailModal symbol={sym} price={price} onClose={vi.fn()} />);
-    expect(screen.getByText('투자 지표')).toBeInTheDocument();
-    expect(screen.getByText('PER')).toBeInTheDocument();
-    expect(screen.getByText('PBR')).toBeInTheDocument();
-    expect(screen.getByText('52주 최고')).toBeInTheDocument();
-    expect(screen.getByText('52주 최저')).toBeInTheDocument();
   });
 
   it('LIVE 시장 상태를 표시한다', () => {

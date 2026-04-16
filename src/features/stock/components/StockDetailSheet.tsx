@@ -1,5 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
+import { useEffect } from 'react';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 import { useWebView } from '@/shared/hooks/useWebView';
 import { FiX, FiLoader } from 'react-icons/fi';
@@ -14,6 +15,19 @@ interface Props { symbol: StockSymbol | null; onClose: () => void; }
 export const StockDetailSheet = ({ symbol, onClose }: Props) => {
   useBackAction(!!symbol, onClose);
   const { wvRef, loaded } = useWebView(!!symbol);
+
+  // 호스트에 포커스가 있을 때 F5 → 웹뷰 새로고침 (IPC 경유)
+  useEffect(() => {
+    if (!symbol) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'F5') {
+        e.preventDefault();
+        window.electronAPI?.reloadWebview();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [symbol]);
 
   if (!symbol) return null;
 

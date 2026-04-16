@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { FiAlertCircle } from 'react-icons/fi';
-import { fontSize, fontWeight, radius, spacing, transition } from '@/shared/styles/tokens';
+import { fontSize, fontWeight, radius, spacing, transition, opacity } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface ApiErrorStateProps {
@@ -42,10 +42,10 @@ const retryBtnCss = css`
   border: 1px solid ${sem.border.default};
 
   &:hover {
-    opacity: 0.85;
+    opacity: ${opacity.mutedStrong};
   }
   &:active {
-    opacity: 0.7;
+    opacity: ${opacity.muted};
   }
 `;
 

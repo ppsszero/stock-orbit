@@ -3,7 +3,7 @@ import { css, keyframes } from '@emotion/react';
 import { useEffect, useState, useCallback } from 'react';
 import { FiDownload, FiRefreshCw, FiAlertCircle, FiX, FiCheckCircle } from 'react-icons/fi';
 import { sem } from '@/shared/styles/semantic';
-import { fontSize, fontWeight, spacing, radius, transition, sp } from '@/shared/styles/tokens';
+import { fontSize, fontWeight, spacing, radius, transition, shadow, sp, opacity } from '@/shared/styles/tokens';
 
 type Phase = 'idle' | 'available' | 'downloading' | 'ready' | 'installing' | 'error' | 'up-to-date';
 
@@ -210,7 +210,7 @@ const s = {
     border-radius: 14px;
     padding: ${spacing['3xl']}px ${spacing['2xl']}px ${spacing.xl}px;
     display: flex; flex-direction: column; align-items: center;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+    box-shadow: ${shadow.lg};
     animation: ${fadeIn} ${transition.fast} ease-out;
   `,
   closeBtn: css`
@@ -254,6 +254,6 @@ const s = {
     border-radius: ${radius.xl}px;
     font-size: ${fontSize.lg}px; font-weight: ${fontWeight.semibold};
     cursor: pointer; transition: opacity ${transition.fast};
-    &:hover { opacity: 0.9; }
+    &:hover { opacity: ${opacity.hover}; }
   `,
 };

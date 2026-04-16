@@ -20,6 +20,12 @@ export const NATION_BADGE: Record<string, { bg: string; fg: string }> = {
   VN: { bg: '#FFC10720', fg: '#F57F17' },
 };
 
+// === 카테고리 뱃지 색상 (지수/선물) ===
+export const CATEGORY_BADGE: Record<string, { bg: string; fg: string }> = {
+  index: { bg: '#16A08520', fg: '#16A085' },
+  futures: { bg: '#8E44AD20', fg: '#8E44AD' },
+};
+
 // Naver autocomplete nationCode → 표시용 코드
 export const mapNationCode = (code?: string): string =>
   ({ KOR: 'KR', USA: 'US', JPN: 'JP', CHN: 'CN', HKG: 'HK', GBR: 'UK', DEU: 'DE', VNM: 'VN' })[code || ''] || code || 'INT';

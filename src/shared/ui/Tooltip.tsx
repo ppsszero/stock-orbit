@@ -120,7 +120,7 @@ const s = {
     font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; line-height: 1.6;
     white-space: pre-line; max-width: 260px; width: max-content;
     pointer-events: none; will-change: transform, opacity;
-    background: ${sem.surface.popover}; color: ${sem.surface.popoverText};
+    background: ${sem.surface.popover}; color: ${sem.text.popover};
     box-shadow: ${sem.shadow.popover};
   `,
 };

@@ -1,5 +1,5 @@
 import { sem } from './semantic';
-import { spacing, fontSize, fontWeight, radius, height, transition } from './tokens';
+import { spacing, fontSize, fontWeight, radius, height, transition, opacity } from './tokens';
 
 // ── Button ──
 
@@ -7,22 +7,22 @@ export const buttonTokens = {
   primary: {
     default:  { bg: sem.action.primary,     border: 'none',                               color: sem.text.inverse },
     hover:    { bg: sem.action.primaryHover, border: 'none',                               color: sem.text.inverse },
-    disabled: { bg: sem.action.primary,      border: 'none',                               color: sem.text.inverse, opacity: 0.5 },
+    disabled: { bg: sem.action.primary,      border: 'none',                               color: sem.text.inverse, opacity: opacity.disabled },
   },
   secondary: {
     default:  { bg: sem.bg.surface,          border: `1px solid ${sem.border.default}`,    color: sem.text.secondary },
     hover:    { bg: sem.bg.elevated,         border: `1px solid ${sem.border.default}`,    color: sem.text.secondary },
-    disabled: { bg: sem.bg.surface,          border: `1px solid ${sem.border.default}`,    color: sem.text.tertiary, opacity: 0.5 },
+    disabled: { bg: sem.bg.surface,          border: `1px solid ${sem.border.default}`,    color: sem.text.tertiary, opacity: opacity.disabled },
   },
   ghost: {
     default:  { bg: 'transparent',           border: 'none',                               color: sem.text.secondary },
     hover:    { bg: sem.bg.surface,          border: 'none',                               color: sem.text.primary },
-    disabled: { bg: 'transparent',           border: 'none',                               color: sem.text.tertiary, opacity: 0.5 },
+    disabled: { bg: 'transparent',           border: 'none',                               color: sem.text.tertiary, opacity: opacity.disabled },
   },
   danger: {
     default:  { bg: 'transparent',           border: `1px solid ${sem.action.danger}`,     color: sem.action.danger },
     hover:    { bg: sem.action.dangerTint,   border: `1px solid ${sem.action.danger}`,     color: sem.action.danger },
-    disabled: { bg: 'transparent',           border: `1px solid ${sem.action.danger}`,     color: sem.action.danger, opacity: 0.5 },
+    disabled: { bg: 'transparent',           border: `1px solid ${sem.action.danger}`,     color: sem.action.danger, opacity: opacity.disabled },
   },
 } as const;
 
@@ -64,7 +64,7 @@ export const inputTokens = {
   default:   { bg: sem.bg.surface, border: `1px solid ${sem.border.default}`, color: sem.text.primary },
   focus:     { bg: sem.bg.surface, border: `1px solid ${sem.border.focus}`,   color: sem.text.primary },
   capturing: { bg: sem.bg.surface, border: `1px solid ${sem.border.focus}`,   color: sem.action.primary },
-  disabled:  { bg: sem.bg.surface, border: `1px solid ${sem.border.default}`, color: sem.text.primary, opacity: 0.5 },
+  disabled:  { bg: sem.bg.surface, border: `1px solid ${sem.border.default}`, color: sem.text.primary, opacity: opacity.disabled },
 } as const;
 
 export const inputCommon = {
@@ -101,7 +101,7 @@ export const iconButtonTokens = {
 export const toggleTokens = {
   off:      { track: sem.bg.elevated,    knob: sem.text.inverse },
   on:       { track: sem.action.primary, knob: sem.text.inverse },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: opacity.disabled },
 } as const;
 
 // ── AddButton ──

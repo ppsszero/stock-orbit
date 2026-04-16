@@ -5,10 +5,11 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FiTrash2, FiMenu, FiInfo, FiExternalLink } from 'react-icons/fi';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
-import { spacing, fontSize, fontWeight, radius, transition, zIndex , sp } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, transition, zIndex, shadow, sp, opacity } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
 import { Badge, StatusDot, StockLogo, IconButton } from '@/shared/ui';
+import { CATEGORY_BADGE } from '@/shared/utils/format';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
 import { sem } from '@/shared/styles/semantic';
@@ -93,14 +94,16 @@ export const StockRow = memo(({
       <div css={s.left}>
         <div css={s.nameRow}>
           <span css={s.name}>{vm.displayName}</span>
-          {vm.nation !== 'INT' && <Badge bg={vm.badge.bg} fg={vm.badge.fg}>{vm.nation}</Badge>}
-          {(() => {
-            const cat = inferCategory(sym);
-            if (cat === 'index') return <Badge bg="#16A08520" fg="#16A085">지수</Badge>;
-            if (cat === 'futures') return <Badge bg="#8E44AD20" fg="#8E44AD">선물</Badge>;
-            return null;
-          })()}
-          {vm.exchange && <Badge bg={sem.bg.elevated} fg={sem.text.tertiary}>{vm.exchange}</Badge>}
+          <div css={s.badges}>
+            {vm.nation !== 'INT' && <Badge bg={vm.badge.bg} fg={vm.badge.fg}>{vm.nation}</Badge>}
+            {(() => {
+              const cat = inferCategory(sym);
+              const cb = CATEGORY_BADGE[cat];
+              if (cb) return <Badge bg={cb.bg} fg={cb.fg}>{cat === 'index' ? '지수' : '선물'}</Badge>;
+              return null;
+            })()}
+            {vm.exchange && <Badge bg={sem.bg.elevated} fg={sem.text.tertiary}>{vm.exchange}</Badge>}
+          </div>
         </div>
         <div css={s.sub}>
           <span css={s.code}>{vm.displayCode}</span>
@@ -142,7 +145,7 @@ const s = {
     &:hover { background: ${sem.bg.surface}; }
     &:hover .drag-handle { opacity: 1; }
   `,
-  dragging: css`opacity: 0.5; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.2);`,
+  dragging: css`opacity: ${opacity.disabled}; z-index: 10; box-shadow: ${shadow.lg};`,
   logoWrap: css`
     position: relative; width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; flex-shrink: 0; margin-right: ${sp('md', 'xs')};
     cursor: grab; touch-action: none;
@@ -151,16 +154,17 @@ const s = {
   handleOverlay: css`
     position: absolute; inset: 0; border-radius: 50%; z-index: ${zIndex.base};
     display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.5); color: #fff;
+    background: ${sem.overlay.dim}; color: ${sem.text.inverse};
     opacity: 0; transition: opacity ${transition.fast};
   `,
   left: css`display: flex; flex-direction: column; gap: ${spacing.xs}px; min-width: 0; flex: 1;`,
-  nameRow: css`display: flex; align-items: center; gap: ${radius.md}px;`,
+  nameRow: css`display: flex; align-items: center; gap: ${spacing.sm + spacing.xs}px;`,
+  badges: css`display: flex; align-items: center; gap: ${spacing.xs}px;`,
   name: css`
     font-size: ${fontSize.lg}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.primary};
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   `,
-  sub: css`display: flex; align-items: center; gap: ${radius.md}px;`,
+  sub: css`display: flex; align-items: center; gap: ${spacing.md}px;`,
   code: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-variant-numeric: tabular-nums; line-height: 1;`,
   right: css`display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: ${spacing.xs}px; flex-shrink: 0; min-width: 100px; min-height: 38px;`,
   price: css`font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,

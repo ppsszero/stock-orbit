@@ -1,78 +1,123 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StockPrice, StockSymbol, inferCategory } from '@/shared/types';
-import { fetchDomesticStock, fetchOverseasStock, fetchDomesticIndex, fetchOverseasIndex, fetchOverseasFutures } from '@/shared/naver';
+import {
+  fetchDomesticStocksBatch,
+  fetchOverseasStocksBatch,
+  fetchDomesticIndex,
+  fetchOverseasIndex,
+  fetchOverseasFutures,
+} from '@/shared/naver';
 
-/** 한 배치당 요청 수 */
+/** 한 배치당 요청할 종목 수 — 부정사용 의심 방지를 위해 10개 단위 */
 const BATCH_SIZE = 10;
 /**
- * 배치 사이의 지연 (ms) — 병렬 폭주 방지용 최소 간격.
- * 너무 길면 전체 사이클이 늘어지고(→ 마지막 배치 종목의 최신성 저하),
- * 너무 짧으면 네이버 서버에 스파이크 부담. 3초가 실측 기준 현실적 절충점.
+ * 배치 사이의 지연 (ms).
+ * 기존 개별 요청 대비 트래픽이 크게 줄었으므로 1.5초로 단축.
  */
-const BATCH_DELAY_MS = 3_000;
-/** 이 수 이하면 배치 없이 한 번에 요청 */
-const BATCH_THRESHOLD = 10;
-
-const fetchOne = (sym: StockSymbol): Promise<StockPrice | null> => {
-  const category = inferCategory(sym);
-
-  // 지수/선물은 별도 API 사용 (주식 API로 호출 시 앱 깨짐)
-  // nation 대신 code/reutersCode 패턴으로 국내/해외 판별
-  // (자동완성 API가 'KOR'을 안 줄 때 대비, code="IXIC"인데 reutersCode=".IXIC"인 경우도 처리)
-  if (category === 'index' || category === 'futures') {
-    const c = sym.code.toUpperCase();
-    const rc = (sym.reutersCode || '').toUpperCase();
-    // 해외 지수: . 접두사 (.IXIC, .DJI, .NDX 등)
-    if (c.startsWith('.') || rc.startsWith('.')) return fetchOverseasIndex(sym.reutersCode || sym.code);
-    // 해외 선물: CV{숫자} 패턴 (NQcv1, ESv1 등)
-    if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) return fetchOverseasFutures(sym.reutersCode || sym.code);
-    // 그 외 = 국내 지수/선물 (KOSPI, KOSDAQ, KPI100, KPI200, FUT 등)
-    return fetchDomesticIndex(sym.code);
-  }
-  // 일반 주식
-  return sym.nation === 'KR'
-    ? fetchDomesticStock(sym.code)
-    : fetchOverseasStock(sym.reutersCode || sym.code);
-};
+const BATCH_DELAY_MS = 1_500;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /**
- * 종목 수가 많으면 10개씩 쪼개서 3초 간격으로 병렬 요청 전송.
- * onProgress 콜백으로 배치 진행률(0~1)을 실시간 보고.
+ * 종목을 국내주식 · 해외주식 · 지수 · 선물로 분류.
+ * 주식은 batch polling으로 한 번에, 지수/선물은 기존 개별 API 사용.
  */
-const fetchInBatches = async (
+const classifySymbols = (symbols: StockSymbol[]) => {
+  const domesticStocks: StockSymbol[] = [];
+  const overseasStocks: StockSymbol[] = [];
+  const indexFutures: StockSymbol[] = [];
+
+  for (const sym of symbols) {
+    const cat = inferCategory(sym);
+    if (cat === 'index' || cat === 'futures') {
+      indexFutures.push(sym);
+    } else if (sym.nation === 'KR') {
+      domesticStocks.push(sym);
+    } else {
+      overseasStocks.push(sym);
+    }
+  }
+  return { domesticStocks, overseasStocks, indexFutures };
+};
+
+/** 지수/선물은 기존 개별 API 유지 (종목 수가 적고 배치 미지원) */
+const fetchOneIndexFutures = (sym: StockSymbol): Promise<StockPrice | null> => {
+  const c = sym.code.toUpperCase();
+  const rc = (sym.reutersCode || '').toUpperCase();
+  const cat = inferCategory(sym);
+
+  if (cat === 'index') {
+    if (c.startsWith('.') || rc.startsWith('.')) return fetchOverseasIndex(sym.reutersCode || sym.code);
+    return fetchDomesticIndex(sym.code);
+  }
+  // futures
+  if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) return fetchOverseasFutures(sym.reutersCode || sym.code);
+  return fetchDomesticIndex(sym.code);
+};
+
+/**
+ * 배치 polling + 지수/선물 개별 호출을 통합하는 메인 fetcher.
+ *
+ * 국내주식: 10개씩 묶어서 1회 요청
+ * 해외주식: 10개씩 묶어서 1회 요청 (polling.finance.naver.com)
+ * 지수/선물: 기존 개별 API
+ */
+const fetchAllPrices = async (
   symbols: StockSymbol[],
   onProgress?: (ratio: number) => void,
 ): Promise<Record<string, StockPrice>> => {
   const out: Record<string, StockPrice> = {};
   if (symbols.length === 0) return out;
 
-  const runBatch = async (batch: StockSymbol[]) => {
-    const results = await Promise.allSettled(batch.map(fetchOne));
-    results.forEach((r, i) => {
-      if (r.status === 'fulfilled' && r.value) out[batch[i].code] = r.value;
-    });
+  const { domesticStocks, overseasStocks, indexFutures } = classifySymbols(symbols);
+
+  // 전체 배치 수 계산 (진행률 산정용)
+  const domesticBatches = Math.ceil(domesticStocks.length / BATCH_SIZE);
+  const overseasBatches = Math.ceil(overseasStocks.length / BATCH_SIZE);
+  const totalSteps = domesticBatches + overseasBatches + (indexFutures.length > 0 ? 1 : 0);
+  let doneSteps = 0;
+  const reportProgress = () => {
+    doneSteps++;
+    onProgress?.(totalSteps > 0 ? doneSteps / totalSteps : 1);
   };
 
-  if (symbols.length === 0) { onProgress?.(1); return out; }
-
-  if (symbols.length <= BATCH_THRESHOLD) {
-    onProgress?.(0.5);
-    await runBatch(symbols);
-    onProgress?.(1);
-    return out;
+  // 1. 국내주식 배치 polling (10개씩)
+  for (let i = 0; i < domesticStocks.length; i += BATCH_SIZE) {
+    const batch = domesticStocks.slice(i, i + BATCH_SIZE);
+    const codes = batch.map(s => s.code);
+    const result = await fetchDomesticStocksBatch(codes);
+    Object.assign(out, result);
+    reportProgress();
+    if (i + BATCH_SIZE < domesticStocks.length) await sleep(BATCH_DELAY_MS);
   }
 
-  const total = Math.ceil(symbols.length / BATCH_SIZE);
-  for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-    const batch = symbols.slice(i, i + BATCH_SIZE);
-    await runBatch(batch);
-    const done = Math.floor(i / BATCH_SIZE) + 1;
-    onProgress?.(done / total);
-    if (i + BATCH_SIZE < symbols.length) await sleep(BATCH_DELAY_MS);
+  // 2. 해외주식 배치 polling (10개씩)
+  for (let i = 0; i < overseasStocks.length; i += BATCH_SIZE) {
+    const batch = overseasStocks.slice(i, i + BATCH_SIZE);
+    const reutersCodes = batch.map(s => s.reutersCode || s.code);
+    const result = await fetchOverseasStocksBatch(reutersCodes);
+    // 해외주식은 symbolCode(NVDA)로 키가 돌아오므로, 원본 code 기준으로도 매핑
+    for (const sym of batch) {
+      const key = sym.code;
+      const rc = sym.reutersCode || sym.code;
+      const symbolCode = rc.split('.')[0];
+      const price = result[symbolCode] || result[key] || result[rc];
+      if (price) out[key] = price;
+    }
+    reportProgress();
+    if (i + BATCH_SIZE < overseasStocks.length) await sleep(BATCH_DELAY_MS);
   }
+
+  // 3. 지수/선물 병렬 개별 호출
+  if (indexFutures.length > 0) {
+    const results = await Promise.allSettled(indexFutures.map(fetchOneIndexFutures));
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled' && r.value) out[indexFutures[i].code] = r.value;
+    });
+    reportProgress();
+  }
+
   return out;
 };
 
@@ -99,7 +144,7 @@ export const useStockPrices = (symbols: StockSymbol[], refreshInterval: number) 
     queryKey: ['stockPrices', symbols.map(s => s.code).sort()],
     queryFn: () => {
       setProgress(0);
-      return fetchInBatches(symbols, setProgress);
+      return fetchAllPrices(symbols, setProgress);
     },
     // jitter: ±5초 랜덤 오프셋으로 여러 사용자 동시 요청 분산
     refetchInterval: () => refreshInterval * 1000 + (Math.random() * 10_000 - 5_000),

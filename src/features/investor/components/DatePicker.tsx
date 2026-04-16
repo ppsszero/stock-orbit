@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { memo, useState, useRef } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { sem } from '@/shared/styles/semantic';
-import { spacing, fontSize, fontWeight, radius, transition, zIndex, shadow } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, zIndex, shadow, opacity } from '@/shared/styles/tokens';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -108,7 +108,7 @@ const dp = {
     color: ${sem.text.secondary}; cursor: pointer; display: flex;
     align-items: center; justify-content: center; border-radius: ${radius.sm}px;
     &:hover:not(:disabled) { background: ${sem.bg.surface}; }
-    &:disabled { opacity: 0.3; cursor: default; }
+    &:disabled { opacity: ${opacity.disabledWeak}; cursor: default; }
   `,
   title: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary};`,
   grid: css`display: grid; grid-template-columns: repeat(7, 1fr); gap: ${spacing.xs}px;`,

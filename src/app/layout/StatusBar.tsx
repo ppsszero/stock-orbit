@@ -5,7 +5,7 @@ import { FiSearch, FiSettings, FiActivity, FiTrendingUp, FiFileText } from 'reac
 import { Tooltip } from '@/shared/ui/Tooltip';
 import { useToast } from '@/shared/ui/Toast';
 import { fmtTime } from '@/shared/utils/format';
-import { spacing, fontSize, radius, transition } from '@/shared/styles/tokens';
+import { spacing, fontSize, radius, transition, opacity } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface Props {
@@ -123,12 +123,12 @@ export const StatusBar = memo(({
 
 const pulse = keyframes`
   0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.6); }
+  50% { opacity: ${opacity.pulse}; transform: scale(1.6); }
   100% { opacity: 1; transform: scale(1); }
 `;
 const flashOut = keyframes`
   0% { background: ${sem.action.success}; box-shadow: 0 0 4px ${sem.action.success}; }
-  100% { background: ${sem.text.tertiary}; box-shadow: none; }
+  100% { background: ${sem.feedback.flat}; box-shadow: none; }
 `;
 
 const s = {
@@ -158,7 +158,7 @@ const s = {
     color: ${sem.text.tertiary}; transition: all ${transition.fast};
     &:hover { background: ${sem.bg.elevated}; color: ${sem.text.secondary}; }
   `,
-  divider: css`width: 1px; height: ${spacing.lg}px; background: ${sem.border.accent}; flex-shrink: 0;`,
+  divider: css`width: 1px; height: ${spacing.lg}px; background: ${sem.border.muted}; flex-shrink: 0;`,
   updateInfo: css`
     display: flex; align-items: center; gap: ${spacing.sm + 2}px;
     padding: 0 ${spacing.md}px; cursor: pointer; border: none; background: transparent;
@@ -166,7 +166,7 @@ const s = {
   updateInfoDisabled: css`cursor: default;`,
   dot: css`
     width: 5px; height: 5px; border-radius: 50%;
-    background: ${sem.text.tertiary}; flex-shrink: 0;
+    background: ${sem.feedback.flat}; flex-shrink: 0;
     transition: background 0.3s;
   `,
   dotFetching: css`

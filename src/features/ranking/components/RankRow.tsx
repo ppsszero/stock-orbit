@@ -56,7 +56,7 @@ const st = {
     color: ${d === 'up' ? sem.feedback.up : d === 'down' ? sem.feedback.down : sem.text.tertiary};
   `,
   info: css`flex: 1; display: flex; flex-direction: column; gap: ${spacing.xs}px; min-width: 0;`,
-  nameRow: css`display: flex; align-items: center; gap: ${radius.md}px;`,
+  nameRow: css`display: flex; align-items: center; gap: ${spacing.sm + spacing.xs}px;`,
   name: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.primary}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`,
   badge: (bg: string, fg: string) => css`padding: 1px 5px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold}; background: ${bg}; color: ${fg}; flex-shrink: 0;`,
   subRow: css`display: flex; align-items: center; gap: ${spacing.md}px;`,

@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { FiAlertTriangle } from 'react-icons/fi';
-import { fontSize, fontWeight, radius, spacing, transition } from '@/shared/styles/tokens';
+import { fontSize, fontWeight, radius, spacing, transition, opacity } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface ErrorFallbackProps {
@@ -66,17 +66,17 @@ const buttonBaseCss = css`
   border: none;
 
   &:hover {
-    opacity: 0.85;
+    opacity: ${opacity.mutedStrong};
   }
   &:active {
-    opacity: 0.7;
+    opacity: ${opacity.muted};
   }
 `;
 
 const retryBtnCss = css`
   ${buttonBaseCss}
   background: ${sem.action.primary};
-  color: #fff;
+  color: ${sem.text.inverse};
 `;
 
 const dismissBtnCss = css`

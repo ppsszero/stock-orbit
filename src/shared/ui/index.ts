@@ -16,3 +16,4 @@ export { useConfirm, ConfirmProvider } from './ConfirmDialog';
 export { Tooltip } from './Tooltip';
 export { AddButton } from './AddButton';
 export { TimelineRow } from './TimelineRow';
+export { SortButton } from './SortButton';

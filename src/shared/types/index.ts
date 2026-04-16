@@ -28,6 +28,9 @@ export const inferCategory = (sym: StockSymbol): 'stock' | 'index' | 'futures' =
   return 'stock';
 };
 
+export type SortKey = 'custom' | 'name' | 'change';
+export type SortDir = 'asc' | 'desc';
+
 export interface AppSettings {
   theme: 'light' | 'dark';
   opacity: number;
@@ -40,6 +43,8 @@ export interface AppSettings {
   autoCleanLogs: boolean;
   autoLaunch: boolean;
   viewMode: 'list' | 'grid' | 'tile';
+  sortKey: SortKey;
+  sortDir: SortDir;
   screenshot: ScreenshotSettings;
 }
 
@@ -79,7 +84,6 @@ export interface NaverAutoCompleteItem {
 export interface StockPrice {
   code: string;
   name: string;
-  nameEn?: string;
   nation: string;
   market: string;
   currentPrice: number;
@@ -91,7 +95,7 @@ export interface StockPrice {
   marketStatus: 'OPEN' | 'CLOSE' | 'PRE' | 'POST';
   updatedAt: string;
   reutersCode?: string;
-  // 보조 데이터 (툴팁용)
+  // 보조 데이터
   openPrice?: number;
   highPrice?: number;
   lowPrice?: number;
@@ -99,10 +103,6 @@ export interface StockPrice {
   tradingValue?: string;
   marketCap?: string;
   marketCapRaw?: number; // 원본 시가총액 (treemap 크기 계산용)
-  per?: string;
-  pbr?: string;
-  week52High?: number;
-  week52Low?: number;
   exchange?: string; // 거래소명 (KOSPI, NASDAQ 등)
   isTradingHalt?: boolean; // 거래정지 여부
 }
@@ -121,6 +121,7 @@ export interface MarqueeItem {
 // === Electron API ===
 export interface ElectronAPI {
   close: () => void;
+  reloadWebview: () => void;
   setAlwaysOnTop: (value: boolean) => void;
   setAutoLaunch: (value: boolean) => void;
   setOpacity: (value: number) => void;

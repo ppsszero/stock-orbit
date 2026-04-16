@@ -6,7 +6,7 @@ import { Tooltip } from '@/shared/ui/Tooltip';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 import logoSvg from '../../assets/logo.svg';
-import { spacing, fontSize, fontWeight, radius, transition, zIndex, letterSpacing , sp } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, zIndex, letterSpacing, shadow, sp } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface Props {
@@ -109,12 +109,12 @@ const s = {
     z-index: ${zIndex.dropdown}; display: flex; align-items: center; gap: ${sp('md', 'xs')}; min-width: 180px;
   `,
   slider: css`
-    -webkit-appearance: none; flex: 1; height: ${spacing.sm}px; border-radius: ${spacing.xs}px;
+    -webkit-appearance: none; flex: 1; height: ${spacing.sm}px; border-radius: ${radius.xs}px;
     background: ${sem.bg.elevated}; outline: none;
     &::-webkit-slider-thumb {
       -webkit-appearance: none; width: ${spacing.xl}px; height: ${spacing.xl}px; border-radius: 50%;
-      background: ${sem.action.primary}; cursor: pointer; border: 2px solid ${sem.surface.card};
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      background: ${sem.action.primary}; cursor: pointer; border: 2px solid ${sem.bg.base};
+      box-shadow: ${shadow.sm};
     }
   `,
   sliderVal: css`font-size: ${fontSize.md}px; color: ${sem.text.secondary}; min-width: ${spacing['4xl']}px; text-align: right;`,

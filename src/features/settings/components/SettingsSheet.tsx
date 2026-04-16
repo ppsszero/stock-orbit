@@ -295,7 +295,7 @@ const s = {
     &::-webkit-slider-thumb {
       -webkit-appearance: none; width: ${spacing.xl}px; height: ${spacing.xl}px;
       border-radius: ${radius.full}px; background: ${sem.action.primary};
-      cursor: pointer; border: 2px solid ${sem.surface.card};
+      cursor: pointer; border: 2px solid ${sem.bg.base};
       box-shadow: ${shadow.sm};
     }
   `,

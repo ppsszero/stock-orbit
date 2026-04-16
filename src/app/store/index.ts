@@ -23,6 +23,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoCleanLogs: true,
   autoLaunch: false,
   viewMode: 'list',
+  sortKey: 'custom',
+  sortDir: 'desc',
   screenshot: {
     shortcut: 'F9',
     mode: 'clipboard',

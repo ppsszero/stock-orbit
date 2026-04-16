@@ -1310,10 +1310,10 @@ const double = (n: number) => n * 2;
 const calcDisplayPrice = (p: StockPrice, currencyMode: 'KRW' | 'USD', usdkrw: number) => {
 
 // 명시: 함수 반환값 (API 경계이므로 명확히)
-const fetchDomesticStock = async (code: string): Promise<StockPrice | null> => {
+const fetchDomesticStocksBatch = async (codes: string[]): Promise<Record<string, StockPrice>> => {
 
 // 생략: 지역 변수 (오른쪽 값에서 명확)
-const change = num(d.prevChangePrice);    // number인 게 뻔함
+const change = parseFloat(d.compareToPreviousClosePriceRaw || '0');  // number인 게 뻔함
 const isKR = p.currency === 'KRW';        // boolean인 게 뻔함
 ```
 
@@ -1397,14 +1397,14 @@ interface ToastContextType {
 // ── 비동기 함수 (Promise) ──
 
 // async 함수는 반환 타입이 Promise<T>
-const fetchDomesticStock = async (code: string): Promise<StockPrice | null> => {
+const fetchDomesticStocksBatch = async (codes: string[]): Promise<Record<string, StockPrice>> => {
   // ...
-  return result;  // StockPrice 객체 또는 null
+  return out;  // { '005930': StockPrice, '000660': StockPrice, ... }
 };
 
 // 호출하는 쪽에서 await로 받으면 Promise가 벗겨짐
-const price = await fetchDomesticStock('005930');
-//    ↑ 타입: StockPrice | null
+const prices = await fetchDomesticStocksBatch(['005930', '000660']);
+//    ↑ 타입: Record<string, StockPrice>
 ```
 
 ### 16-5. 유니온 타입 — "이거 아니면 저거"
@@ -1476,17 +1476,17 @@ const fetchJSON = async <T>(url: string): Promise<T> => {
 사용할 때 `<구체적 타입>`으로 **빈칸을 채운다:**
 
 ```typescript
-// T = NaverDomesticDetailRaw → 국내주식 상세 응답 타입
-const domestic = await fetchJSON<NaverDomesticDetailRaw>(
-  `${BASE}/domestic/detail/005930/detail`
+// T = NaverPollingResponse → 국내주식 polling 응답 타입
+const domestic = await fetchJSON<NaverPollingResponse>(
+  `${BASE}/polling/domestic/stock?itemCodes=005930,000660`
 );
-// domestic.nowPrice, domestic.prevChangePrice 등에 자동완성이 뜬다
+// domestic.datas, domestic.datas[0].closePriceRaw 등에 자동완성이 뜬다
 
-// T = NaverOverseasDetailRaw → 해외주식 응답 타입
-const overseas = await fetchJSON<NaverOverseasDetailRaw>(
-  `${BASE}/securityService/stock/AAPL.O/basic`
+// T = NaverPollingResponse → 해외주식 polling 응답 타입 (도메인이 다름!)
+const overseas = await fetchJSON<NaverPollingResponse>(
+  `https://polling.finance.naver.com/api/realtime/worldstock/stock/NVDA.O,AAPL.O`
 );
-// overseas.closePrice, overseas.fluctuationsRatio 등에 자동완성이 뜬다
+// overseas.datas[0].closePriceRaw, overseas.datas[0].reutersCode 등에 자동완성이 뜬다
 ```
 
 **Generic 없이 했다면?**
@@ -1498,8 +1498,8 @@ const data = await fetchJSON(url);
 data.아무거나;  // 에러 안 남 — 오타도 못 잡음
 
 // 방법 2: 함수를 API마다 하나씩 만듦 (중복)
-const fetchDomesticJSON = async (url: string): Promise<NaverDomesticDetailRaw> => { ... };
-const fetchOverseasJSON = async (url: string): Promise<NaverOverseasDetailRaw> => { ... };
+const fetchStockJSON = async (url: string): Promise<NaverPollingResponse> => { ... };
+const fetchIndexJSON = async (url: string): Promise<NaverPollingResponse> => { ... };
 // → fetch 로직은 동일한데 타입만 다르다고 함수를 여러 개 만드는 건 낭비
 ```
 
@@ -2088,24 +2088,29 @@ const maybeResetBackoff = () => {
 };
 ```
 
-### 19-3. 라우팅 — 종목 유형에 따라 다른 API 호출
+### 19-3. 분류 → 배치 — 종목 유형별로 다른 API에 묶어서 호출
 
 ```tsx
 // src/features/stock/hooks/useStockPrices.ts
-const fetchOne = (sym: StockSymbol): Promise<StockPrice | null> => {
-  const category = inferCategory(sym);
 
-  if (category === 'index' || category === 'futures') {
-    const c = sym.code.toUpperCase();
-    if (c.startsWith('.'))          return fetchOverseasIndex(sym.code);   // .IXIC → 해외 지수
-    if (/CV\d+$/i.test(c))         return fetchOverseasFutures(sym.code); // NQcv1 → 해외 선물
-    return fetchDomesticIndex(sym.code);                                  // KOSPI → 국내 지수
-  }
+// 1. 종목을 유형별로 분류
+const { domesticStocks, overseasStocks, indexFutures } = classifySymbols(symbols);
 
-  return sym.nation === 'KR'
-    ? fetchDomesticStock(sym.code)    // 005930 → 국내 주식
-    : fetchOverseasStock(sym.reutersCode || sym.code);  // AAPL.O → 해외 주식
-};
+// 2. 국내주식: 10개씩 묶어서 1회 요청 (polling API)
+for (let i = 0; i < domesticStocks.length; i += BATCH_SIZE) {
+  const codes = batch.map(s => s.code);
+  const result = await fetchDomesticStocksBatch(codes);  // 005930,000660 → 1회 요청
+  Object.assign(out, result);
+}
+
+// 3. 해외주식: 10개씩 묶어서 1회 요청 (polling.finance.naver.com)
+for (let i = 0; i < overseasStocks.length; i += BATCH_SIZE) {
+  const reutersCodes = batch.map(s => s.reutersCode || s.code);
+  const result = await fetchOverseasStocksBatch(reutersCodes);  // NVDA.O,AAPL.O → 1회 요청
+}
+
+// 4. 지수/선물: 기존 개별 API (종목 수가 적고 배치 미지원)
+const results = await Promise.allSettled(indexFutures.map(fetchOneIndexFutures));
 ```
 
 ---

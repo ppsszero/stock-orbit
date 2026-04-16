@@ -1,8 +1,6 @@
 import { NaverAutoCompleteResponse, NaverAutoCompleteItem, StockPrice, StockSymbol, MarqueeItem, inferCategory } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
 import type {
-  NaverDomesticDetailRaw,
-  NaverOverseasDetailRaw,
   NaverIndexPollingRaw,
   NaverCommodityPollingRaw,
   NaverFXRaw,
@@ -92,32 +90,6 @@ const parseDir = (val: number): 'up' | 'down' | 'flat' =>
 
 const num = (s: string): number => parseFloat((s || '0').replace(/,/g, ''));
 
-// 해외 marketValue 파싱 — "$2.94T", "500.2B", "123,456" 등 다양한 포맷 대응
-const parseMarketValue = (s: string | undefined): number | undefined => {
-  if (!s) return undefined;
-  const cleaned = s.replace(/[$,\s]/g, '');
-  const match = cleaned.match(/^(-?\d+\.?\d*)([TBMK])?$/i);
-  if (!match) {
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? undefined : n;
-  }
-  const val = parseFloat(match[1]);
-  const unit = (match[2] || '').toUpperCase();
-  const multiplier = unit === 'T' ? 1e12 : unit === 'B' ? 1e9 : unit === 'M' ? 1e6 : unit === 'K' ? 1e3 : 1;
-  return val * multiplier;
-};
-
-// 한화 시총 파싱 — "6,795조 9,242억원" → 6,795,924,200,000,000 (원)
-const parseKrwMarketValue = (s: string | undefined): number | undefined => {
-  if (!s) return undefined;
-  let total = 0;
-  const jo = s.match(/([\d,]+)조/);
-  const eok = s.match(/([\d,]+)억/);
-  if (jo) total += parseFloat(jo[1].replace(/,/g, '')) * 1e12;
-  if (eok) total += parseFloat(eok[1].replace(/,/g, '')) * 1e8;
-  return total > 0 ? total : undefined;
-};
-
 // === Autocomplete ===
 export const searchStocks = async (query: string): Promise<NaverAutoCompleteItem[]> => {
   if (!query.trim()) return [];
@@ -129,151 +101,50 @@ export const searchStocks = async (query: string): Promise<NaverAutoCompleteItem
   return items;
 };
 
-// === Domestic Stock ===
-// NOTE: 국내주식 API의 prevChangePrice는 항상 양수로 옴.
-// 등락 방향은 upDownGb 코드('2'=상승, '5'=하락)로 판단하고,
-// change/changePercent에 부호를 직접 적용 (dir 기반).
-// WARNING: change 값 자체의 부호를 신뢰하면 안 됨 — 이전에 화살표 반전 버그의 원인이었음.
+// === Domestic Stock (Polling) ===
+// polling API는 현재 시장(KRX/NXT) 가격을 자동 반환하므로 NXT 분기 불필요.
 
-// ── 시장 스케줄 기반 KRX/NXT 분기 ──────────────────
-// 앱 시작 + 일 1회 market/info API로 장 시간 캐싱.
-// 현재 시각과 비교하여 KRX/NXT 분기 — 프로빙 호출 불필요.
-
-interface MarketSchedule {
-  krxOpen: number; krxClose: number;
-  nxtPreOpen: number; nxtPreClose: number;
-  nxtAfterOpen: number; nxtAfterClose: number;
-}
-let scheduleCache: MarketSchedule | null = null;
-let scheduleCacheDate = '';
-
-/** 종목별 NXT 지원 여부 — sosok API, 일 1회 캐싱 */
-const nxtSupportCache = new Map<string, boolean>();
-const nxtPendingChecks = new Map<string, Promise<boolean>>();
-let nxtSupportCacheDate = '';
-
-/** KRX/NXT 장 시간 조회 — 일 1회 캐싱 */
-const getMarketSchedule = async (): Promise<MarketSchedule | null> => {
-  const today = new Date().toDateString();
-  if (scheduleCacheDate === today && scheduleCache) return scheduleCache;
+/** 국내주식 배치 polling — 10개씩 요청, 결과를 code→StockPrice 맵으로 반환 */
+export const fetchDomesticStocksBatch = async (codes: string[]): Promise<Record<string, StockPrice>> => {
+  const out: Record<string, StockPrice> = {};
+  if (codes.length === 0) return out;
   try {
-    const [krx, nxt] = await Promise.all([
-      fetchJSON<{ regularMarketOpeningTime: string; regularMarketClosingTime: string }>(
-        `${BASE}/domestic/market/KRX/info`),
-      fetchJSON<{ preMarketOpeningTime: string; preMarketClosingTime: string; afterMarketOpeningTime: string; afterMarketClosingTime: string }>(
-        `${BASE}/domestic/market/NXT/info`),
-    ]);
-    const t = (s: string) => new Date(s).getTime();
-    scheduleCache = {
-      krxOpen: t(krx.regularMarketOpeningTime),
-      krxClose: t(krx.regularMarketClosingTime),
-      nxtPreOpen: t(nxt.preMarketOpeningTime),
-      nxtPreClose: t(nxt.preMarketClosingTime),
-      nxtAfterOpen: t(nxt.afterMarketOpeningTime),
-      nxtAfterClose: t(nxt.afterMarketClosingTime),
-    };
-    scheduleCacheDate = today;
-    return scheduleCache;
-  } catch {
-    // API 실패 시 이전 캐시라도 재사용 (장 시간은 평일 대부분 동일)
-    return scheduleCache;
-  }
-};
-
-/** 현재 시각 기준 활성 시장 판별 — timestamp 비교 (타임존 안전) */
-const getActiveMarket = (s: MarketSchedule): 'KRX' | 'NXT' | null => {
-  const now = Date.now();
-  // KRX 정규장 (09:00~15:30) — NXT 정규장과 겹치지만 KRX 우선
-  if (now >= s.krxOpen && now < s.krxClose) return 'KRX';
-  // NXT 프리장 (08:00~08:50) — KRX 개장 전
-  if (now >= s.nxtPreOpen && now < s.nxtPreClose) return 'NXT';
-  // NXT 시간외 (15:40~20:00) — KRX 폐장 후
-  if (now >= s.nxtAfterOpen && now < s.nxtAfterClose) return 'NXT';
-  return null;
-};
-
-/** sosok API로 NXT 지원 여부 확인 — 일 1회 캐싱, 병렬 중복 호출 방지 */
-const isNxtSupported = async (code: string): Promise<boolean> => {
-  const today = new Date().toDateString();
-  if (nxtSupportCacheDate !== today) {
-    nxtSupportCache.clear();
-    nxtPendingChecks.clear();
-    nxtSupportCacheDate = today;
-  }
-  const cached = nxtSupportCache.get(code);
-  if (cached !== undefined) return cached;
-  const pending = nxtPendingChecks.get(code);
-  if (pending) return pending;
-  const check = fetchJSON<{ isNxtYn?: string }>(`${BASE}/domestic/detail/${code}/sosok`)
-    .then(d => {
-      const supported = d.isNxtYn === 'Y';
-      nxtSupportCache.set(code, supported);
-      return supported;
-    })
-    .catch(() => false)
-    .finally(() => nxtPendingChecks.delete(code));
-  nxtPendingChecks.set(code, check);
-  return check;
-};
-
-/** API 응답을 StockPrice로 변환하는 공통 파서 */
-const parseDomesticResponse = (d: NaverDomesticDetailRaw, code: string, codeType: string): StockPrice => {
-  const change = num(d.prevChangePrice);
-  const pct = parseFloat(d.prevChangeRate || '0');
-  const dir = d.upDownGb === '2' ? 1 : d.upDownGb === '5' ? -1 : 0;
-  const exchange = d.sosok === '0' ? 'KOSPI' : 'KOSDAQ';
-  return {
-    code: d.itemcode || code, name: d.itemname || code,
-    nation: 'KR', market: exchange,
-    currentPrice: num(d.nowPrice), previousClose: num(d.prevClosePrice || d.stdPrice || '0'),
-    change: dir >= 0 ? change : -change, changePercent: dir >= 0 ? pct : -pct,
-    changeDirection: parseDir(dir), currency: 'KRW',
-    marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
-    updatedAt: d.tradeTime || new Date().toISOString(),
-    exchange: codeType === 'NXT' ? `${exchange} NXT` : exchange,
-    openPrice: num(d.openPrice), highPrice: num(d.highPrice), lowPrice: num(d.lowPrice),
-    volume: d.tradeVolume ? Number(d.tradeVolume).toLocaleString() : undefined,
-    tradingValue: d.tradeAmount ? `${(Number(d.tradeAmount) / 100_000_000).toFixed(0)}억` : undefined,
-    marketCap: d.marketSum ? `${(Number(d.marketSum) / 1_000_000_000_000).toFixed(1)}조` : undefined,
-    marketCapRaw: d.marketSum ? Number(d.marketSum) : undefined,
-    per: d.per || undefined, pbr: d.pbr || undefined,
-    week52High: d.week52HighPrice ? num(d.week52HighPrice) : undefined,
-    week52Low: d.week52LowPrice ? num(d.week52LowPrice) : undefined,
-    isTradingHalt: d.tradeStopYn === 'Y' || d.isTradingHalt === 'Y',
-  };
-};
-
-const fetchDomesticByType = async (code: string, codeType: 'KRX' | 'NXT'): Promise<StockPrice | null> => {
-  const d = await fetchJSON<NaverDomesticDetailRaw>(`${BASE}/domestic/detail/${code}/detail?codeType=${codeType}`);
-  return parseDomesticResponse(d, code, codeType);
-};
-
-export const fetchDomesticStock = async (code: string): Promise<StockPrice | null> => {
-  try {
-    const schedule = await getMarketSchedule();
-    const active = schedule ? getActiveMarket(schedule) : null;
-
-    // KRX 장중 → KRX 직행
-    if (active === 'KRX') return await fetchDomesticByType(code, 'KRX');
-
-    // NXT 시간외 장중 → NXT 지원 종목만 NXT, 미지원은 KRX
-    if (active === 'NXT') {
-      if (await isNxtSupported(code)) return await fetchDomesticByType(code, 'NXT');
-      return await fetchDomesticByType(code, 'KRX');
+    const resp = await fetchJSON<NaverPollingResponse>(
+      `${BASE}/polling/domestic/stock?itemCodes=${encodeURIComponent(codes.join(','))}`
+    );
+    for (const d of resp.datas || []) {
+      const code = d.itemCode || d.symbolCode || '';
+      if (code) out[code] = parsePollingData(d, code, 'stock');
     }
-
-    // 폐장 또는 스케줄 조회 실패 → KRX (가장 최근 종가)
-    return await fetchDomesticByType(code, 'KRX');
   } catch (e) {
-    logger.error('국내주식 조회 실패', `${code}: ${(e as Error).message}`);
-    return null;
+    logger.error('국내주식 배치조회 실패', `${codes.join(',')}: ${(e as Error).message}`);
   }
+  return out;
+};
+
+// === Overseas Stock (Polling) ===
+// 도메인이 polling.finance.naver.com — stock.naver.com과 다르지만 .naver.com 허용 범위 내.
+
+/** 해외주식 배치 polling — 10개씩 요청 */
+export const fetchOverseasStocksBatch = async (reutersCodes: string[]): Promise<Record<string, StockPrice>> => {
+  const out: Record<string, StockPrice> = {};
+  if (reutersCodes.length === 0) return out;
+  try {
+    const resp = await fetchJSON<NaverPollingResponse>(
+      `${OVERSEAS_POLLING_BASE}/${encodeURIComponent(reutersCodes.join(','))}`
+    );
+    for (const d of resp.datas || []) {
+      const rc = d.reutersCode || '';
+      const code = d.symbolCode || rc.split('.')[0] || '';
+      if (code) out[code] = parsePollingData(d, code, 'stock');
+    }
+  } catch (e) {
+    logger.error('해외주식 배치조회 실패', `${reutersCodes.join(',')}: ${(e as Error).message}`);
+  }
+  return out;
 };
 
 // === Index / Futures ===
-// 국내 지수: /securityFe/api/index/{code}/basic
-// 해외 지수·선물: /securityFe/api/futures/{code}/basic
-// 응답 필드가 주식과 완전히 다르므로 별도 파서 사용.
 
 interface NaverExchangeType {
   nameKor?: string;
@@ -283,17 +154,22 @@ interface NaverExchangeType {
   nationName?: string;
 }
 
-// === 지수 · 선물 Polling API ===
+// === 통합 Polling API ===
+// 주식 · 지수 · 선물이 동일한 응답 구조를 공유.
 // 엔드포인트:
+//   국내 주식:      /api/polling/domestic/stock?itemCodes={codes}       (005930,000660 등)
 //   국내 지수/선물: /api/polling/domestic/index?itemCodes={code}        (KOSPI, KPI100, FUT 등)
+//   해외 주식:      polling.finance.naver.com/api/realtime/worldstock/stock/{codes} (NVDA.O,AAPL.O 등)
 //   해외 지수:      /api/polling/worldstock/index?reutersCodes={code}   (.IXIC, .DJI 등)
 //   해외 선물:      /api/polling/worldstock/futures?reutersCodes={code} (NQcv1, ESv1 등)
+
+const OVERSEAS_POLLING_BASE = 'https://polling.finance.naver.com/api/realtime/worldstock/stock';
 
 interface NaverPollingData {
   itemCode?: string;
   reutersCode?: string;
   symbolCode?: string;
-  stockName?: string;       // 국내 지수/선물
+  stockName?: string;       // 국내 주식/지수/선물
   indexName?: string;        // 해외 지수
   futuresName?: string;      // 해외 선물
   closePriceRaw?: string;
@@ -303,62 +179,153 @@ interface NaverPollingData {
   openPriceRaw?: string;
   highPriceRaw?: string;
   lowPriceRaw?: string;
-  accumulatedTradingVolume?: string;   // "513,186천주" (단위 포함 포맷)
-  accumulatedTradingValue?: string;    // "12,360,108백만" (단위 포함 포맷)
+  accumulatedTradingVolume?: string;   // "15,219,364" 또는 "513,186천주"
+  accumulatedTradingValue?: string;    // "3,274,166백만" 또는 "368억 USD"
   accumulatedTradingVolumeRaw?: string;
   accumulatedTradingValueRaw?: string;
   marketStatus?: string;
   localTradedAt?: string;
   stockExchangeType?: NaverExchangeType;
+  // 주식 전용 필드 (지수/선물에는 없음)
+  currencyType?: { code?: string };
+  tradeStopType?: { code?: string };
+  marketValueFullRaw?: string;         // 시가총액 원시값
+  marketValueFull?: string;            // "1,262,796,179,328,000"
+  marketValueHangeul?: string;         // "4조 8,325억 USD" (해외)
+  // 시간외(NXT) / 정규장 실시간 가격 — 최상위 closePrice보다 최신
+  overMarketPriceInfo?: {
+    tradingSessionType?: string;       // 'REGULAR_MARKET' | 'PRE_MARKET' | 'AFTER_MARKET'
+    overMarketStatus?: string;         // 'OPEN' | 'CLOSE'
+    overPrice?: string;                // 현재가 (포맷: "1,153,000")
+    compareToPreviousPrice?: { code?: string };
+    compareToPreviousClosePrice?: string;
+    fluctuationsRatio?: string;
+    localTradedAt?: string;
+    openPrice?: string;
+    highPrice?: string;
+    lowPrice?: string;
+    accumulatedTradingVolume?: string;
+    accumulatedTradingValue?: string;
+    tradeStopType?: { code?: string };
+  };
 }
 
 interface NaverPollingResponse {
   datas?: NaverPollingData[];
 }
 
-const parsePollingData = (d: NaverPollingData, code: string, category: 'index' | 'futures'): StockPrice => {
-  const price = parseFloat(d.closePriceRaw || '0') || 0;
-  const change = parseFloat(d.compareToPreviousClosePriceRaw || '0') || 0;
-  const pct = parseFloat(d.fluctuationsRatioRaw || '0') || 0;
-  const dirCode = d.compareToPreviousPrice?.code;
+type PollingCategory = 'stock' | 'index' | 'futures';
+
+const NATION_CODE_MAP_POLLING: Record<string, string> = {
+  KOR: 'KR', USA: 'US', JPN: 'JP', CHN: 'CN', HKG: 'HK', GBR: 'UK', DEU: 'DE', VNM: 'VN',
+};
+
+/** 시가총액 raw 값을 표시용 문자열로 포맷 (국내주식: "1262조" 식) */
+const fmtMarketCapKr = (raw: string | undefined): string | undefined => {
+  if (!raw) return undefined;
+  const n = Number(raw);
+  if (isNaN(n) || n === 0) return undefined;
+  const jo = n / 1e12;
+  if (jo >= 1) return `${jo.toFixed(1)}조`;
+  const eok = n / 1e8;
+  return `${Math.round(eok).toLocaleString()}억`;
+};
+
+/**
+ * 통합 Polling 파서 — 주식 · 지수 · 선물 공용.
+ * category에 따라 currency, 시총, 거래정지 등 주식 전용 필드를 분기.
+ *
+ * 주식의 경우 overMarketPriceInfo가 활성(OPEN)이면 해당 가격을 우선 사용.
+ * overMarketPriceInfo.overPrice는 정규장/NXT 프리장/시간외 무관하게
+ * 현재 활성 세션의 최신 가격을 담고 있음.
+ */
+const parsePollingData = (d: NaverPollingData, code: string, category: PollingCategory): StockPrice => {
+  const over = d.overMarketPriceInfo;
+  // KRX 개장 중이면 최상위(KRX 가격), KRX 폐장 + NXT 활성이면 overPrice(NXT 가격)
+  const useOver = d.marketStatus !== 'OPEN'
+    && over?.overMarketStatus === 'OPEN'
+    && !!over.overPrice;
+
+  // overMarketPriceInfo가 활성이면 해당 가격 사용, 아니면 최상위 필드 폴백
+  const price = useOver
+    ? num(over!.overPrice!) : parseFloat(d.closePriceRaw || '0') || 0;
+  const changeRaw = useOver
+    ? over!.compareToPreviousClosePrice || '0' : d.compareToPreviousClosePriceRaw || '0';
+  const change = parseFloat(changeRaw.replace(/,/g, '')) || 0;
+  const pctRaw = useOver
+    ? over!.fluctuationsRatio || '0' : d.fluctuationsRatioRaw || '0';
+  const pct = parseFloat(pctRaw) || 0;
+
+  const dirSource = useOver ? over!.compareToPreviousPrice : d.compareToPreviousPrice;
+  const dirCode = dirSource?.code;
   let dir = 0;
   if (dirCode === '1' || dirCode === '2') dir = 1;
   else if (dirCode === '4' || dirCode === '5') dir = -1;
   if (dir === 0 && pct !== 0) dir = pct > 0 ? 1 : -1;
 
-  // 이름: futuresName(해외선물) > indexName(해외지수) > stockName(국내) > symbolCode
+  // 이름: futuresName(해외선물) > indexName(해외지수) > stockName(국내/주식) > symbolCode
   const name = d.futuresName || d.indexName || d.stockName || d.symbolCode || code;
 
-  const nationRaw = d.stockExchangeType?.nationCode || 'USA';
-  const nation = nationRaw === 'KOR' ? 'KR' : nationRaw === 'USA' ? 'US' : nationRaw;
+  const nationRaw = d.stockExchangeType?.nationCode || '';
+  // nationCode 누락 시 국내 지수/선물이 'US'로 잘못 분류되는 것을 방지
+  const nation = NATION_CODE_MAP_POLLING[nationRaw] || nationRaw || '';
 
-  const exchange = d.stockExchangeType?.nameKor || d.stockExchangeType?.name || '';
-  // 단위 포함 포맷 값 우선 ("513,186천주"), 없으면 raw 폴백
-  const vol = d.accumulatedTradingVolume || d.accumulatedTradingVolumeRaw;
-  const val = d.accumulatedTradingValue || d.accumulatedTradingValueRaw;
+  const exchangeRaw = d.stockExchangeType?.nameKor || d.stockExchangeType?.name || '';
+  const exchange = exchangeRaw.replace(/ ?증권거래소$/, '');
+
+  // 거래량/거래대금: over가 활성이면 해당 세션 값 우선
+  const vol = useOver
+    ? (over!.accumulatedTradingVolume || d.accumulatedTradingVolume || d.accumulatedTradingVolumeRaw)
+    : (d.accumulatedTradingVolume || d.accumulatedTradingVolumeRaw);
+  const val = useOver
+    ? (over!.accumulatedTradingValue || d.accumulatedTradingValue || d.accumulatedTradingValueRaw)
+    : (d.accumulatedTradingValue || d.accumulatedTradingValueRaw);
+
+  const isStock = category === 'stock';
+
+  // 시총: 해외는 marketValueHangeul("4조 8,325억 USD"), 국내는 raw를 포맷
+  const marketCap = isStock
+    ? (d.marketValueHangeul || fmtMarketCapKr(d.marketValueFullRaw))
+    : undefined;
+  const marketCapRaw = isStock && d.marketValueFullRaw
+    ? Number(d.marketValueFullRaw) : undefined;
+
+  // 시장 상태: over가 있으면 overMarketStatus를 사용
+  const marketOpen = useOver
+    ? over!.overMarketStatus === 'OPEN'
+    : d.marketStatus === 'OPEN';
+
+  // 시가/고가/저가: over 활성 시 해당 세션 값 우선
+  const openPrice = useOver ? num(over!.openPrice || '0') : parseFloat(d.openPriceRaw || '0') || undefined;
+  const highPrice = useOver ? num(over!.highPrice || '0') : parseFloat(d.highPriceRaw || '0') || undefined;
+  const lowPrice = useOver ? num(over!.lowPrice || '0') : parseFloat(d.lowPriceRaw || '0') || undefined;
 
   return {
     code: d.itemCode || d.symbolCode || code,
     name,
     nation,
-    market: category === 'index' ? '지수' : '선물',
+    market: isStock ? (d.stockExchangeType?.name || exchange)
+      : category === 'index' ? '지수' : '선물',
     currentPrice: price,
     previousClose: price - change,
     change: dir >= 0 ? Math.abs(change) : -Math.abs(change),
     changePercent: dir >= 0 ? Math.abs(pct) : -Math.abs(pct),
     changeDirection: parseDir(dir),
-    currency: '',   // 지수/선물은 통화 단위 없음
-    marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
-    updatedAt: d.localTradedAt || new Date().toISOString(),
+    currency: isStock ? (d.currencyType?.code || '') : '',
+    marketStatus: marketOpen ? 'OPEN' : 'CLOSE',
+    updatedAt: (useOver ? over!.localTradedAt : d.localTradedAt) || new Date().toISOString(),
     reutersCode: d.reutersCode,
     exchange,
-    isTradingHalt: false,
-    // 보조 데이터 — 종목상세 모달에서 표시
-    openPrice: parseFloat(d.openPriceRaw || '0') || undefined,
-    highPrice: parseFloat(d.highPriceRaw || '0') || undefined,
-    lowPrice: parseFloat(d.lowPriceRaw || '0') || undefined,
+    isTradingHalt: isStock
+      ? ((useOver ? over!.tradeStopType?.code : d.tradeStopType?.code) ?? '1') !== '1'
+      : false,
+    openPrice: openPrice || undefined,
+    highPrice: highPrice || undefined,
+    lowPrice: lowPrice || undefined,
     volume: vol && vol !== '' && vol !== '-' ? vol : undefined,
     tradingValue: val && val !== '' && val !== '-' ? val : undefined,
+    marketCap,
+    marketCapRaw,
   };
 };
 
@@ -408,59 +375,6 @@ export const fetchOverseasFutures = async (code: string): Promise<StockPrice | n
     return null;
   }
 };
-
-// === Overseas Stock ===
-export const fetchOverseasStock = async (reutersCode: string): Promise<StockPrice | null> => {
-  try {
-    const d = await fetchJSON<NaverOverseasDetailRaw>(`${BASE}/securityService/stock/${reutersCode}/basic`);
-    const change = num(d.compareToPreviousClosePrice);
-    const pct = parseFloat(d.fluctuationsRatio || '0');
-    const ctp = d.compareToPreviousPrice;
-    let dir = (typeof ctp === 'object' && (ctp?.code === '2' || ctp?.code === '1'))
-      || ctp === 'RISING' || (typeof ctp === 'object' && (ctp?.name === 'RISING' || ctp?.name === 'UPPER_LIMIT'))
-      ? 1
-      : (typeof ctp === 'object' && (ctp?.code === '5' || ctp?.code === '4'))
-        || ctp === 'FALLING' || (typeof ctp === 'object' && (ctp?.name === 'FALLING' || ctp?.name === 'LOWER_LIMIT'))
-      ? -1
-      : 0;
-    // 폴백: 등락률 부호로 판단
-    if (dir === 0 && pct !== 0) dir = pct > 0 ? 1 : -1;
-    const nationMap: Record<string, string> = { USA: 'US', JPN: 'JP', CHN: 'CN', HKG: 'HK', VNM: 'VN' };
-    const infos = d.stockItemTotalInfos || [];
-    const getInfo = (code: string) => infos.find(i => i.code === code)?.value;
-    const getInfoDesc = (code: string) => infos.find(i => i.code === code)?.valueDesc;
-    const exchange = d.stockExchangeType?.name || d.stockExchangeName || '';
-    return {
-      code: d.symbolCode || reutersCode.split('.')[0], name: d.stockName || reutersCode,
-      nameEn: d.stockNameEng,
-      nation: nationMap[d.stockExchangeType?.nationCode ?? ''] || d.nationType || 'US',
-      market: exchange, currentPrice: num(d.closePrice),
-      previousClose: num(getInfo('basePrice') || '0'),
-      change, changePercent: pct,
-      changeDirection: parseDir(dir), currency: d.currencyType?.code || 'USD',
-      marketStatus: d.marketStatus === 'OPEN' ? 'OPEN' : 'CLOSE',
-      updatedAt: d.localTradedAt || new Date().toISOString(), reutersCode,
-      exchange,
-      openPrice: num(getInfo('openPrice') || '0'),
-      highPrice: num(getInfo('highPrice') || '0'),
-      lowPrice: num(getInfo('lowPrice') || '0'),
-      volume: getInfo('accumulatedTradingVolume'),
-      tradingValue: getInfo('accumulatedTradingValue'),
-      marketCap: getInfo('marketValue'),
-      marketCapRaw: parseKrwMarketValue(getInfoDesc('marketValue')) || parseMarketValue(getInfo('marketValue')),
-      per: getInfo('per'), pbr: getInfo('pbr'),
-      week52High: getInfo('highPriceOf52Weeks') ? num(getInfo('highPriceOf52Weeks')!) : undefined,
-      week52Low: getInfo('lowPriceOf52Weeks') ? num(getInfo('lowPriceOf52Weeks')!) : undefined,
-      isTradingHalt: d.tradeStopType?.code !== '1',
-    };
-  } catch (e) {
-    logger.error('해외주식 조회 실패', `${reutersCode}: ${(e as Error).message}`);
-    return null;
-  }
-};
-
-export const fetchStockPrice = async (symbol: { code: string; nation: string; reutersCode?: string }) =>
-  symbol.nation === 'KR' ? fetchDomesticStock(symbol.code) : fetchOverseasStock(symbol.reutersCode || symbol.code);
 
 // === Indices ===
 export const fetchDomesticIndices = async (): Promise<MarqueeItem[]> => {

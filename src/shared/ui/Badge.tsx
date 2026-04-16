@@ -46,11 +46,11 @@ const s = {
     color: ${color};
     display: inline-flex;
     align-items: center;
-    gap: ${spacing.xs}px;
+    gap: ${spacing.xs + 1}px;
   `,
   dot: (color: string) => css`
-    width: 5px;
-    height: 5px;
+    width: 4px;
+    height: 4px;
     border-radius: ${radius.full}px;
     background: ${color};
   `,

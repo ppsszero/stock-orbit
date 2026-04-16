@@ -3,7 +3,7 @@ import { css, } from '@emotion/react';
 import { useCallback } from 'react';
 import { FiX } from 'react-icons/fi';
 import { StockPrice, StockSymbol } from '@/shared/types';
-import { spacing, fontSize, fontWeight, radius , sp } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, shadow, sp } from '@/shared/styles/tokens';
 import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
 import { useBackAction } from '@/shared/hooks/useBackAction';
@@ -80,15 +80,6 @@ export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
             </div>
           </>}
 
-          {(p.per || p.pbr || p.week52High) && <>
-            <div css={s.sectionTitle}>투자 지표</div>
-            <div css={s.grid}>
-              {p.per && <Row label="PER" value={p.per} />}
-              {p.pbr && <Row label="PBR" value={p.pbr} />}
-              {p.week52High ? <Row label="52주 최고" value={fmtNum(p.week52High, c)} color={sem.feedback.up} /> : null}
-              {p.week52Low ? <Row label="52주 최저" value={fmtNum(p.week52Low, c)} color={sem.feedback.down} /> : null}
-            </div>
-          </>}
         </div>
       </div>
     </div>
@@ -97,14 +88,14 @@ export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
 
 const s = {
   overlay: css`
-    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 450;
+    position: fixed; inset: 0; background: ${sem.overlay.dim}; z-index: 450;
     display: flex; align-items: center; justify-content: center; padding: ${spacing['3xl']}px;
     border-radius: ${radius['2xl']}px;
   `,
   modal: css`
     background: ${sem.surface.card}; border-radius: 16px; width: 100%; max-width: 360px;
     max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.25); border: 1px solid ${sem.border.default};
+    box-shadow: ${shadow.lg}; border: 1px solid ${sem.border.default};
   `,
   header: css`
     position: relative; display: flex; flex-direction: column; align-items: center;

@@ -90,7 +90,7 @@ const s = {
   `,
   toast: css`
     display: flex; align-items: center; gap: ${sp('md', 'xs')};
-    background: ${sem.surface.popover}; color: ${sem.surface.popoverText};
+    background: ${sem.surface.popover}; color: ${sem.text.popover};
     padding: ${sp('md', 'xs')} 18px; border-radius: ${radius['2xl']}px;
     font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold};
     box-shadow: ${sem.shadow.popover};

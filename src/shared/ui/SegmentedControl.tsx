@@ -40,7 +40,7 @@ export const SegmentedControl = <T extends string>({
   );
 };
 
-const PAD = radius.xs;
+const PAD = spacing.xs + 1; // 3px — padding용
 const s = {
   wrap: (h: number, total: number) => css`
     display: grid;
@@ -76,7 +76,7 @@ const s = {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: ${active ? sem.surface.segText : sem.text.tertiary};
+    color: ${active ? sem.text.seg : sem.text.tertiary};
     transition: color ${transition.normal};
   `,
 };
