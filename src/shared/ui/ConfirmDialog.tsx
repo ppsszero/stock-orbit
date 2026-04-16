@@ -12,6 +12,8 @@ interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   danger?: boolean;
+  /** 취소 버튼 숨김 (안내 전용 다이얼로그에 사용) */
+  hideCancel?: boolean;
 }
 
 interface ConfirmContextType {
@@ -86,9 +88,11 @@ const ConfirmModal = ({ opts, onResult }: {
         <div css={s.title} id="confirm-title">{opts.title}</div>
         {opts.message && <div css={s.message}>{opts.message}</div>}
         <div css={s.actions}>
-          <button css={s.cancelBtn} onClick={() => close(false)}>
-            {opts.cancelText || '취소'}
-          </button>
+          {!opts.hideCancel && (
+            <button css={s.cancelBtn} onClick={() => close(false)}>
+              {opts.cancelText || '취소'}
+            </button>
+          )}
           <button css={s.confirmBtn(opts.danger)} onClick={() => close(true)}>
             {opts.confirmText || '확인'}
           </button>

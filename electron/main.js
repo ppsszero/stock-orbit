@@ -5,6 +5,8 @@ const fs = require('fs');
 
 let mainWindow = null;
 let tray = null;
+/** 수동 업데이트 체크 여부 — true일 때만 "최신 버전" / 에러 피드백을 렌더러에 전달 */
+let isManualUpdateCheck = false;
 
 const isDev = !app.isPackaged;
 
@@ -54,7 +56,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     resizable: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     skipTaskbar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -143,6 +145,22 @@ function buildTrayMenu(alwaysOnTop) {
         w.webContents.send('always-on-top-changed', menuItem.checked);
       }),
     },
+    {
+      label: '업데이트 확인',
+      click: () => {
+        withWindow(w => {
+          if (!w.isVisible()) w.show();
+          w.focus();
+        });
+        if (isDev) {
+          // dev 모드: autoUpdater 없으므로 "최신 버전" 피드백 직접 전달
+          withWindow(w => w.webContents.send('update-not-available', {}));
+        } else {
+          isManualUpdateCheck = true;
+          autoUpdater.checkForUpdates();
+        }
+      },
+    },
     { type: 'separator' },
     {
       label: '종료',
@@ -171,7 +189,7 @@ function createTray() {
 
   tray = new Tray(trayIcon);
   tray.setToolTip('Orbit');
-  tray.setContextMenu(buildTrayMenu(true));
+  tray.setContextMenu(buildTrayMenu(false));
 
   // 싱글 클릭으로 창 보이기.
   // WARNING: transparent + frameless 창은 show() 시 DWM 알파 합성과 렌더러 페인트가
@@ -251,11 +269,9 @@ app.whenReady().then(() => {
 
 
   // IPC handlers — mainWindow 참조는 withWindow로 안전하게 감싸서 호출
-  ipcMain.on('window-minimize', () => withWindow(w => w.hide()));
-  ipcMain.on('window-close', () => {
-    app.isQuitting = true;
-    app.quit();
-  });
+  // X 버튼 = 트레이로 숨김 (완전 종료는 트레이 우클릭 → 종료).
+  // 상시 실행 위젯 UX에 맞춘 Slack/Discord 스타일.
+  ipcMain.on('window-close', () => withWindow(w => w.hide()));
 
   ipcMain.on('set-auto-launch', (_, value) => {
     app.setLoginItemSettings({ openAtLogin: value });
@@ -414,6 +430,7 @@ app.whenReady().then(() => {
     };
 
     autoUpdater.on('update-available', (info) => {
+      isManualUpdateCheck = false; // 업데이트 발견되면 수동/자동 무관하게 표시
       send('update-available', { version: info.version });
     });
     autoUpdater.on('download-progress', (p) => {
@@ -427,8 +444,15 @@ app.whenReady().then(() => {
     autoUpdater.on('update-downloaded', (info) => {
       send('update-downloaded', { version: info.version });
     });
+    autoUpdater.on('update-not-available', () => {
+      // 수동 체크일 때만 "최신 버전" 피드백. 자동 체크는 조용히 넘김.
+      if (isManualUpdateCheck) send('update-not-available', {});
+      isManualUpdateCheck = false;
+    });
     autoUpdater.on('error', (err) => {
-      send('update-error', { message: err?.message || String(err) });
+      // 수동 체크일 때만 에러 표시. 자동 체크 에러는 무시 (네트워크 불안정 등).
+      if (isManualUpdateCheck) send('update-error', { message: err?.message || String(err) });
+      isManualUpdateCheck = false;
     });
 
     // renderer가 IPC 리스너 붙은 뒤에 체크하도록 load 완료 후 실행
@@ -437,6 +461,10 @@ app.whenReady().then(() => {
     } else {
       autoUpdater.checkForUpdates();
     }
+
+    // 6시간 간격 자동 체크 — 트레이 상주 상태에서도 업데이트를 놓치지 않도록.
+    // isManualUpdateCheck = false 상태이므로 업데이트 없으면 조용히 넘어감.
+    setInterval(() => autoUpdater.checkForUpdates(), 6 * 60 * 60 * 1000);
   }
 
   // === Mail ===

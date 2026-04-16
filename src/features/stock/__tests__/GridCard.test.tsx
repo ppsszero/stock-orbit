@@ -137,11 +137,11 @@ describe('GridCard', () => {
       expect(onClick).toHaveBeenCalledWith(sym);
     });
 
-    it('차트 버튼 클릭 시 onDetail이 호출된다', () => {
+    it('상세 버튼 클릭 시 onDetail이 호출된다', () => {
       const onDetail = vi.fn();
       const price = makePrice();
       render(<GridCard {...baseProps} price={price} onDetail={onDetail} />);
-      fireEvent.click(screen.getByRole('button', { name: '차트 보기' }));
+      fireEvent.click(screen.getByRole('button', { name: '상세 보기' }));
       expect(onDetail).toHaveBeenCalledTimes(1);
       expect(onDetail).toHaveBeenCalledWith(sym, price);
     });

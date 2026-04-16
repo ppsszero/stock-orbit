@@ -120,7 +120,6 @@ export interface MarqueeItem {
 
 // === Electron API ===
 export interface ElectronAPI {
-  minimize: () => void;
   close: () => void;
   setAlwaysOnTop: (value: boolean) => void;
   setAutoLaunch: (value: boolean) => void;
@@ -144,6 +143,7 @@ export interface ElectronAPI {
   onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void;
   onUpdateProgress: (callback: (info: { percent: number; transferred: number; total: number; bytesPerSecond: number }) => void) => () => void;
   onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
+  onUpdateNotAvailable: (callback: () => void) => () => void;
   onUpdateError: (callback: (info: { message: string }) => void) => () => void;
   onWebviewBack: (callback: () => void) => () => void;
 }

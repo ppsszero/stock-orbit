@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useCallback, memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FiTrash2, FiBarChart2, FiExternalLink, FiMenu } from 'react-icons/fi';
+import { FiTrash2, FiInfo, FiExternalLink, FiMenu } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
@@ -77,7 +77,7 @@ export const GridCard = memo(({
       <div css={s.actions} className="card-actions">
         <IconButton icon={<FiExternalLink size={11} />} size={22} onClick={handleClick} ariaLabel="외부 링크 열기" />
         {vm.hasPrice && (
-          <IconButton icon={<FiBarChart2 size={11} />} size={22} onClick={handleDetail} ariaLabel="차트 보기" />
+          <IconButton icon={<FiInfo size={11} />} size={22} onClick={handleDetail} ariaLabel="상세 보기" />
         )}
         <IconButton icon={<FiTrash2 size={11} />} size={22} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />
       </div>
