@@ -44,17 +44,19 @@ export interface NaverIndexPollingRaw {
 // ── 원자재 ───────────────────────────────────────────────────────────────
 
 export interface NaverCommodityItemRaw {
+  reutersCode?: string;
+  symbolCode?: string;
+  name?: string;
   closePrice?: string;
   fluctuations?: string;
   fluctuationsRatio?: string;
   fluctuationsType?: { code: NaverUpDownCode };
+  marketStatus?: string | null;
+  localTradedAt?: string;
+  unit?: string;
 }
 
-/**
- * 실제 응답이 `{ datas: [...] }` 또는 item 직접 반환 두 가지로 옴.
- * `extends NaverCommodityItemRaw` 로 두 경우를 단일 타입으로 처리.
- */
-export interface NaverCommodityPollingRaw extends NaverCommodityItemRaw {
+export interface NaverCommodityPollingRaw {
   datas?: NaverCommodityItemRaw[];
 }
 

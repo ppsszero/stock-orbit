@@ -2,8 +2,7 @@
 import { memo, useCallback } from 'react';
 import { useStore } from './store';
 import { useDisplaySymbols, useGroupedSymbols } from './store/selectors';
-import { useStockPrices } from '@/features/stock/hooks/useStockPrices';
-import { useMarqueeData } from '@/features/marquee/hooks/useMarqueeData';
+import { useDataPolling } from '@/features/stock/hooks/useDataPolling';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { StockList, StockGrid, StockTile } from '@/features/stock';
 import { QueryErrorBoundary } from '@/shared/ui/QueryErrorBoundary';
@@ -21,8 +20,10 @@ export const StockViewSwitch = memo(() => {
   const setDetailSymbol = useStore(s => s.setDetailSymbol);
   const setInfoSymbol = useStore(s => s.setInfoSymbol);
 
-  const { prices } = useStockPrices(displaySymbols, settings.refreshInterval);
-  const { items: marqueeItems } = useMarqueeData(settings.refreshInterval * 2);
+  // React Query 캐시 공유 — App.tsx와 동일한 displaySymbols + interval을 사용하므로
+  // 같은 queryKey가 되어 API 중복 호출 없이 캐시에서 읽기만 함.
+  // WARNING: displaySymbols 셀렉터를 변경하면 App.tsx와 반드시 동기화할 것.
+  const { prices, marqueeItems } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);
   const usdkrw = marqueeItems.find(i => i.code === 'FX_USDKRW')?.currentValue || 0;
 
   const handleDetail = useCallback((sym: StockSymbol, price: StockPrice) => {

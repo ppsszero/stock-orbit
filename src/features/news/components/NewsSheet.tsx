@@ -33,7 +33,7 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   } = useNewsData(open);
 
   const handleRefresh = useCallback(async () => {
-    const ok = await refresh();
+    const ok = await refresh(true);
     if (ok) toast.show('뉴스를 새로 불러왔어요', 'success');
     else toast.show('뉴스를 불러오지 못했어요', 'error');
   }, [refresh, toast]);

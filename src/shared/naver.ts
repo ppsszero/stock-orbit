@@ -2,6 +2,7 @@ import { NaverAutoCompleteResponse, NaverAutoCompleteItem, StockPrice, StockSymb
 import { logger } from '@/shared/utils/logger';
 import type {
   NaverIndexPollingRaw,
+  NaverCommodityItemRaw,
   NaverCommodityPollingRaw,
   NaverFXRaw,
   NaverDomesticRankingRaw,
@@ -411,22 +412,35 @@ export const fetchWorldIndices = async (): Promise<MarqueeItem[]> => {
   } catch (e) { logger.error('세계지수', (e as Error).message); return []; }
 };
 
+// 원자재 배치 호출 — metals 7개 + energy 5개 = 총 2회 요청
+const METALS_CODES = 'GCcv1,M04020000,SIcv1,HGcv1,PLcv1,PAcv1,TIOc1';
+const ENERGY_CODES = 'CLcv1,LCOcv1,RBcv1,HOcv1,DCBc1';
+
+const parseCommodityItem = (d: NaverCommodityItemRaw, type: MarqueeItem['type']): MarqueeItem => {
+  const c = parseFloat(d.fluctuations || '0');
+  const dir = d.fluctuationsType?.code === '2' ? 1 : d.fluctuationsType?.code === '5' ? -1 : 0;
+  return {
+    code: d.reutersCode || d.symbolCode || '',
+    name: d.name || d.symbolCode || '',
+    currentValue: num(d.closePrice || '0'),
+    change: dir >= 0 ? c : -c,
+    changePercent: dir >= 0 ? parseFloat(d.fluctuationsRatio || '0') : -parseFloat(d.fluctuationsRatio || '0'),
+    changeDirection: parseDir(dir),
+    type,
+  };
+};
+
 export const fetchCommodities = async (): Promise<MarqueeItem[]> => {
-  const targets = [{ path: 'metals/GCcv1', name: 'Gold' }, { path: 'energy/CLcv1', name: 'WTI' }];
   const out: MarqueeItem[] = [];
-  for (const { path, name } of targets) {
-    try {
-      const raw = await fetchJSON<NaverCommodityPollingRaw>(`${BASE}/polling/marketindex/${path}`);
-      const d = raw.datas?.[0] || raw; // 실제 응답: { datas: [{ ... }] }
-      const c = parseFloat(d.fluctuations || '0');
-      const dir = d.fluctuationsType?.code === '2' ? 1 : d.fluctuationsType?.code === '5' ? -1 : 0;
-      out.push({
-        code: path, name, currentValue: num(d.closePrice || '0'),
-        change: dir >= 0 ? c : -c,
-        changePercent: dir >= 0 ? parseFloat(d.fluctuationsRatio || '0') : -parseFloat(d.fluctuationsRatio || '0'),
-        changeDirection: parseDir(dir), type: 'commodity',
-      });
-    } catch { /* skip */ }
+  try {
+    const [metals, energy] = await Promise.all([
+      fetchJSON<NaverCommodityPollingRaw>(`${BASE}/polling/marketindex/metals/${METALS_CODES}`),
+      fetchJSON<NaverCommodityPollingRaw>(`${BASE}/polling/marketindex/energy/${ENERGY_CODES}`),
+    ]);
+    for (const d of metals.datas || []) out.push(parseCommodityItem(d, 'metals'));
+    for (const d of energy.datas || []) out.push(parseCommodityItem(d, 'energy'));
+  } catch (e) {
+    logger.error('원자재', (e as Error).message);
   }
   return out;
 };
@@ -744,6 +758,76 @@ export const fetchEconomicCalendar = async (date: string): Promise<EconomicIndic
     return items;
   } catch (e) {
     logger.error('경제캘린더', (e as Error).message);
+    return [];
+  }
+};
+
+// === 금리 ===
+
+export interface InterestRateItem {
+  name: string;
+  rate: string;             // "3.75", "2.516"
+  change: string;           // "0.00", "-0.010"
+  changeRatio: string;      // "-", "-0.39"
+  direction: 'up' | 'down' | 'flat';
+  date: string;             // "2026-04-15"
+  nextReleaseDate?: string; // "20260430" (기준금리만)
+  nation?: string;          // "USA", "KOR" (기준금리만)
+  nationName?: string;      // "미국", "대한민국"
+  description?: string;     // 금리 설명 (국내금리만)
+}
+
+interface InterestRateRaw {
+  name?: string;
+  closePrice?: string;
+  fluctuations?: string;
+  fluctuationsRatio?: string;
+  fluctuationsType?: { code?: string };
+  localTradedAt?: string;
+  nextReleaseKoreaDate?: string;
+  nationType?: string;
+  nationName?: string;
+  description?: string;
+}
+
+const parseInterestRate = (d: InterestRateRaw): InterestRateItem => {
+  const dirCode = d.fluctuationsType?.code;
+  const dir = dirCode === '2' || dirCode === '1' ? 'up' : dirCode === '5' || dirCode === '4' ? 'down' : 'flat';
+  const dateStr = d.localTradedAt ? d.localTradedAt.split('T')[0] : '';
+  return {
+    name: d.name || '',
+    rate: d.closePrice || '0',
+    change: d.fluctuations || '0',
+    changeRatio: d.fluctuationsRatio || '-',
+    direction: dir,
+    date: dateStr,
+    nextReleaseDate: d.nextReleaseKoreaDate || undefined,
+    nation: d.nationType || undefined,
+    nationName: d.nationName || undefined,
+    description: d.description || undefined,
+  };
+};
+
+export const fetchStandardInterest = async (): Promise<InterestRateItem[]> => {
+  try {
+    const data = await fetchJSON<InterestRateRaw[]>(
+      `${BASE}/securityService/marketindex/majors/standardInterest`
+    );
+    return (data || []).map(parseInterestRate);
+  } catch (e) {
+    logger.error('기준금리', (e as Error).message);
+    return [];
+  }
+};
+
+export const fetchDomesticInterest = async (): Promise<InterestRateItem[]> => {
+  try {
+    const data = await fetchJSON<InterestRateRaw[]>(
+      `${BASE}/securityService/marketindex/majors/domesticInterest`
+    );
+    return (data || []).map(parseInterestRate);
+  } catch (e) {
+    logger.error('국내금리', (e as Error).message);
     return [];
   }
 };

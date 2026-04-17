@@ -136,6 +136,7 @@ describe('Store — 설정', () => {
     const after = useStore.getState().settings;
     expect(after.opacity).toBe(0.5);
     expect(after.theme).toBe(before.theme);
-    expect(after.refreshInterval).toBe(before.refreshInterval);
+    expect(after.refreshIntervalDomestic).toBe(before.refreshIntervalDomestic);
+    expect(after.refreshIntervalOverseas).toBe(before.refreshIntervalOverseas);
   });
 });

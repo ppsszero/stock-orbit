@@ -35,7 +35,8 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   opacity: number;
   alwaysOnTop: boolean;
-  refreshInterval: number; // seconds
+  refreshIntervalDomestic: number; // seconds — 국내 주식/지수/선물
+  refreshIntervalOverseas: number; // seconds — 해외 주식/지수/선물/원자재/환율/마퀴
   tickerSpeed: number;     // px per second
   currencyMode: 'KRW' | 'USD';
   resolution: { width: number; height: number };
@@ -115,7 +116,7 @@ export interface MarqueeItem {
   change: number;
   changePercent: number;
   changeDirection: 'up' | 'down' | 'flat';
-  type: 'index' | 'fx' | 'commodity';
+  type: 'index' | 'fx' | 'commodity' | 'metals' | 'energy';
 }
 
 // === Electron API ===

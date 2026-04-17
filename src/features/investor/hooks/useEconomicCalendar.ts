@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { fetchEconomicCalendar, EconomicIndicator } from '@/shared/naver';
+import { cached } from '@/shared/utils/cache';
 
 /** 날짜를 'YYYYMMDD' 형식으로 변환 */
 const toDateStr = (d: Date): string =>
@@ -66,13 +67,15 @@ export const useEconomicCalendar = () => {
   // 데이터 fetch
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    fetchEconomicCalendar(dateStr).then(data => {
+    const load = async () => {
+      setLoading(true);
+      const data = await cached(`calendar-${dateStr}`, () => fetchEconomicCalendar(dateStr), 10 * 60_000);
       if (!cancelled) {
         setItems(data);
         setLoading(false);
       }
-    });
+    };
+    load();
     return () => { cancelled = true; };
   }, [dateStr]);
 
