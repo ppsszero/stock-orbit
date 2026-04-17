@@ -23,18 +23,19 @@ export const MarqueeTicker = memo(({ items, speed, onItemClick }: Props) => {
   const itemsRef = useRef(items);
   const [rendered, setRendered] = useState(items);
 
-  // items 업데이트 시 부드럽게 교체 (애니메이션 끊지 않음)
+  // 종목 코드 구성이 바뀌었는지 추적 — 바뀌면 애니메이션 재시작 필요
+  const codesKey = useMemo(() => items.map(i => i.code).join(','), [items]);
+  const prevCodesRef = useRef(codesKey);
+  const needsRestartRef = useRef(false);
+
   useEffect(() => {
-    if (JSON.stringify(items.map(i => i.code)) !== JSON.stringify(itemsRef.current.map(i => i.code))) {
-      // 종목 구성 변경 시만 리렌더
-      itemsRef.current = items;
-      setRendered(items);
-    } else {
-      // 값만 변경된 경우 DOM 유지, 데이터만 교체
-      itemsRef.current = items;
-      setRendered(items);
+    if (codesKey !== prevCodesRef.current) {
+      prevCodesRef.current = codesKey;
+      needsRestartRef.current = true;
     }
-  }, [items]);
+    itemsRef.current = items;
+    setRendered(items); // 항상 값은 갱신 (DOM 업데이트)
+  }, [items, codesKey]);
 
   const startAnimation = useCallback(() => {
     const track = trackRef.current;
@@ -78,10 +79,12 @@ export const MarqueeTicker = memo(({ items, speed, onItemClick }: Props) => {
     if (pausedRef.current) tweenRef.current.pause();
   }, [speed]);
 
-  // 렌더 후 애니메이션 시작/재시작
+  // 렌더 후 애니메이션 시작 — 코드 구성 변경 시 or 최초 시에만 재시작
   useEffect(() => {
     if (rendered.length === 0) return;
-    // 약간의 지연으로 DOM 측정 보장
+    // 이미 tween이 돌고 있고 코드 구성이 안 바뀌었으면 재시작 안 함 (버벅임 방지)
+    if (tweenRef.current && !needsRestartRef.current) return;
+    needsRestartRef.current = false;
     const id = requestAnimationFrame(() => startAnimation());
     return () => cancelAnimationFrame(id);
   }, [rendered, startAnimation]);

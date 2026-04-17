@@ -240,7 +240,8 @@ export const useDataPolling = (
   // 타이머는 useEffect에서만 스케줄 — .then() 체인과 동시에 하면 이중 스케줄 버그
   const scheduleDomestic = useCallback(() => {
     clearTimeout(domesticTimerRef.current);
-    const delay = refreshIntervalDomestic * 1000 + (Math.random() * 6_000 - 3_000);
+    const base = refreshIntervalDomestic * 1000;
+    const delay = base * (0.8 + Math.random() * 0.4); // ±20% jitter
     domesticTimerRef.current = setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ['domestic'] });
     }, delay);
@@ -248,7 +249,8 @@ export const useDataPolling = (
 
   const scheduleOverseas = useCallback(() => {
     clearTimeout(overseasTimerRef.current);
-    const delay = refreshIntervalOverseas * 1000 + (Math.random() * 10_000 - 5_000);
+    const base = refreshIntervalOverseas * 1000;
+    const delay = Math.max(base * (0.8 + Math.random() * 0.4), 70_000); // ±20% jitter, 서버 권장 70초 하한
     overseasTimerRef.current = setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ['overseas'] });
     }, delay);

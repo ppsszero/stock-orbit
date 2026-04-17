@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   opacity: 0.95,
   alwaysOnTop: false,
   refreshIntervalDomestic: 15,
-  refreshIntervalOverseas: 60,
+  refreshIntervalOverseas: 70,
   tickerSpeed: 50,
   currencyMode: 'KRW',
   resolution: { width: 420, height: 680 },
@@ -56,7 +56,7 @@ const loadSettings = (): AppSettings => {
     // 마이그레이션: 기존 refreshInterval → 새 필드로 변환
     if ('refreshInterval' in parsed && !('refreshIntervalDomestic' in parsed)) {
       parsed.refreshIntervalDomestic = Math.max(10, parsed.refreshInterval);
-      parsed.refreshIntervalOverseas = Math.max(60, parsed.refreshInterval * 2);
+      parsed.refreshIntervalOverseas = Math.max(70, parsed.refreshInterval * 2);
       delete parsed.refreshInterval;
     }
     return { ...DEFAULT_SETTINGS, ...parsed };

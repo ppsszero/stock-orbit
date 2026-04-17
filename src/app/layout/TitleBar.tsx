@@ -6,6 +6,9 @@ import { Tooltip } from '@/shared/ui/Tooltip';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 import logoSvg from '../../assets/logo.svg';
+import sunSvg from '../../assets/sun.svg';
+import moonSvg from '../../assets/moon.svg';
+import dropSvg from '../../assets/drop.svg';
 import { spacing, fontSize, fontWeight, radius, transition, zIndex, letterSpacing, shadow, sp } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
@@ -53,12 +56,12 @@ export const TitleBar = memo(({
       <div css={s.actions}>
         <Tooltip content={isDark ? '라이트 모드' : '다크 모드'} position="bottom" display="inline-flex">
           <button css={s.btn} onClick={onToggleTheme} aria-label={isDark ? '라이트 모드' : '다크 모드'}>
-            {isDark ? '☀️' : '🌙'}
+            <img src={isDark ? sunSvg : moonSvg} alt="" css={s.icon} />
           </button>
         </Tooltip>
         <div css={s.rel} ref={popRef}>
           <Tooltip content="투명도 조절" position="bottom" display="inline-flex">
-            <button css={s.btn} onClick={togglePopup} aria-label="투명도 조절">💧</button>
+            <button css={s.btn} onClick={togglePopup} aria-label="투명도 조절"><img src={dropSvg} alt="" css={s.icon} /></button>
           </Tooltip>
           {showOpacity && (
             <div css={s.pop} onClick={e => e.stopPropagation()}>
@@ -95,6 +98,7 @@ const s = {
     display: flex; align-items: center; justify-content: center;
     transition: background ${transition.fast}; &:hover { background: ${sem.bg.surface}; }
   `,
+  icon: css`width: 14px; height: 14px;`,
   closeBtn: css`
     width: 30px; height: 30px; border: none; background: transparent;
     border-radius: ${radius.md}px; cursor: pointer; font-size: ${fontSize.md}px; color: ${sem.text.secondary};

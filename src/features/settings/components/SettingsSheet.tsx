@@ -154,7 +154,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         <SettingRow label="해외·시장지표 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalOverseas}
             onChange={e => onUpdate({ refreshIntervalOverseas: parseInt(e.target.value) })}>
-            <option value="60">1분</option>
+            <option value="70">1분</option>
             <option value="120">2분</option>
             <option value="180">3분</option>
             <option value="300">5분</option>
