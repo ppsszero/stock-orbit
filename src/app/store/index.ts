@@ -15,7 +15,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   opacity: 0.95,
   alwaysOnTop: false,
-  refreshInterval: 30,
+  refreshIntervalDomestic: 15,
+  refreshIntervalOverseas: 60,
   tickerSpeed: 50,
   currencyMode: 'KRW',
   resolution: { width: 420, height: 680 },
@@ -50,7 +51,15 @@ const DEFAULT_PRESETS: Preset[] = [
 const loadSettings = (): AppSettings => {
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
-    return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
+    if (!stored) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(stored);
+    // 마이그레이션: 기존 refreshInterval → 새 필드로 변환
+    if ('refreshInterval' in parsed && !('refreshIntervalDomestic' in parsed)) {
+      parsed.refreshIntervalDomestic = Math.max(10, parsed.refreshInterval);
+      parsed.refreshIntervalOverseas = Math.max(60, parsed.refreshInterval * 2);
+      delete parsed.refreshInterval;
+    }
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch { return DEFAULT_SETTINGS; }
 };
 

@@ -107,8 +107,13 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
   }, [settings.screenshot, onUpdate]);
 
   useEffect(() => {
-    window.electronAPI?.getAppVersion().then(v => setAppVersion(v));
-    window.electronAPI?.getDefaultScreenshotPath().then(p => setDefaultScreenshotPath(p));
+    const load = async () => {
+      const version = await window.electronAPI?.getAppVersion();
+      if (version) setAppVersion(version);
+      const path = await window.electronAPI?.getDefaultScreenshotPath();
+      if (path) setDefaultScreenshotPath(path);
+    };
+    load();
   }, []);
 
   const handleNoticeOpen = () => { setNoticeOpen(true); markSeen(); };
@@ -136,14 +141,23 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         <SettingRow label="항상 맨 위에 고정">
           <Toggle checked={settings.alwaysOnTop} onChange={v => onUpdate({ alwaysOnTop: v })} />
         </SettingRow>
-        <SettingRow label="새로고침 간격">
-          <select css={s.ctrl} value={settings.refreshInterval}
-            onChange={e => onUpdate({ refreshInterval: parseInt(e.target.value) })}>
+        <SettingRow label="국내 새로고침">
+          <select css={s.ctrl} value={settings.refreshIntervalDomestic}
+            onChange={e => onUpdate({ refreshIntervalDomestic: parseInt(e.target.value) })}>
+            <option value="10">10초</option>
+            <option value="15">15초</option>
             <option value="30">30초</option>
             <option value="60">1분</option>
             <option value="180">3분</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="해외·시장지표 새로고침">
+          <select css={s.ctrl} value={settings.refreshIntervalOverseas}
+            onChange={e => onUpdate({ refreshIntervalOverseas: parseInt(e.target.value) })}>
+            <option value="60">1분</option>
+            <option value="120">2분</option>
+            <option value="180">3분</option>
             <option value="300">5분</option>
-            <option value="600">10분</option>
           </select>
         </SettingRow>
 

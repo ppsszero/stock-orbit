@@ -24,12 +24,14 @@ export const useLogSheet = (open: boolean) => {
   // 시트 열릴 때 visible count 초기화
   useEffect(() => { if (open) setVisibleCount(50); }, [open]);
 
-  const copyLog = useCallback((log: LogEntry) => {
+  const copyLog = useCallback(async (log: LogEntry) => {
     const text = `[${log.level.toUpperCase()}] ${log.timestamp.toLocaleTimeString()} ${log.message}${log.detail ? '\n' + log.detail : ''}`;
-    navigator.clipboard.writeText(text).then(
-      () => toast.show('로그를 복사했어요.', 'copy'),
-      () => toast.show('복사에 실패했어요.', 'error'),
-    );
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.show('로그를 복사했어요.', 'copy');
+    } catch {
+      toast.show('복사에 실패했어요.', 'error');
+    }
   }, [toast]);
 
   const handleScroll = useCallback(() => {

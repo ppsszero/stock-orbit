@@ -5,7 +5,7 @@ import { FiCheck, FiUser, FiHash, FiPercent } from 'react-icons/fi';
 import { SortKey, SortDir } from '@/shared/types';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
 import { Tooltip } from '@/shared/ui/Tooltip';
-import { spacing, fontSize, fontWeight, radius, height, shadow, zIndex } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, height, shadow, zIndex, opacity } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface MenuItem {
@@ -42,9 +42,11 @@ interface Props {
   sortKey: SortKey;
   sortDir: SortDir;
   onChange: (key: SortKey, dir: SortDir) => void;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
-export const SortButton = ({ sortKey, sortDir, onChange }: Props) => {
+export const SortButton = ({ sortKey, sortDir, onChange, disabled, disabledReason }: Props) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -57,10 +59,12 @@ export const SortButton = ({ sortKey, sortDir, onChange }: Props) => {
 
   const isActive = (m: MenuItem) => m.key === sortKey && m.dir === sortDir;
 
+  const tip = disabled ? (disabledReason || '정렬 불가') : tooltipLabel(sortKey, sortDir);
+
   return (
     <div ref={menuRef} css={s.wrap}>
-      <Tooltip content={tooltipLabel(sortKey, sortDir)} position="bottom" display="inline-flex">
-        <button css={s.iconBtn} onClick={() => setOpen(v => !v)} aria-label="정렬 변경">
+      <Tooltip content={tip} position="bottom" display="inline-flex">
+        <button css={[s.iconBtn, disabled && s.iconBtnDisabled]} onClick={() => !disabled && setOpen(v => !v)} aria-label="정렬 변경">
           {SORT_ICON_MAP[sortKey]}
         </button>
       </Tooltip>
@@ -92,6 +96,10 @@ const s = {
     border-radius: ${radius.lg}px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     color: ${sem.text.tertiary}; flex-shrink: 0;
     &:hover { background: ${sem.bg.surface}; color: ${sem.text.primary}; }
+  `,
+  iconBtnDisabled: css`
+    opacity: ${opacity.disabledWeak}; cursor: default;
+    &:hover { background: transparent; color: ${sem.text.tertiary}; }
   `,
   menu: css`
     position: absolute; top: calc(100% + ${spacing.sm}px); right: 0;

@@ -6,7 +6,7 @@ export { StockGrid } from './components/StockGrid';
 export { StockDetailModal } from './components/StockDetailModal';
 export { StockDetailSheet } from './components/StockDetailSheet';
 export { EmptyState } from './components/EmptyState';
-export { useStockPrices } from './hooks/useStockPrices';
+export { useDataPolling } from './hooks/useDataPolling';
 export { useStockGroups } from './hooks/useStockGroups';
 export type { StockGroup } from './hooks/useStockGroups';
 export { useStockViewModel } from './hooks/useStockViewModel';

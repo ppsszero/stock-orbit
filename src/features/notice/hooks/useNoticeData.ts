@@ -23,13 +23,14 @@ export const useNoticeData = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchNotices().then(data => {
+    const load = async () => {
+      const data = await fetchNotices();
       if (data.length === 0) return;
       setNotices(data);
-
       const lastSeen = localStorage.getItem(STORAGE_KEY) || '';
       if (data[0].version !== lastSeen) setHasNew(true);
-    });
+    };
+    load();
   }, []);
 
   const markSeen = useCallback(() => {

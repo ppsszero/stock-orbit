@@ -28,12 +28,13 @@ export const MarqueeSheet = ({ open, items, highlightCode, onClose }: Props) => 
   const g = groupMarqueeItems(items);
 
   return (
-    <SheetLayout open={open} title="시세 전체보기" onClose={onClose}>
+    <SheetLayout open={open} title="시장지표" onClose={onClose}>
       <div css={s.body}>
         {g.index.length > 0 && <Section label="주요 지수" items={g.index} highlightCode={highlightCode} highlightRef={highlightRef} />}
-        {g.commodity.length > 0 && <Section label="원자재" items={g.commodity} highlightCode={highlightCode} highlightRef={highlightRef} />}
         {g.fx.length > 0 && <Section label="환율" items={g.fx} highlightCode={highlightCode} highlightRef={highlightRef} />}
-      </div>
+        {g.energy.length > 0 && <Section label="에너지" items={g.energy} highlightCode={highlightCode} highlightRef={highlightRef} />}
+        {g.metals.length > 0 && <Section label="금속" items={g.metals} highlightCode={highlightCode} highlightRef={highlightRef} />}
+       </div>
     </SheetLayout>
   );
 };

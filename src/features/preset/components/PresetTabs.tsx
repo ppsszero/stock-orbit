@@ -140,7 +140,8 @@ export const PresetTabs = memo(({
                 <ViewIcon size={13} />
               </button>
             </Tooltip>
-            <SortButton sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
+            <SortButton sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange}
+              disabled={viewMode === 'tile'} disabledReason="타일뷰는 시가총액 기준" />
           </>
         )}
         {currencyMode && onCurrencyToggle && (

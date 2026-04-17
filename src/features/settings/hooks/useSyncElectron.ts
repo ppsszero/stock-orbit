@@ -57,11 +57,15 @@ export const useSyncElectron = () => {
   // window-bounds.json에서 복원된 크기는 resize 이벤트를 발생시키지 않으므로
   // localStorage의 이전 값이 stale하게 표시되는 문제 방지.
   useEffect(() => {
-    window.electronAPI?.getWindowSize().then(size => {
-      if (size?.width > 0 && size?.height > 0) {
-        updateSettings({ resolution: size });
-      }
-    }).catch(() => {});
+    const sync = async () => {
+      try {
+        const size = await window.electronAPI?.getWindowSize();
+        if (size && size.width > 0 && size.height > 0) {
+          updateSettings({ resolution: size });
+        }
+      } catch { /* ignore */ }
+    };
+    sync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 };

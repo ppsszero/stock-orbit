@@ -107,7 +107,7 @@ export const MarqueeTicker = memo(({ items, speed, onItemClick }: Props) => {
   if (rendered.length === 0) {
     return (
       <div css={s.container}>
-        <span css={s.loading}>시세 로딩중...</span>
+        <span css={s.loading}>시장지표 로딩중...</span>
       </div>
     );
   }

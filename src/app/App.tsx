@@ -4,8 +4,7 @@ import { useCallback, useRef } from 'react';
 import { globalStyles } from '@/shared/styles/global';
 import { useStore } from './store';
 import { useTheme, useIsDark, useDisplaySymbols } from './store/selectors';
-import { useStockPrices } from '@/features/stock/hooks/useStockPrices';
-import { useMarqueeData } from '@/features/marquee/hooks/useMarqueeData';
+import { useDataPolling } from '@/features/stock/hooks/useDataPolling';
 import { useSyncElectron } from '@/features/settings/hooks/useSyncElectron';
 
 import { TitleBar } from './layout/TitleBar';
@@ -69,8 +68,7 @@ const AppContent = () => {
   useSyncElectron();
 
   const displaySymbols = useDisplaySymbols();
-  const { loading: dataLoading, fetching, lastUpdated, refresh, progressRef, subscribeProgress } = useStockPrices(displaySymbols, settings.refreshInterval);
-  const { items: marqueeItems } = useMarqueeData(settings.refreshInterval * 2);
+  const { loading: dataLoading, fetching, lastUpdated, refresh, marqueeItems, progressRef, subscribeProgress } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);
 
   const openMarquee = useCallback((item: { code: string }) => {
     setHighlightCode(item.code);

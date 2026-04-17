@@ -3,9 +3,13 @@ import {
   fetchMarketBriefing, fetchMainNews, fetchMoneyStory,
   MarketBriefing, NewsArticle, MoneyStory,
 } from '@/shared/naver';
+import { cached } from '@/shared/utils/cache';
 
 const PAGE_STEP = 10;
 const MAX_SIZE = 50;
+const CACHE_TTL = 10 * 60 * 1000;
+/** 수동 새로고침 시에만 스피너 최소 표시 시간 — 캐시 히트 시에는 즉시 반환 */
+const MIN_SPIN_MS = 400;
 
 export const useNewsData = (open: boolean) => {
   const [briefing, setBriefing] = useState<MarketBriefing | null>(null);
@@ -17,27 +21,25 @@ export const useNewsData = (open: boolean) => {
   const storySize = useRef(PAGE_STEP);
   const fetching = useRef(false);
 
-  const load = useCallback(async (): Promise<boolean> => {
+  const load = useCallback(async (forceRefresh = false): Promise<boolean> => {
     setLoading(true);
     newsSize.current = PAGE_STEP;
     storySize.current = PAGE_STEP;
-    // 스피너 최소 표시 시간 — 너무 빠른 응답 시 피드백 누락 방지
-    const MIN_SPIN_MS = 400;
     const started = Date.now();
     const [b, n, s] = await Promise.all([
-      fetchMarketBriefing(),
-      fetchMainNews(PAGE_STEP),
-      fetchMoneyStory(PAGE_STEP),
+      cached('news-briefing', fetchMarketBriefing, CACHE_TTL, forceRefresh),
+      cached('news-main', () => fetchMainNews(PAGE_STEP), CACHE_TTL, forceRefresh),
+      cached('news-story', () => fetchMoneyStory(PAGE_STEP), CACHE_TTL, forceRefresh),
     ]);
-    const elapsed = Date.now() - started;
-    if (elapsed < MIN_SPIN_MS) {
-      await new Promise(r => setTimeout(r, MIN_SPIN_MS - elapsed));
+    // 수동 새로고침(forceRefresh)일 때만 스피너 최소 표시
+    if (forceRefresh) {
+      const elapsed = Date.now() - started;
+      if (elapsed < MIN_SPIN_MS) await new Promise(r => setTimeout(r, MIN_SPIN_MS - elapsed));
     }
     setBriefing(b);
     setNews(n);
     setStories(s);
     setLoading(false);
-    // 셋 중 하나라도 들어오면 성공으로 간주
     return !!(b || n.length > 0 || s.length > 0);
   }, []);
 
