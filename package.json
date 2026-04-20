@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Orbit - 실시간 주식 관심종목 관측기",
   "main": "electron/main.js",
   "scripts": {

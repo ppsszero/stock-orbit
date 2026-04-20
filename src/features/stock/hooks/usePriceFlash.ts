@@ -14,10 +14,10 @@ export const usePriceFlash = (
   price: StockPrice | null | undefined,
   direction: 'up' | 'down' | 'flat',
   duration = 600,
-): 'up' | 'down' | null => {
+): 'up' | 'down' | 'flat' | null => {
   const prevRef = useRef(price);
   const initialized = useRef(false);
-  const [flash, setFlash] = useState<'up' | 'down' | null>(null);
+  const [flash, setFlash] = useState<'up' | 'down' | 'flat' | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export const usePriceFlash = (
     // 객체 참조가 바뀌면 = 새 데이터 도착
     if (price && price !== prevRef.current) {
       prevRef.current = price;
-      const flashDir = direction === 'flat' ? 'up' : direction;
+      const flashDir = direction;
       setFlash(flashDir);
       clearTimeout(timer.current);
       timer.current = setTimeout(() => setFlash(null), duration);

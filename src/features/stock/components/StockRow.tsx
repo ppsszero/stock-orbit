@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FiTrash2, FiMenu, FiInfo, FiExternalLink } from 'react-icons/fi';
@@ -34,6 +34,13 @@ export const StockRow = memo(({
   const toast = useToast();
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
   const flash = usePriceFlash(p, vm.direction);
+
+  // 데이터 갱신(가격 변경) 시 hover 유령 상태 방지:
+  // DOM 재배치로 mouseLeave가 누락될 수 있으므로 강제 리셋.
+  // 실제로 마우스가 위에 있으면 mouseEnter가 즉시 다시 발생하여 복원됨.
+  useEffect(() => {
+    if (hovered) setHovered(false);
+  }, [p]); // hovered 의도적 제외 — p 변경 시에만 리셋
 
   // NOTE: setNodeRef → 행 전체, listeners → 로고 영역에만 적용.
   // 행 전체가 드래그되면 클릭/호버 이벤트와 충돌하므로 핸들을 로고로 제한.

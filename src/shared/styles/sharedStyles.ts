@@ -36,9 +36,14 @@ const highlightDown = keyframes`
   0% { background: color-mix(in srgb, ${sem.feedback.down} 25%, transparent); }
   100% { background: transparent; }
 `;
+const highlightFlat = keyframes`
+  0% { background: color-mix(in srgb, ${sem.feedback.flat} 20%, transparent); }
+  100% { background: transparent; }
+`;
 
 /** 가격 갱신 flash 스타일 — usePriceFlash 반환값으로 선택 */
 export const priceFlash = {
   up: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightUp} 0.8s ease-out;`,
   down: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightDown} 0.8s ease-out;`,
+  flat: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightFlat} 0.8s ease-out;`,
 } as const;
