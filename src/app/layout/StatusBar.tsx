@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore, memo, MutableRefObject } from 'react';
-import { FiSearch, FiSettings, FiDollarSign, FiTrendingUp, FiFileText } from 'react-icons/fi';
+import { FiSearch, FiSettings, FiDollarSign, FiTrendingUp, FiRss } from 'react-icons/fi';
 import { Tooltip } from '@/shared/ui/Tooltip';
 import { useToast } from '@/shared/ui/Toast';
 import { fmtTime } from '@/shared/utils/format';
@@ -95,7 +95,7 @@ export const StatusBar = memo(({
         </Tooltip>
         <span css={s.divider} />
         <Tooltip content="뉴스" position="top" display="inline-flex">
-          <button css={s.ctrlBtn} onClick={onNews} aria-label="뉴스"><FiFileText size={13} /></button>
+          <button css={s.ctrlBtn} onClick={onNews} aria-label="뉴스"><FiRss size={13} /></button>
         </Tooltip>
         <span css={s.divider} />
         <Tooltip content={hasSymbols ? (fetching ? '갱신 중...' : '데이터 갱신') : '종목을 먼저 추가해주세요'} position="top" display="inline-flex">

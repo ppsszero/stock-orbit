@@ -24,6 +24,7 @@ export const sectionTitleStyle = css`
   padding: ${spacing.lg}px ${spacing.xl}px ${spacing.sm}px;
   text-transform: uppercase;
   letter-spacing: ${letterSpacing.wider}px;
+  margin-bottom: ${spacing.sm}px;
   &:not(:first-of-type) { margin-top: ${spacing.xl}px; }
 `;
 

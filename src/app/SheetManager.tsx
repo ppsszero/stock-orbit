@@ -83,7 +83,7 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
       <MarqueeSheet open={openSheet === 'marquee'} items={marqueeItems}
         highlightCode={highlightCode}
         onClose={closeMarquee} />
-      <InvestorSheet open={openSheet === 'investor'} onClose={closeSheet} />
+      <InvestorSheet open={openSheet === 'investor'} onClose={closeSheet} marqueeItems={marqueeItems} />
       <RankingSheet open={openSheet === 'ranking'}
         presets={presets} activeGroupId={activeGroupId}
         onClose={closeSheet} onAdd={addSymbol} onRemove={removeSymbol}

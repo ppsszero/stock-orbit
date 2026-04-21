@@ -13,6 +13,7 @@ interface State {
   percent?: number;
   errorMessage?: string;
   dismissed?: boolean;
+  isReDownload?: boolean;
 }
 
 /**
@@ -39,7 +40,16 @@ export const UpdateBanner = () => {
         setState({ phase: 'available', version: info.version, dismissed: false });
       });
       const off2 = api.onUpdateProgress((info) => {
-        setState(prev => ({ ...prev, phase: 'downloading', percent: info.percent }));
+        setState(prev => {
+          // electron-updater delta 실패 → full 다운로드 fallback: percent가 큰 폭으로 감소하면 재다운로드로 간주
+          const droppedBack = prev.percent != null && info.percent < prev.percent - 5;
+          return {
+            ...prev,
+            phase: 'downloading',
+            percent: info.percent,
+            isReDownload: prev.isReDownload || droppedBack,
+          };
+        });
       });
       const off3 = api.onUpdateDownloaded((info) => {
         setState({ phase: 'ready', version: info.version, percent: 100, dismissed: false });
@@ -172,12 +182,13 @@ const renderContent = (state: State, onInstall: () => void, onDismiss: () => voi
 
   // available / downloading
   const percent = state.percent ?? 0;
+  const versionPrefix = state.version ? `v${state.version} ` : '';
   return (
     <>
       <div css={[s.iconCircle, s.iconInfo]}>
         <FiRefreshCw size={24} css={s.spinIcon} />
       </div>
-      <div css={s.title}>{state.version ? `v${state.version} ` : ''}다운로드 중</div>
+      <div css={s.title}>{versionPrefix}{state.isReDownload ? '재다운로드 중' : '다운로드 중'}</div>
       <div css={s.desc}>{percent}% 완료</div>
       <div css={s.progressTrack}>
         <div css={s.progressFill} style={{ width: `${percent}%` }} />

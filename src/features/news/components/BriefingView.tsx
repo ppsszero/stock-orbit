@@ -56,7 +56,7 @@ const s = {
   badge: css`
     display:inline-flex;align-items:center;gap:${spacing.sm}px;
     padding:${spacing.sm}px ${spacing.md + 2}px;border-radius:${radius['2xl']}px;
-    background:linear-gradient(135deg, #4593FC, #7B61FF);
+    background:linear-gradient(135deg,rgb(73, 30, 190),rgb(52, 140, 255));
     color:${sem.text.inverse};font-size:${fontSize.xs}px;font-weight:${fontWeight.bold};letter-spacing:${letterSpacing.wide}px;
   `,
   dot: css`width:5px;height:5px;border-radius:50%;background:${sem.action.success};box-shadow:0 0 6px ${sem.action.success};animation:${aiPulse} 2s ease infinite;`,
