@@ -15,22 +15,32 @@ const Section = memo(({ label, children }: { label: string; children: React.Reac
   </div>
 ));
 
-/* --- Value / Stat cards --- */
+/* --- 3-column unified card with dividers --- */
 
-const ValueCard = memo(({ label, value }: { label: string; value: string }) => {
-  const color = value.startsWith('+') ? sem.feedback.up : value.startsWith('-') ? sem.feedback.down : sem.text.primary;
-  return (
-    <div css={st.card}>
-      <span css={st.cardLabel}>{label}</span>
-      <span css={st.cardVal(color)}>{value}</span>
-    </div>
-  );
-});
-
-const StatCard = memo(({ label, value, color }: { label: string; value: string; color: string }) => (
+const ValueRow = memo(({ items }: { items: { label: string; value: string }[] }) => (
   <div css={st.card}>
-    <span css={st.cardLabel}>{label}</span>
-    <span css={st.cardVal(color)}>{value}</span>
+    {items.map((item, i) => {
+      const color = item.value.startsWith('+') ? sem.feedback.up : item.value.startsWith('-') ? sem.feedback.down : sem.text.primary;
+      return (
+        <div key={item.label} css={st.cell}>
+          {i > 0 && <div css={st.divider} />}
+          <span css={st.cellLabel}>{item.label}</span>
+          <span css={st.cellVal} style={{ color }}>{item.value}</span>
+        </div>
+      );
+    })}
+  </div>
+));
+
+const StatRow = memo(({ items }: { items: { label: string; value: string; color: string }[] }) => (
+  <div css={st.card}>
+    {items.map((item, i) => (
+      <div key={item.label} css={st.cell}>
+        {i > 0 && <div css={st.divider} />}
+        <span css={st.cellLabel}>{item.label}</span>
+        <span css={st.cellVal} style={{ color: item.color }}>{item.value}</span>
+      </div>
+    ))}
   </div>
 ));
 
@@ -61,28 +71,28 @@ export const InvestorView = ({ data: d }: InvestorViewProps) => {
   return (
     <>
       <Section label="투자자별 매매동향">
-        <div css={st.grid3}>
-          <ValueCard label="개인" value={d.dealTrend.personal} />
-          <ValueCard label="외국인" value={d.dealTrend.foreign} />
-          <ValueCard label="기관" value={d.dealTrend.institutional} />
-        </div>
+        <ValueRow items={[
+          { label: '개인', value: d.dealTrend.personal },
+          { label: '외국인', value: d.dealTrend.foreign },
+          { label: '기관', value: d.dealTrend.institutional },
+        ]} />
       </Section>
 
       <Section label="프로그램 매매">
-        <div css={st.grid3}>
-          <ValueCard label="차익" value={d.programTrend.arbitrage} />
-          <ValueCard label="비차익" value={d.programTrend.nonArbitrage} />
-          <ValueCard label="전체" value={d.programTrend.total} />
-        </div>
+        <ValueRow items={[
+          { label: '차익', value: d.programTrend.arbitrage },
+          { label: '비차익', value: d.programTrend.nonArbitrage },
+          { label: '전체', value: d.programTrend.total },
+        ]} />
       </Section>
 
       <Section label="등락종목">
         <UpDownBar rise={d.upDown.rise + d.upDown.upper} steady={d.upDown.steady} fall={d.upDown.fall + d.upDown.lower} />
-        <div css={st.grid3}>
-          <StatCard label="상승" value={`${d.upDown.rise.toLocaleString()}${d.upDown.upper > 0 ? `(${d.upDown.upper})` : ''}`} color={sem.feedback.up} />
-          <StatCard label="보합" value={`${d.upDown.steady}`} color={sem.feedback.flat} />
-          <StatCard label="하락" value={`${d.upDown.fall.toLocaleString()}${d.upDown.lower > 0 ? `(${d.upDown.lower})` : ''}`} color={sem.feedback.down} />
-        </div>
+        <StatRow items={[
+          { label: '상승', value: `${d.upDown.rise.toLocaleString()}${d.upDown.upper > 0 ? `(${d.upDown.upper})` : ''}`, color: sem.feedback.up },
+          { label: '보합', value: `${d.upDown.steady}`, color: sem.feedback.flat },
+          { label: '하락', value: `${d.upDown.fall.toLocaleString()}${d.upDown.lower > 0 ? `(${d.upDown.lower})` : ''}`, color: sem.feedback.down },
+        ]} />
       </Section>
     </>
   );
@@ -92,15 +102,24 @@ export const InvestorView = ({ data: d }: InvestorViewProps) => {
 
 const st = {
   empty: css`padding: ${spacing['5xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
-  section: css`margin-bottom: ${spacing.md}px;`,
+  section: css`margin-bottom: ${spacing.lg}px;`,
   secT: sectionTitleStyle,
-  grid3: css`display: grid; grid-template-columns: repeat(3, 1fr); gap: ${spacing.sm + spacing.xs}px; padding: 0 ${spacing.xl}px;`,
   card: css`
-    background: ${sem.surface.card}; border: 1px solid ${sem.border.default}; border-radius: ${radius.xl}px;
-    padding: ${spacing.xl - 6}px; display: flex; flex-direction: column; align-items: center; gap: ${spacing.sm}px;
+    display: flex; align-items: stretch;
+    background: transparent; border: 1px solid ${sem.border.default};
+    border-radius: ${radius.xl}px; margin: 0 ${spacing.xl}px;
   `,
-  cardLabel: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-weight: ${fontWeight.semibold};`,
-  cardVal: (color: string) => css`font-size: ${fontSize.lg}px; font-weight: ${fontWeight.extrabold}; color: ${color}; font-variant-numeric: tabular-nums;`,
+  cell: css`
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: ${spacing.sm}px; padding: ${spacing.lg}px ${spacing.sm}px;
+    position: relative;
+  `,
+  divider: css`
+    position: absolute; left: 0; top: 20%; height: 60%;
+    width: 1px; background: ${sem.border.muted};
+  `,
+  cellLabel: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-weight: ${fontWeight.semibold};`,
+  cellVal: css`font-size: ${fontSize.lg}px; font-weight: ${fontWeight.extrabold}; font-variant-numeric: tabular-nums;`,
   bar: css`
     display: flex; height: ${spacing.md}px; border-radius: ${radius.sm}px; overflow: hidden;
     background: ${sem.bg.elevated}; margin: 0 ${spacing.xl}px ${spacing.md}px;

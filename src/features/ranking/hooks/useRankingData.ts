@@ -14,8 +14,8 @@ export const NATIONS = [
 ];
 
 export const RANK_TYPES = [
-  { key: 'volume' as RankType, label: '거래량 상위' },
   { key: 'value' as RankType, label: '거래대금 상위' },
+  { key: 'volume' as RankType, label: '거래량 상위' },
 ];
 
 export function useRankingData(open: boolean) {

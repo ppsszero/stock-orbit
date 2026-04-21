@@ -1,15 +1,18 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback } from 'react';
-import { spacing } from '@/shared/styles/tokens';
+import { useState, useCallback, useMemo } from 'react';
+import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
+import { MarqueeItem } from '@/shared/types';
 import { SheetLayout, SegmentedControl } from '@/shared/ui';
 import { useToast } from '@/shared/ui/Toast';
 import { useInvestorData } from '@/features/investor/hooks/useInvestorData';
 import { InvestorView } from '@/features/investor/components/InvestorView';
 import { EconomicCalendar } from '@/features/investor/components/EconomicCalendar';
 import { InterestRateView } from '@/features/investor/components/InterestRateView';
+import { sem } from '@/shared/styles/semantic';
+import { dirArrow } from '@/shared/utils/format';
 
-interface Props { open: boolean; onClose: () => void; }
+interface Props { open: boolean; onClose: () => void; marqueeItems?: MarqueeItem[]; }
 
 type Tab = 'market' | 'calendar' | 'interest';
 type Market = 'KOSPI' | 'KOSDAQ';
@@ -21,15 +24,33 @@ const TABS = [
   { key: 'interest' as Tab, label: '금리' },
 ];
 const MARKETS = [
-  { key: 'KOSPI' as Market, label: 'KOSPI' },
-  { key: 'KOSDAQ' as Market, label: 'KOSDAQ' },
+  { key: 'KOSPI' as Market, label: '코스피' },
+  { key: 'KOSDAQ' as Market, label: '코스닥' },
 ];
 const INTEREST_TABS = [
   { key: 'standard' as InterestTab, label: '기준금리' },
   { key: 'domestic' as InterestTab, label: '국내금리' },
 ];
 
-export const InvestorSheet = ({ open, onClose }: Props) => {
+/** 마퀴 아이템에서 KOSPI/KOSDAQ 지수 데이터 추출 */
+const IndexBanner = ({ items, market }: { items: MarqueeItem[]; market: Market }) => {
+  const item = items.find(i => i.code === market);
+  if (!item) return null;
+  const dirColor = item.changeDirection === 'up' ? sem.feedback.up
+    : item.changeDirection === 'down' ? sem.feedback.down : sem.feedback.flat;
+
+  return (
+    <div css={st.indexBanner}>
+      <span css={st.indexLabel}>지수</span>
+      <span css={st.indexValue}>{item.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+      <span css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums;`}>
+        {dirArrow(item.changeDirection)} {Math.abs(item.change).toFixed(2)} ({Math.abs(item.changePercent).toFixed(2)}%)
+      </span>
+    </div>
+  );
+};
+
+export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
   const [tab, setTab] = useState<Tab>('market');
   const [market, setMarket] = useState<Market>('KOSPI');
   const [interestTab, setInterestTab] = useState<InterestTab>('standard');
@@ -71,6 +92,7 @@ export const InvestorSheet = ({ open, onClose }: Props) => {
           <div css={st.segPad}>
             <SegmentedControl items={MARKETS} value={market} onChange={setMarket} />
           </div>
+          <IndexBanner items={marqueeItems} market={market} />
           <div css={st.body}>
             <InvestorView data={data[market]} />
           </div>
@@ -96,4 +118,14 @@ const st = {
   segPadTop: css`padding: ${spacing.lg}px ${spacing.xl}px ${spacing.md - 2}px; flex-shrink: 0;`,
   segPad: css`padding: 0 ${spacing.xl}px ${spacing.md - 2}px; flex-shrink: 0;`,
   body: css`flex: 1; overflow-y: auto; padding: ${spacing.sm}px 0 ${spacing.lg}px;`,
+  indexBanner: css`
+    display: flex; flex-direction: column; gap: ${spacing.sm}px;
+    padding: ${spacing.lg}px ${spacing.xl}px ${spacing.md}px;
+    flex-shrink: 0;
+  `,
+  indexLabel: css`
+    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; 
+    color: ${sem.text.tertiary}; margin-bottom: ${spacing.xs}px;
+  `,
+  indexValue: css`font-size: ${fontSize['3xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
 };
