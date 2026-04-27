@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchDomesticRanking, fetchForeignRanking, RankingItem } from '@/shared/naver';
+import { withMinSpin } from '@/shared/utils/withMinSpin';
 
 export type Nation = 'KR' | 'USA' | 'CHN' | 'JPN' | 'HKG' | 'VNM';
 export type RankType = 'volume' | 'value';
@@ -26,15 +27,10 @@ export function useRankingData(open: boolean) {
 
   const load = useCallback(async (): Promise<boolean> => {
     setLoading(true);
-    const MIN_SPIN_MS = 400;
-    const started = Date.now();
-    const result = nation === 'KR'
-      ? await fetchDomesticRanking(rankType)
-      : await fetchForeignRanking(nation, rankType);
-    const elapsed = Date.now() - started;
-    if (elapsed < MIN_SPIN_MS) {
-      await new Promise(r => setTimeout(r, MIN_SPIN_MS - elapsed));
-    }
+    const result = await withMinSpin(() => nation === 'KR'
+      ? fetchDomesticRanking(rankType)
+      : fetchForeignRanking(nation, rankType)
+    );
     setItems(result);
     setLoading(false);
     return result.length > 0;

@@ -34,8 +34,7 @@ export const NewsSheet = ({ open, onClose }: Props) => {
 
   const handleRefresh = useCallback(async () => {
     const ok = await refresh(true);
-    if (ok) toast.show('뉴스를 새로 불러왔어요', 'success');
-    else toast.show('뉴스를 불러오지 못했어요', 'error');
+    toast.refreshResult(ok, '뉴스');
   }, [refresh, toast]);
 
   // 스크롤 감지는 실제 스크롤 컨테이너(tabBody)에 부착

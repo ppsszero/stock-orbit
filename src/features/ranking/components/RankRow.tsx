@@ -4,9 +4,14 @@ import { FiExternalLink } from 'react-icons/fi';
 
 import { spacing, fontSize, fontWeight, radius, height } from '@/shared/styles/tokens';
 import { RankingItem } from '@/shared/naver';
-import { NATION_BADGE, getLogoUrl, dirArrow } from '@/shared/utils/format';
+import { NATION_BADGE, getLogoUrl, fmtNum, fmtPercentArrow } from '@/shared/utils/format';
 import { StockLogo, AddButton } from '@/shared/ui';
 import { sem } from '@/shared/styles/semantic';
+
+/** 국가별 통화 매핑 — fmtNum의 0자리 통화(KRW/JPY/VND) vs 그 외(2자리) 분기에 사용 */
+const NATION_CURRENCY: Record<string, string> = {
+  KR: 'KRW', US: 'USD', JP: 'JPY', CN: 'CNY', HK: 'HKD', VN: 'VND',
+};
 
 interface RankRowProps {
   item: RankingItem;
@@ -18,6 +23,7 @@ interface RankRowProps {
 
 export const RankRow = ({ item, added, onLink, onToggle }: RankRowProps) => {
   const b = NATION_BADGE[item.nation] || { bg: '#8884', fg: '#888' };
+  const currency = NATION_CURRENCY[item.nation] || 'USD';
   return (
     <div css={st.row}>
       <span css={st.rank(item.changeDirection)}>{item.rank}</span>
@@ -33,9 +39,9 @@ export const RankRow = ({ item, added, onLink, onToggle }: RankRowProps) => {
           <span css={st.badge(b.bg, b.fg)}>{item.nation}</span>
         </div>
         <div css={st.subRow}>
-          <span css={st.price}>{Number(item.price).toLocaleString()}</span>
+          <span css={st.price}>{fmtNum(item.price, currency)}</span>
           <span css={st.change(item.changeDirection)}>
-            {dirArrow(item.changeDirection)}{parseFloat(item.changePercent).toFixed(2)}%
+            {fmtPercentArrow(item.changeDirection, item.changePercent)}
           </span>
         </div>
       </div>

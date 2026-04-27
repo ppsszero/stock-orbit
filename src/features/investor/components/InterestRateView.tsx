@@ -7,6 +7,7 @@ import { cached } from '@/shared/utils/cache';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 import { spinCss } from '@/shared/ui/LoadingCenter';
+import { dirArrow, getDirColor } from '@/shared/utils/format';
 
 /** YYYYMMDD → MM.DD. */
 const fmtDate = (d: string): string => {
@@ -25,8 +26,7 @@ const fmtIsoDate = (d: string): string => {
 const FLAG_BASE = 'https://ssl.pstatic.net/imgstock/fn/real/logo/flag/Nation';
 
 const RateRow = ({ item, showFlag }: { item: InterestRateItem; showFlag?: boolean }) => {
-  const dirColor = item.direction === 'down' ? sem.feedback.down
-    : item.direction === 'up' ? sem.feedback.up : sem.feedback.flat;
+  const dirColor = getDirColor(item.direction);
   const changeNum = parseFloat(item.change);
   const ratioDisplay = item.changeRatio === '-' ? '' : `(${item.changeRatio}%)`;
 
@@ -52,7 +52,7 @@ const RateRow = ({ item, showFlag }: { item: InterestRateItem; showFlag?: boolea
       <div css={s.changeColWide}>
         {changeNum !== 0 ? (
           <span css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.medium}; font-variant-numeric: tabular-nums;`}>
-            {item.direction === 'down' ? '▼' : '▲'} {Math.abs(changeNum).toFixed(3)} {ratioDisplay}
+            {dirArrow(item.direction)} {Math.abs(changeNum).toFixed(3)} {ratioDisplay}
           </span>
         ) : (
           <span css={s.flat}>{parseFloat(item.change).toFixed(3)} {ratioDisplay}</span>

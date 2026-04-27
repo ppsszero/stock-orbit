@@ -44,16 +44,16 @@ const lightColors = {
   dangerBorder: '#F0445220',
   successTint: '#00C85320',
   successHover: '#00C85330',
-  // Heatmap — 라이트는 명도/채도를 직접 조절하여 단계 폭 확보
-  // Heatmap — WCAG AA (vs #FFFFFF), Weak도 5.5:1 이상 확보
-  upHeavy: '#7F1D1D',    // 13.6:1
-  upStrong: '#991B1B',   // 10.2:1
-  upMild: '#B91C1C',     //  7.1:1
-  upWeak: '#C62828',     //  5.6:1
-  downHeavy: '#1E3A8A',  // 12.8:1
-  downStrong: '#1E40AF', //  9.5:1
-  downMild: '#1D4ED8',   //  6.4:1
-  downWeak: '#2D63D5',   //  5.5:1
+  // Heatmap — 채도 ramp (L ≈ 43 고정, 채도만 변동)
+  // 다크모드의 "투명→불투명" 램프와 동일한 메타포(약함→강함). 흰 텍스트 WCAG AA 유지
+  upHeavy: '#DC0000',    // HSL(0, 100%, 43%)
+  upStrong: '#CC3939',   // HSL(0, 58%, 51%) — 한 톤 부드럽게
+  upMild: '#BC3F3F',     // HSL(0, 50%, 49%)
+  upWeak: '#A85959',     // HSL(0, 32%, 50%)
+  downHeavy: '#0033E0',  // 순수 파랑
+  downStrong: '#1A4FDC', // 또렷한 파랑
+  downMild: '#3A60C5',   // 무게 잡힌 파랑
+  downWeak: '#5A75B0',   // 차분한 청회색
   // Tile text — 진한 배경이므로 흰색 유지
   tileText: '#FFFFFF',
   tileTextMuted: '#FFFFFFBF',

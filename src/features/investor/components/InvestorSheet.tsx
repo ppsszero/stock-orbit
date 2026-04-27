@@ -10,7 +10,8 @@ import { InvestorView } from '@/features/investor/components/InvestorView';
 import { EconomicCalendar } from '@/features/investor/components/EconomicCalendar';
 import { InterestRateView } from '@/features/investor/components/InterestRateView';
 import { sem } from '@/shared/styles/semantic';
-import { dirArrow } from '@/shared/utils/format';
+import { dirArrow, fmtPercentAbs, getDirColor } from '@/shared/utils/format';
+import { formatMarqueeValue, formatMarqueeChange } from '@/features/marquee/utils/formatMarqueeValue';
 
 interface Props { open: boolean; onClose: () => void; marqueeItems?: MarqueeItem[]; }
 
@@ -36,15 +37,14 @@ const INTEREST_TABS = [
 const IndexBanner = ({ items, market }: { items: MarqueeItem[]; market: Market }) => {
   const item = items.find(i => i.code === market);
   if (!item) return null;
-  const dirColor = item.changeDirection === 'up' ? sem.feedback.up
-    : item.changeDirection === 'down' ? sem.feedback.down : sem.feedback.flat;
+  const dirColor = getDirColor(item.changeDirection);
 
   return (
     <div css={st.indexBanner}>
       <span css={st.indexLabel}>지수</span>
-      <span css={st.indexValue}>{item.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+      <span css={st.indexValue}>{formatMarqueeValue(item)}</span>
       <span css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums;`}>
-        {dirArrow(item.changeDirection)} {Math.abs(item.change).toFixed(2)} ({Math.abs(item.changePercent).toFixed(2)}%)
+        {dirArrow(item.changeDirection)} {formatMarqueeChange(item)} ({fmtPercentAbs(item.changePercent)})
       </span>
     </div>
   );
@@ -61,8 +61,7 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
   const toast = useToast();
 
   const handleInterestResult = useCallback((ok: boolean) => {
-    if (ok) toast.show('금리 정보를 새로 불러왔어요', 'success');
-    else toast.show('금리 정보를 불러오지 못했어요', 'error');
+    toast.refreshResult(ok, '금리 정보');
   }, [toast]);
 
   const handleRefresh = useCallback(async () => {
@@ -71,8 +70,7 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
       return;
     }
     const ok = await refresh();
-    if (ok) toast.show('투자정보를 새로 불러왔어요', 'success');
-    else toast.show('투자정보를 불러오지 못했어요', 'error');
+    toast.refreshResult(ok, '투자정보');
   }, [refresh, toast, tab]);
 
   return (

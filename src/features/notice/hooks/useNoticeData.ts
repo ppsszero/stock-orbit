@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NoticeItem } from '@/shared/types';
+import { withMinSpin } from '@/shared/utils/withMinSpin';
 
 const NOTICE_GIST_URL = 'https://gist.githubusercontent.com/ppsszero/01b338c3e822b3804411cdda5f9b1a3a/raw/stock-orbit-notice.json';
 const STORAGE_KEY = 'lastSeenNoticeVersion';
@@ -42,14 +43,8 @@ export const useNoticeData = () => {
 
   const refresh = useCallback(async (): Promise<boolean> => {
     setLoading(true);
-    // 스피너가 너무 빨리 사라져 사용자가 갱신 여부를 모를 수 있음 → 최소 표시 시간 보장
-    const MIN_SPIN_MS = 400;
-    const started = Date.now();
-    const data = await fetchNotices();
-    const elapsed = Date.now() - started;
-    if (elapsed < MIN_SPIN_MS) {
-      await new Promise(r => setTimeout(r, MIN_SPIN_MS - elapsed));
-    }
+    // 캐시 히트 등으로 즉시 반환되어도 사용자가 갱신 인지하도록 최소 표시 시간 보장
+    const data = await withMinSpin(fetchNotices);
     if (data.length > 0) setNotices(data);
     setLoading(false);
     return data.length > 0;

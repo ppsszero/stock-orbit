@@ -89,7 +89,9 @@ const fetchJSON = async <T>(url: string): Promise<T> => {
 const parseDir = (val: number): 'up' | 'down' | 'flat' =>
   val > 0 ? 'up' : val < 0 ? 'down' : 'flat';
 
-const num = (s: string): number => parseFloat((s || '0').replace(/,/g, ''));
+/** "1,234.5" / undefined / "" / "abc" 모두 안전하게 number로. NaN은 0. */
+const num = (s: string | undefined | null): number =>
+  parseFloat((s || '0').replace(/,/g, '')) || 0;
 
 // === Autocomplete ===
 export const searchStocks = async (query: string): Promise<NaverAutoCompleteItem[]> => {
@@ -514,9 +516,10 @@ export interface RankingItem {
   rank: number;
   code: string;
   name: string;
-  price: string;
-  change: string;
-  changePercent: string;
+  /** 현재가 (숫자) — 통화는 nation으로 추론 (KR=KRW, JP=JPY, 그 외=USD-like) */
+  price: number;
+  change: number;
+  changePercent: number;
   changeDirection: 'up' | 'down' | 'flat';
   nation: string;
   reutersCode?: string;
@@ -547,9 +550,9 @@ export const fetchDomesticRanking = async (type: 'volume' | 'value'): Promise<Ra
         rank: i + 1,
         code: d.itemCode || d.symbolCode || '',
         name: d.stockName || '',
-        price: d.closePriceRaw || d.closePrice?.replace(/,/g, '') || '0',
-        change: d.compareToPreviousClosePriceRaw || '0',
-        changePercent: d.fluctuationsRatioRaw || d.fluctuationsRatio || '0',
+        price: num(d.closePriceRaw || d.closePrice),
+        change: num(d.compareToPreviousClosePriceRaw),
+        changePercent: num(d.fluctuationsRatioRaw || d.fluctuationsRatio),
         changeDirection: parseDir(dir),
         nation: 'KR',
       };
@@ -588,9 +591,9 @@ export const fetchForeignRanking = async (nation: ForeignNation, type: 'volume' 
         rank: i + 1,
         code: d.symbolCode || d.stockCode || '',
         name: d.koreanCodeName || d.englishCodeName || d.stockName || '',
-        price: d.currentPrice || d.closePrice || '0',
-        change: d.compareToPreviousClosePrice || '0',
-        changePercent: d.fluctuationsRatio || '0',
+        price: num(d.currentPrice || d.closePrice),
+        change: num(d.compareToPreviousClosePrice),
+        changePercent: num(d.fluctuationsRatio),
         changeDirection: parseDir(dir),
         nation: NATION_MAP_REVERSE[nation] || 'US',
         reutersCode: d.reutersCode,

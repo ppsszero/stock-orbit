@@ -1,9 +1,9 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useCallback, memo } from 'react';
-import { DndContext, closestCenter, MouseSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
+import { memo } from 'react';
+import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
+import { useStockDnd } from '../hooks/useStockDnd';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { useStore } from '@/app/store';
 import { spacing } from '@/shared/styles/tokens';
@@ -32,16 +32,7 @@ export const StockGrid = memo(({
   const sortDir = useStore(s => s.settings.sortDir);
   const { groups } = useStockGroups(symbols, prices, customGroups, { sortKey, sortDir });
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor),
-  );
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    onReorder(active.id as string, over.id as string);
-  }, [onReorder]);
+  const { sensors, handleDragEnd } = useStockDnd(onReorder);
 
   if (symbols.length === 0) return <EmptyState />;
 

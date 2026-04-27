@@ -37,8 +37,7 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
 
   const handleRefresh = useCallback(async () => {
     const ok = await load();
-    if (ok) toast.show('랭킹을 새로 불러왔어요', 'success');
-    else toast.show('랭킹을 불러오지 못했어요', 'error');
+    toast.refreshResult(ok, '랭킹');
   }, [load, toast]);
 
   const handleToggle = (item: typeof items[number]) => {

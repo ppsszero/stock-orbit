@@ -1,8 +1,12 @@
 import { StockPrice, StockSymbol, NaverAutoCompleteItem } from '@/shared/types';
+import { sem } from '@/shared/styles/semantic';
 
 // === 숫자 포맷 ===
+/** 사실상 소수 자릿수가 없는 통화 (베트남 동, 일본 엔, 한국 원) */
+const ZERO_DECIMAL_CURRENCIES = new Set(['KRW', 'JPY', 'VND']);
+
 export const fmtNum = (n: number, currency: string): string =>
-  currency === 'KRW' || currency === 'JPY'
+  ZERO_DECIMAL_CURRENCIES.has(currency)
     ? n.toLocaleString('ko-KR', { maximumFractionDigits: 0 })
     : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -59,9 +63,28 @@ export const dirArrow = (d: Direction): string =>
 export const dirSign = (d: Direction): string =>
   d === 'up' ? '+' : d === 'down' ? '-' : '';
 
+/** sem.feedback 색상 토큰을 direction에 따라 반환 */
+export const getDirColor = (d: Direction): string =>
+  d === 'up' ? sem.feedback.up : d === 'down' ? sem.feedback.down : sem.feedback.flat;
+
 /** '+1.35%' / '-0.50%' / '0.00%' */
 export const fmtPercent = (d: Direction, pct: number): string =>
   `${dirSign(d)}${Math.abs(pct).toFixed(2)}%`;
+
+/** '▲ 1.35%' / '▼ 0.50%' / '─ 0.00%' — 마퀴/그리드/랭킹 공용 (화살표 + 절대%) */
+export const fmtPercentArrow = (d: Direction, pct: number): string =>
+  `${dirArrow(d) || '─'} ${Math.abs(pct).toFixed(2)}%`;
+
+/** '1.35%' — 방향 표시는 다른 곳에서 처리할 때 */
+export const fmtPercentAbs = (pct: number): string =>
+  `${Math.abs(pct).toFixed(2)}%`;
+
+/**
+ * '▲ 1,000 (+1.35%)' — 리스트/시장지표 공용 (화살표 + 값 + 부호%).
+ * valueStr은 호출 측에서 통화/소수점 규칙에 맞게 미리 포맷한 문자열을 전달.
+ */
+export const fmtChangeArrow = (d: Direction, pct: number, valueStr: string): string =>
+  `${dirArrow(d) || '─'} ${valueStr} (${fmtPercent(d, pct)})`;
 
 // === 타임스탬프 (파일명용) ===
 /** 'YYYYMMDD-HHmmss' 형식 */

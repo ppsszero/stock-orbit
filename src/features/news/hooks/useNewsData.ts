@@ -4,12 +4,11 @@ import {
   MarketBriefing, NewsArticle, MoneyStory,
 } from '@/shared/naver';
 import { cached } from '@/shared/utils/cache';
+import { withMinSpin } from '@/shared/utils/withMinSpin';
 
 const PAGE_STEP = 10;
 const MAX_SIZE = 50;
 const CACHE_TTL = 10 * 60 * 1000;
-/** 수동 새로고침 시에만 스피너 최소 표시 시간 — 캐시 히트 시에는 즉시 반환 */
-const MIN_SPIN_MS = 400;
 
 export const useNewsData = (open: boolean) => {
   const [briefing, setBriefing] = useState<MarketBriefing | null>(null);
@@ -25,17 +24,13 @@ export const useNewsData = (open: boolean) => {
     setLoading(true);
     newsSize.current = PAGE_STEP;
     storySize.current = PAGE_STEP;
-    const started = Date.now();
-    const [b, n, s] = await Promise.all([
+    const fetchAll = () => Promise.all([
       cached('news-briefing', fetchMarketBriefing, CACHE_TTL, forceRefresh),
       cached('news-main', () => fetchMainNews(PAGE_STEP), CACHE_TTL, forceRefresh),
       cached('news-story', () => fetchMoneyStory(PAGE_STEP), CACHE_TTL, forceRefresh),
     ]);
-    // 수동 새로고침(forceRefresh)일 때만 스피너 최소 표시
-    if (forceRefresh) {
-      const elapsed = Date.now() - started;
-      if (elapsed < MIN_SPIN_MS) await new Promise(r => setTimeout(r, MIN_SPIN_MS - elapsed));
-    }
+    // 수동 새로고침(forceRefresh)일 때만 스피너 최소 표시 — 캐시 히트라도 사용자가 갱신 인지
+    const [b, n, s] = forceRefresh ? await withMinSpin(fetchAll) : await fetchAll();
     setBriefing(b);
     setNews(n);
     setStories(s);

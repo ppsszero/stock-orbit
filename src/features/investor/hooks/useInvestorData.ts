@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { fetchInvestorData, InvestorData } from '@/shared/naver';
+import { withMinSpin } from '@/shared/utils/withMinSpin';
 
 /**
  * KOSPI/KOSDAQ 투자자별 매매동향 데이터를 관리하는 훅.
@@ -13,16 +14,10 @@ export const useInvestorData = (open: boolean, isCalendar: boolean) => {
 
   const refresh = useCallback(async (): Promise<boolean> => {
     setLoading(true);
-    const MIN_SPIN_MS = 400;
-    const started = Date.now();
-    const [kospi, kosdaq] = await Promise.all([
+    const [kospi, kosdaq] = await withMinSpin(() => Promise.all([
       fetchInvestorData('KOSPI'),
       fetchInvestorData('KOSDAQ'),
-    ]);
-    const elapsed = Date.now() - started;
-    if (elapsed < MIN_SPIN_MS) {
-      await new Promise(r => setTimeout(r, MIN_SPIN_MS - elapsed));
-    }
+    ]));
     setData({ KOSPI: kospi, KOSDAQ: kosdaq });
     setLoading(false);
     return !!(kospi || kosdaq);

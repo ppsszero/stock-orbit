@@ -4,8 +4,10 @@ import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react';
 import gsap from 'gsap';
 import { MarqueeItem } from '@/shared/types';
 import { spacing, fontSize, fontWeight, height, transition } from '@/shared/styles/tokens';
-import { dirArrow } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
+import { makeDirectionalChange } from '@/shared/styles/sharedStyles';
+import { groupMarqueeItems } from '@/features/marquee/utils/groupMarqueeItems';
+import { formatMarqueeValue, formatMarqueePercent } from '@/features/marquee/utils/formatMarqueeValue';
 
 interface Props {
   items: MarqueeItem[];
@@ -13,7 +15,13 @@ interface Props {
   onItemClick: (item: MarqueeItem) => void;
 }
 
-export const MarqueeTicker = memo(({ items, speed, onItemClick }: Props) => {
+export const MarqueeTicker = memo(({ items: rawItems, speed, onItemClick }: Props) => {
+  // 시장지표 시트 표기 순서로 정렬: 주요지수 → 환율 → 에너지 → 금속
+  const items = useMemo(() => {
+    const g = groupMarqueeItems(rawItems);
+    return [...g.index, ...g.fx, ...g.energy, ...g.metals];
+  }, [rawItems]);
+
   const trackRef = useRef<HTMLDivElement>(null);
   const tweenRef = useRef<gsap.core.Tween | null>(null);
   const pausedRef = useRef(false);
@@ -51,9 +59,9 @@ export const MarqueeTicker = memo(({ items, speed, onItemClick }: Props) => {
         const item = items[i];
         const valueEl = el.children[1] as HTMLElement | undefined;
         const changeEl = el.children[2] as HTMLElement | undefined;
-        if (valueEl) valueEl.textContent = item.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        if (valueEl) valueEl.textContent = formatMarqueeValue(item);
         if (changeEl) {
-          changeEl.textContent = `${dirArrow(item.changeDirection) || '─'}${Math.abs(item.changePercent).toFixed(2)}%`;
+          changeEl.textContent = formatMarqueePercent(item);
           changeEl.style.color = item.changeDirection === 'up' ? 'var(--c-up)' : item.changeDirection === 'down' ? 'var(--c-down)' : 'var(--c-flat)';
         }
       }
@@ -141,11 +149,10 @@ export const MarqueeTicker = memo(({ items, speed, onItemClick }: Props) => {
           <div key={`${item.code}-${i}`} css={s.item} onClick={() => onItemClick(itemsRef.current[i % items.length])}>
             <span css={s.name}>{item.name}</span>
             <span css={s.value}>
-              {item.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {formatMarqueeValue(item)}
             </span>
             <span css={s.change[item.changeDirection]}>
-              {dirArrow(item.changeDirection) || '─'}
-              {Math.abs(item.changePercent).toFixed(2)}%
+              {formatMarqueePercent(item)}
             </span>
           </div>
         ))}
@@ -163,15 +170,11 @@ const s = {
   track: css`display: flex; white-space: nowrap; will-change: transform;`,
   item: css`
     display: flex; align-items: center; gap: ${spacing.md}px; padding: 0 ${spacing.xl}px;
-    flex-shrink: 0; height: ${height.control}px; transition: background ${transition.fast};
+    flex-shrink: 0; height: ${height.control}px;
+    transition: background ${transition.fast};
     &:hover { background: ${sem.bg.elevated}; }
   `,
   name: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.secondary};`,
   value: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
-  // 사전 계산 — 매 렌더마다 css() 호출 방지
-  change: {
-    up: css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.up};`,
-    down: css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.down};`,
-    flat: css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.flat};`,
-  } as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
+  change: makeDirectionalChange(fontSize.xs),
 };

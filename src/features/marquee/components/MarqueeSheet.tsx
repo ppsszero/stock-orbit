@@ -1,9 +1,10 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
 import { useEffect, useRef } from 'react';
-import { dirSign, fmtPercent } from '@/shared/utils/format';
+import { fmtChangeArrow } from '@/shared/utils/format';
 import { MarqueeItem } from '@/shared/types';
 import { groupMarqueeItems } from '@/features/marquee/utils/groupMarqueeItems';
+import { formatMarqueeValue, formatMarqueeChange } from '@/features/marquee/utils/formatMarqueeValue';
 import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
 import { sectionTitleStyle } from '@/shared/styles/sharedStyles';
 import { SheetLayout } from '@/shared/ui';
@@ -54,9 +55,9 @@ const Section = ({ label, items, highlightCode, highlightRef }: {
           css={[s.row, isHL && s.highlight]}>
           <span css={s.name}>{i.name}</span>
           <div css={s.vals}>
-            <span css={s.val}>{i.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span css={s.val}>{formatMarqueeValue(i)}</span>
             <span css={s.chg(i.changeDirection)}>
-              {dirSign(i.changeDirection)}{Math.abs(i.change).toFixed(2)} ({fmtPercent(i.changeDirection, i.changePercent)})
+              {fmtChangeArrow(i.changeDirection, i.changePercent, formatMarqueeChange(i))}
             </span>
           </div>
         </div>

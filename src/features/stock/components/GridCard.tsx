@@ -1,18 +1,16 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useState, useCallback, memo } from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { FiTrash2, FiInfo, FiExternalLink, FiMenu } from 'react-icons/fi';
 import { StockSymbol, StockPrice } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, transition, shadow, opacity } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
+import { useSortableStyle } from '../hooks/useSortableStyle';
+import { useSymbolRemove } from '../hooks/useSymbolRemove';
 import { IconButton } from '@/shared/ui';
-import { useConfirm } from '@/shared/ui/ConfirmDialog';
-import { useToast } from '@/shared/ui/Toast';
 import { sem } from '@/shared/styles/semantic';
-import { priceFlash } from '@/shared/styles/sharedStyles';
+import { priceFlash, makeDirectionalChange } from '@/shared/styles/sharedStyles';
 
 interface Props {
   sym: StockSymbol;
@@ -29,20 +27,10 @@ export const GridCard = memo(({
   onRemove, onClick, onDetail,
 }: Props) => {
   const [logoFailed, setLogoFailed] = useState(false);
-  const confirm = useConfirm();
-  const toast = useToast();
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
   const flash = usePriceFlash(p, vm.direction);
 
-  const {
-    attributes, listeners, setNodeRef,
-    transform, transition: sortTransition, isDragging,
-  } = useSortable({ id: sym.code });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: sortTransition ?? undefined,
-  };
+  const { attributes, listeners, setNodeRef, style, isDragging } = useSortableStyle(sym.code);
 
   const tintDir = vm.direction;
 
@@ -54,18 +42,7 @@ export const GridCard = memo(({
     e.stopPropagation();
     if (p) onDetail(sym, p);
   }, [onDetail, sym, p]);
-  const handleRemove = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const ok = await confirm({
-      title: `"${vm.displayName}" 삭제`,
-      message: '이 종목을 관심목록에서 삭제할까요?',
-      confirmText: '삭제', cancelText: '취소', danger: true,
-    });
-    if (ok) {
-      onRemove(sym.code);
-      toast.show(`"${vm.displayName}" 종목을 삭제했어요.`, 'delete');
-    }
-  }, [onRemove, sym.code, confirm, vm.displayName, toast]);
+  const handleRemove = useSymbolRemove(sym, vm.displayName, onRemove);
 
   return (
     <div
@@ -102,7 +79,7 @@ export const GridCard = memo(({
           <>
             <span css={[s.price, flash && priceFlash[flash]]}>{vm.priceLabel}</span>
             <span css={[s.change[vm.direction], flash && priceFlash[flash]]}>
-              {vm.arrowLabel}{vm.percentLabel}
+              {vm.percentArrowLabel}
             </span>
           </>
         ) : (
@@ -174,11 +151,7 @@ const s = {
     font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary};
     font-variant-numeric: tabular-nums;
   `,
-  change: {
-    up: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.up};`,
-    down: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.down};`,
-    flat: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.flat};`,
-  } as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
+  change: makeDirectionalChange(fontSize.sm),
   dots: css`font-size: ${fontSize.lg}px; color: ${sem.text.tertiary};`,
   statusBadge: {
     true: css`position: absolute; bottom: ${spacing.md}px; right: ${spacing.md}px; font-size: 9px; font-weight: ${fontWeight.bold}; letter-spacing: 0.3px; color: ${sem.action.success};`,

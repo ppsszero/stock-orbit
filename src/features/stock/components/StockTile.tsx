@@ -11,10 +11,9 @@ import { usePriceFlash } from '../hooks/usePriceFlash';
 import { fmtNum, fmtPercent, getDisplayName } from '@/shared/utils/format';
 import { calcDisplayPrice } from '../utils/currency';
 import { useStockGroups, StockGroup } from '../hooks/useStockGroups';
+import { useSymbolRemove } from '../hooks/useSymbolRemove';
 import { EmptyState } from './EmptyState';
 import { Tooltip } from '@/shared/ui/Tooltip';
-import { useConfirm } from '@/shared/ui/ConfirmDialog';
-import { useToast } from '@/shared/ui/Toast';
 
 interface Props {
   symbols: StockSymbol[];
@@ -49,7 +48,8 @@ const TILE_SIZE = { sm: '64px', lg: '96px' } as const;
 
 const getTileColor = (dir: 'up' | 'down' | 'flat', pct: number): TileBg => {
   const abs = Math.abs(pct);
-  if (dir === 'flat' || abs < 0.01) return sem.bg.surface;
+  // flat: 카드 배경에 묻히는 회색 대신 elevated 중립 패널 사용. 텍스트는 어둡게 오버라이드(아래)
+  if (dir === 'flat' || abs < 0.01) return sem.bg.elevated;
   const scale = dir === 'up' ? HEATMAP_UP : HEATMAP_DOWN;
   if (abs >= 5) return scale[3];
   if (abs >= 3) return scale[2];
@@ -88,36 +88,17 @@ const Tile = memo(({
   onClick: (symbol: StockSymbol) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
 }) => {
-  const confirm = useConfirm();
-  const toast = useToast();
   const isLarge = span >= 3;
   const sizeKey = isLarge ? 'lg' : 'sm';
   const displayName = p ? getDisplayName(p, sym) : sym.name;
   const display = p ? calcDisplayPrice(p, currencyMode, usdkrw) : null;
   const dir = p?.changeDirection || 'flat';
   const pct = p?.changePercent || 0;
+  const isFlat = dir === 'flat' || Math.abs(pct) < 0.01;
   const { ref: nameRef, truncated } = useIsTruncated(displayName);
   const flash = usePriceFlash(p, dir);
 
-  const handleRemove = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!onRemove) return;
-    const ok = await confirm({
-      title: `"${displayName}" 삭제`,
-      message: '이 종목을 관심목록에서 삭제할까요?',
-      confirmText: '삭제', cancelText: '취소', danger: true,
-    });
-    if (ok) {
-      type DocWithTransition = Document & { startViewTransition?: (cb: () => void) => void };
-      const doc = document as DocWithTransition;
-      if (typeof doc.startViewTransition === 'function') {
-        doc.startViewTransition(() => onRemove(sym.code));
-      } else {
-        onRemove(sym.code);
-      }
-      toast.show(`"${displayName}" 종목을 삭제했어요.`, 'delete');
-    }
-  }, [onRemove, sym.code, displayName, confirm, toast]);
+  const handleRemove = useSymbolRemove(sym, displayName, onRemove, { withTransition: true });
 
   const handleDetail = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -143,11 +124,11 @@ const Tile = memo(({
         )}
       </div>
 
-      <span ref={nameRef} css={s.name[sizeKey]}>{displayName}</span>
+      <span ref={nameRef} css={[s.name[sizeKey], isFlat && s.flatHeadingText]}>{displayName}</span>
       {display ? (
         <>
-          <span css={[s.pct[sizeKey], flash && priceFlash[flash]]}>{fmtPercent(dir, pct)}</span>
-          <span css={[s.price[sizeKey], flash && priceFlash[flash]]}>{display.prefix}{fmtNum(display.price, display.currency)}</span>
+          <span css={[s.pct[sizeKey], isFlat && s.flatHeadingText, flash && priceFlash[flash]]}>{fmtPercent(dir, pct)}</span>
+          <span css={[s.price[sizeKey], isFlat && s.flatPriceText, flash && priceFlash[flash]]}>{display.prefix}{fmtNum(display.price, display.currency)}</span>
         </>
       ) : (
         <span css={s.dots}>···</span>
@@ -256,6 +237,9 @@ const s = {
     lg: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.medium}; color: ${sem.heatmap.textMuted}; font-variant-numeric: tabular-nums;`,
   },
   dots: css`font-size: ${fontSize.md}px; color: ${sem.heatmap.textFaint};`,
+  // flat 타일 전용 텍스트 — bg.elevated 위에서 가독성 확보 (라이트: 다크 텍스트, 다크: 라이트 텍스트)
+  flatHeadingText: css`color: ${sem.text.primary}; text-shadow: none;`,
+  flatPriceText: css`color: ${sem.text.secondary}; text-shadow: none;`,
   /** 호버 시 우하단 액션 버튼 */
   actions: css`
     position: absolute; bottom: 4px; right: 4px; z-index: 3;

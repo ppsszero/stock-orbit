@@ -12,9 +12,11 @@ interface ToastItem { id: number; message: string; type: ToastType; }
 
 interface ToastContextType {
   show: (message: string, type?: ToastType) => void;
+  /** 새로고침 결과 알림 — `{label}을 새로 불러왔어요` / `{label}을 불러오지 못했어요` */
+  refreshResult: (ok: boolean, label: string) => void;
 }
 
-const ToastContext = createContext<ToastContextType>({ show: () => {} });
+const ToastContext = createContext<ToastContextType>({ show: () => {}, refreshResult: () => {} });
 
 export const useToast = () => useContext(ToastContext);
 
@@ -35,11 +37,18 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2400);
   }, []);
 
+  const refreshResult = useCallback((ok: boolean, label: string) => {
+    show(
+      ok ? `${label}을 새로 불러왔어요` : `${label}을 불러오지 못했어요`,
+      ok ? 'success' : 'error',
+    );
+  }, [show]);
+
   const hasToasts = toasts.length > 0;
   const glowColor = hasToasts ? ICON[toasts[toasts.length - 1].type].glow : 'transparent';
 
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={{ show, refreshResult }}>
       {children}
       {ReactDOM.createPortal(
         <>

@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { FiX } from 'react-icons/fi';
 import { StockPrice, StockSymbol } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, shadow, sp } from '@/shared/styles/tokens';
-import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName } from '@/shared/utils/format';
+import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName, getDirColor } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 
@@ -27,7 +27,7 @@ export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
   if (!symbol || !price) return null;
   const p = price;
   const c = p.currency;
-  const dirColor = p.changeDirection === 'up' ? sem.feedback.up : p.changeDirection === 'down' ? sem.feedback.down : sem.feedback.flat;
+  const dirColor = getDirColor(p.changeDirection);
 
   return (
     <div css={s.overlay} onClick={onClose}>

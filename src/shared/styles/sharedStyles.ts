@@ -48,3 +48,14 @@ export const priceFlash = {
   down: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightDown} 0.8s ease-out;`,
   flat: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightFlat} 0.8s ease-out;`,
 } as const;
+
+/**
+ * 등락 방향별 텍스트 스타일 팩토리.
+ * 마퀴/리스트/그리드/랭킹 등 "등락률 텍스트"가 들어가는 자리에 공통 사용.
+ * 차이는 fontSize뿐 — 나머지(weight, tabular-nums, 색상)는 동일.
+ */
+export const makeDirectionalChange = (size: number) => ({
+  up: css`font-size: ${size}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.up};`,
+  down: css`font-size: ${size}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.down};`,
+  flat: css`font-size: ${size}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums; color: ${sem.feedback.flat};`,
+}) as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>;

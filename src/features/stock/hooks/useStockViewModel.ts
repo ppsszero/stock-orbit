@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { calcDisplayPrice } from '../utils/currency';
-import { fmtNum, dirArrow, dirSign, fmtPercent, NATION_BADGE, getLogoUrlFromSymbol, getDisplayName } from '@/shared/utils/format';
+import { fmtNum, fmtPercentArrow, fmtChangeArrow, NATION_BADGE, getLogoUrlFromSymbol, getDisplayName } from '@/shared/utils/format';
 
 /** 종목 표시에 필요한 모든 파생 데이터 */
 export interface StockViewModel {
@@ -19,10 +19,9 @@ export interface StockViewModel {
   exchange: string;
 
   // 가격 (통화 변환 적용)
-  priceLabel: string;       // '₩75,000' / '$195.50'
-  changeLabel: string;      // '▲ ₩1,000 (+1.35%)'
-  percentLabel: string;     // '+1.35%'
-  arrowLabel: string;       // '▲' / '▼' / ''
+  priceLabel: string;            // '₩75,000' / '$195.50'
+  changeLabel: string;           // '▲ ₩1,000 (+1.35%)' — Pattern 2 (리스트용)
+  percentArrowLabel: string;     // '▲ 1.35%' — Pattern 1 (그리드용)
 
   // 등락 방향
   direction: 'up' | 'down' | 'flat';
@@ -68,10 +67,9 @@ export const useStockViewModel = (
       exchange: isIndexOrFutures ? '' : (p?.exchange || p?.market || sym.market),
       priceLabel: display ? `${display.prefix}${fmtNum(display.price, display.currency)}` : '',
       changeLabel: display
-        ? `${dirArrow(dir)} ${fmtNum(display.change, display.currency)} (${fmtPercent(dir, p!.changePercent)})`
+        ? fmtChangeArrow(dir, p!.changePercent, fmtNum(display.change, display.currency))
         : '',
-      percentLabel: p ? fmtPercent(dir, p.changePercent) : '',
-      arrowLabel: dirArrow(dir),
+      percentArrowLabel: p ? fmtPercentArrow(dir, p.changePercent) : '',
       direction: dir,
       isLive: p?.marketStatus === 'OPEN',
       isTradingHalt: p?.isTradingHalt === true,

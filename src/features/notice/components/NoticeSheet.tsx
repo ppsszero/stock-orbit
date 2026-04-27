@@ -33,8 +33,7 @@ export const NoticeSheet = ({ open, notices, loading, onClose, onRefresh }: Prop
 
   const handleRefresh = useCallback(async () => {
     const ok = await Promise.resolve(onRefresh());
-    if (ok === false) toast.show('공지사항을 불러오지 못했어요', 'error');
-    else toast.show('공지사항을 새로 불러왔어요', 'success');
+    toast.refreshResult(ok !== false, '공지사항');
   }, [onRefresh, toast]);
 
   return (
