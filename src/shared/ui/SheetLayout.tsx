@@ -70,7 +70,7 @@ const s = {
     align-items: center;
     height: ${height.nav}px;
     padding: 0 ${spacing.md + 2}px;
-    border-bottom: 1px solid ${sem.border.default};
+    border-bottom: 1px solid ${sem.border.subtle};
     gap: ${spacing.md}px;
     flex-shrink: 0;
     -webkit-app-region: drag;

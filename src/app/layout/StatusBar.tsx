@@ -141,27 +141,29 @@ const s = {
   searchPill: css`
     display: flex; align-items: center; gap: ${spacing.md}px;
     padding: 0 ${spacing.md}px; height: 26px;
-    background: ${sem.bg.surface}; border: none; border-radius: 7px;
+    background: transparent; border: none; border-radius: 7px;
     color: ${sem.text.tertiary}; font-size: ${fontSize.md}px;
     cursor: pointer; transition: background ${transition.fast};
     white-space: nowrap; flex-shrink: 0;
-    &:hover { background: ${sem.bg.elevated}; }
+    &:hover { color: ${sem.action.primary}; }
   `,
   controls: css`
     display: flex; align-items: center; gap: ${spacing.xs}px;
     padding: 0 ${spacing.sm}px; height: 26px;
-    background: ${sem.bg.surface}; border-radius: 7px; flex-shrink: 0;
+    background: transparent; border-radius: 7px; flex-shrink: 0;
   `,
   ctrlBtn: css`
     width: 26px; height: 22px; border: none; background: transparent; border-radius: 5px;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     color: ${sem.text.tertiary}; transition: all ${transition.fast};
-    &:hover { background: ${sem.bg.elevated}; color: ${sem.text.secondary}; }
+    &:hover { color: ${sem.action.primary}; }
   `,
   divider: css`width: 1px; height: ${spacing.lg}px; background: ${sem.border.muted}; flex-shrink: 0;`,
   updateInfo: css`
     display: flex; align-items: center; gap: ${spacing.sm + 2}px;
     padding: 0 ${spacing.md}px; cursor: pointer; border: none; background: transparent;
+    color: ${sem.text.tertiary}; transition: color ${transition.fast};
+    &:hover { color: ${sem.action.primary}; }
   `,
   updateInfoDisabled: css`cursor: default;`,
   dot: css`
@@ -175,7 +177,7 @@ const s = {
   `,
   dotDone: css`animation: ${flashOut} 1.2s ease forwards;`,
   time: css`
-    font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};
+    font-size: ${fontSize.xs}px;
     white-space: nowrap; font-variant-numeric: tabular-nums;
   `,
 };

@@ -16,7 +16,7 @@ interface Props {
   display?: 'inline-flex' | 'flex' | 'block';
 }
 
-export const Tooltip = ({ content, children, position = 'bottom', delay = 400, display }: Props) => {
+export const Tooltip = ({ content, children, position = 'bottom', delay = 200, display }: Props) => {
   const [visible, setVisible] = useState(false);
   const [style, setStyle] = useState<React.CSSProperties>({ left: 0, top: 0 });
   const timer = useRef<ReturnType<typeof setTimeout>>();

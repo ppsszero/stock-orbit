@@ -99,7 +99,7 @@ const s = {
   `,
   header: css`
     position: relative; display: flex; flex-direction: column; align-items: center;
-    padding: ${spacing.xl}px ${spacing.xl}px ${spacing.lg}px; border-bottom: 1px solid ${sem.border.default}; gap: ${sp('sm', 'xs')};
+    padding: ${spacing.xl}px ${spacing.xl}px ${spacing.lg}px; border-bottom: 1px solid ${sem.border.subtle}; gap: ${sp('sm', 'xs')};
   `,
   headerCenter: css`display: flex; flex-direction: column; align-items: center; gap: ${spacing.md}px;`,
   logo: css`width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; border-radius: 50%; object-fit: cover; background: rgba(128,128,128,0.1);`,
@@ -126,7 +126,7 @@ const s = {
   `,
   priceSection: css`
     padding: ${sp('lg', 'xs')} ${spacing.xl}px; display: flex; flex-direction: column; align-items: center; gap: ${spacing.xs}px;
-    border-bottom: 1px solid ${sem.border.default};
+    border-bottom: 1px solid ${sem.border.subtle};
   `,
   currentPrice: css`font-size: ${fontSize['3xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
   body: css`padding: ${spacing.md}px 0; overflow-y: auto;`,

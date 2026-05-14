@@ -86,7 +86,7 @@ export const SearchSheet = ({ open, existingCodes, presetName, presets, activeGr
 const s = {
   overlay: css`position:fixed;inset:0;z-index:${zIndex.overlay};display:flex;flex-direction:column;border-radius:${radius['2xl']}px;overflow:hidden;`,
   sheet: css`flex:1;background:${sem.bg.base};display:flex;flex-direction:column;border-radius:${radius['2xl']}px;overflow:hidden;`,
-  nav: css`display:flex;align-items:center;height:${height.nav}px;padding:0 ${spacing.lg}px;border-bottom:1px solid ${sem.border.default};gap:${spacing.md}px;flex-shrink:0;-webkit-app-region:drag;`,
+  nav: css`display:flex;align-items:center;height:${height.nav}px;padding:0 ${spacing.lg}px;border-bottom:1px solid ${sem.border.subtle};gap:${spacing.md}px;flex-shrink:0;-webkit-app-region:drag;`,
   back: css`border:none;background:transparent;cursor:pointer;color:${sem.text.primary};padding:${spacing.sm}px ${spacing.md - 2}px;border-radius:${radius.md}px;display:flex;-webkit-app-region:no-drag;&:hover{background:${sem.bg.surface};}`,
   navT: css`font-size:${fontSize.xl}px;font-weight:${fontWeight.bold};color:${sem.text.primary};`,
   searchWrap: css`padding:0 ${spacing.lg}px ${spacing.lg}px;flex-shrink:0;`,

@@ -65,7 +65,7 @@ export const StockDetailSheet = ({ symbol, onClose }: Props) => {
 const s = {
   overlay: css`position:fixed;inset:0;z-index:${zIndex.modal};display:flex;flex-direction:column;border-radius:${radius['2xl']}px;overflow:hidden;`,
   sheet: css`flex:1;background:${sem.bg.base};display:flex;flex-direction:column;border-radius:${radius['2xl']}px;overflow:hidden;`,
-  nav: css`display:flex;align-items:center;height:${h.nav}px;padding:0 ${spacing.lg}px;border-bottom:1px solid ${sem.border.default};gap:${spacing.md}px;flex-shrink:0;-webkit-app-region:drag;`,
+  nav: css`display:flex;align-items:center;height:${h.nav}px;padding:0 ${spacing.lg}px;border-bottom:1px solid ${sem.border.subtle};gap:${spacing.md}px;flex-shrink:0;-webkit-app-region:drag;`,
   title: css`font-size:${fontSize.xl}px;font-weight:${fontWeight.bold};color:${sem.text.primary};`,
   sub: css`font-size:${fontSize.md}px;color:${sem.text.tertiary};margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%;text-align:right;`,
   closeBtn: css`

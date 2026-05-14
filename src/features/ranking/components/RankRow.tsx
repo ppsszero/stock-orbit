@@ -54,8 +54,7 @@ export const RankRow = ({ item, added, onLink, onToggle }: RankRowProps) => {
 const st = {
   row: css`
     display: flex; align-items: center; padding: ${spacing.xl - 6}px ${spacing.xl}px; gap: ${spacing.xl - 6}px;
-    border-bottom: 1px solid ${sem.border.subtle};
-    &:hover { background: ${sem.bg.surface}; }
+    &:hover { background: ${sem.action.primarySubtle}; }
   `,
   rank: (d: 'up' | 'down' | 'flat') => css`
     width: ${spacing['2xl']}px; font-size: ${fontSize.base}px; font-weight: ${fontWeight.extrabold}; text-align: center; flex-shrink: 0;
