@@ -116,8 +116,8 @@ const s = {
     -webkit-appearance: none; flex: 1; height: ${spacing.sm}px; border-radius: ${radius.xs}px;
     background: ${sem.bg.elevated}; outline: none;
     &::-webkit-slider-thumb {
-      -webkit-appearance: none; width: ${spacing.xl}px; height: ${spacing.xl}px; border-radius: 50%;
-      background: ${sem.action.primary}; cursor: pointer; border: 2px solid ${sem.bg.base};
+      -webkit-appearance: none; width: ${spacing.lg}px; height: ${spacing.lg}px; border-radius: 50%;
+      background: ${sem.action.primary}; cursor: pointer; border: none;
       box-shadow: ${shadow.sm};
     }
   `,

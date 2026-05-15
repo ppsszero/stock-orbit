@@ -1,6 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { memo } from 'react';
+import { FiExternalLink } from 'react-icons/fi';
 import { NaverAutoCompleteItem } from '@/shared/types';
 
 import { spacing, fontSize, fontWeight, radius, height } from '@/shared/styles/tokens';
@@ -13,9 +14,11 @@ interface Props {
   added: boolean;
   selected: boolean;
   onToggle: (item: NaverAutoCompleteItem) => void;
+  /** 외부 링크(웹뷰) 열기 */
+  onLink?: (item: NaverAutoCompleteItem) => void;
 }
 
-export const SearchResultItem = memo(({ item, added, selected, onToggle }: Props) => {
+export const SearchResultItem = memo(({ item, added, selected, onToggle, onLink }: Props) => {
   const tc = item.typeCode || '';
   const isFutures = tc.includes('FUTURES');
   const isIndex = tc.includes('INDEX');
@@ -50,6 +53,12 @@ export const SearchResultItem = memo(({ item, added, selected, onToggle }: Props
           {showTypeName && <span css={s.market}>{item.typeName}</span>}
         </div>
       </div>
+      {onLink && (
+        <button css={s.linkBtn} aria-label={`${item.name} 네이버 증권에서 보기`}
+          onClick={e => { e.stopPropagation(); onLink(item); }}>
+          <FiExternalLink size={13} />
+        </button>
+      )}
       <AddButton
         added={added}
         ariaLabel={added ? `${item.name} 삭제` : `${item.name} 추가`}
@@ -62,7 +71,7 @@ export const SearchResultItem = memo(({ item, added, selected, onToggle }: Props
 SearchResultItem.displayName = 'SearchResultItem';
 
 const s = {
-  row: css`display:flex;align-items:center;padding:${spacing.md + 2}px ${spacing.lg + 2}px;gap:${spacing.md + 2}px;border-bottom:1px solid ${sem.border.subtle};cursor:pointer;&:hover{background:${sem.bg.surface};}`,
+  row: css`display:flex;align-items:center;padding:${spacing.md + 2}px ${spacing.lg + 2}px;gap:${spacing.md + 2}px;cursor:pointer;&:hover{background:${sem.action.primarySoft};}`,
   rowSelected: css`background:${sem.bg.surface};outline:2px solid ${sem.action.primaryStrong};outline-offset:-2px;border-radius:${radius.lg}px;`,
   left: css`display:flex;flex-direction:column;gap:${spacing.xs}px;min-width:0;flex:1;`,
   nameRow: css`display:flex;align-items:center;gap:${spacing.md - 2}px;`,
@@ -70,4 +79,10 @@ const s = {
   sub: css`display:flex;align-items:center;gap:${spacing.md}px;`,
   code: css`font-size:${fontSize.sm}px;color:${sem.text.tertiary};`,
   market: css`font-size:${fontSize.xs}px;color:${sem.text.tertiary};padding:1px ${spacing.sm}px;background:${sem.bg.elevated};border-radius:${radius.xs}px;`,
+  linkBtn: css`
+    width: ${height.control}px; height: ${height.control}px; border: none; border-radius: ${radius.lg}px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    background: ${sem.bg.elevated}; color: ${sem.text.secondary};
+    &:hover { color: ${sem.text.primary}; }
+  `,
 };

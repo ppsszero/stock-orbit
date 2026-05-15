@@ -44,6 +44,7 @@ export const v = {
   accentTint: 'var(--c-accent-tint)',
   accentHover: 'var(--c-accent-hover)',
   accentSubtle: 'var(--c-accent-subtle)',
+  accentSoft: 'var(--c-accent-soft)',
   accentSelected: 'var(--c-accent-selected)',
   accentBorder: 'var(--c-accent-border)',
   accentMedium: 'var(--c-accent-medium)',
@@ -105,6 +106,7 @@ export const themeToVars = (colors: Record<string, string>): string => `
   --c-accent-tint: ${colors.accentTint};
   --c-accent-hover: ${colors.accentHover};
   --c-accent-subtle: ${colors.accentSubtle};
+  --c-accent-soft: ${colors.accentSoft};
   --c-accent-selected: ${colors.accentSelected};
   --c-accent-border: ${colors.accentBorder};
   --c-accent-medium: ${colors.accentMedium};

@@ -3,12 +3,12 @@ import { css } from '@emotion/react';
 import { useEffect } from 'react';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 import { useWebView } from '@/shared/hooks/useWebView';
-import { FiX, FiLoader } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 import { StockSymbol } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, height as h, zIndex, transition } from '@/shared/styles/tokens';
 import { getNaverStockUrl } from '@/shared/naver';
 import { sem } from '@/shared/styles/semantic';
-import { spinCss } from '@/shared/ui/LoadingCenter';
+import { LoadingCenter } from '@/shared/ui/LoadingCenter';
 
 interface Props { symbol: StockSymbol | null; onClose: () => void; }
 
@@ -44,8 +44,7 @@ export const StockDetailSheet = ({ symbol, onClose }: Props) => {
         </div>
         {!loaded && (
           <div css={s.loading}>
-            <FiLoader size={20} css={s.spin} />
-            <span>페이지 로딩 중...</span>
+            <LoadingCenter label="페이지를 불러오는 중..." />
           </div>
         )}
         <div css={s.wv} style={{ opacity: loaded ? 1 : 0 }}>
@@ -73,11 +72,7 @@ const s = {
     padding:${spacing.sm}px ${spacing.md - 2}px;border-radius:${radius.md}px;display:flex;flex-shrink:0;
     -webkit-app-region:no-drag;&:hover{background:${sem.bg.surface};color:${sem.text.primary};}
   `,
-  loading: css`
-    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${spacing.md + 2}px;
-    color:${sem.text.tertiary};font-size:${fontSize.base}px;
-  `,
-  spin: spinCss,
+  loading: css`flex:1;display:flex;align-items:center;justify-content:center;`,
   wv: css`flex:1;display:flex;transition:opacity ${transition.normal};`,
   webview: css`flex:1;border:none;`,
 };

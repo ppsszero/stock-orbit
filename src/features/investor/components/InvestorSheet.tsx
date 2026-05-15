@@ -3,7 +3,8 @@ import { css } from '@emotion/react';
 import { useState, useCallback, useMemo } from 'react';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { MarqueeItem } from '@/shared/types';
-import { SheetLayout, SegmentedControl } from '@/shared/ui';
+import { SheetLayout, Tabs } from '@/shared/ui';
+import { subTabPadStyle } from '@/shared/styles/sharedStyles';
 import { useToast } from '@/shared/ui/Toast';
 import { useInvestorData } from '@/features/investor/hooks/useInvestorData';
 import { InvestorView } from '@/features/investor/components/InvestorView';
@@ -17,18 +18,19 @@ interface Props { open: boolean; onClose: () => void; marqueeItems?: MarqueeItem
 
 type Tab = 'market' | 'calendar' | 'interest';
 type Market = 'KOSPI' | 'KOSDAQ';
-type InterestTab = 'standard' | 'domestic';
+type InterestTab = 'bond' | 'standard' | 'domestic';
 
 const TABS = [
   { key: 'market' as Tab, label: '국내 매매동향' },
   { key: 'calendar' as Tab, label: '경제 캘린더' },
-  { key: 'interest' as Tab, label: '금리' },
+  { key: 'interest' as Tab, label: '채권·금리' },
 ];
 const MARKETS = [
   { key: 'KOSPI' as Market, label: '코스피' },
   { key: 'KOSDAQ' as Market, label: '코스닥' },
 ];
 const INTEREST_TABS = [
+  { key: 'bond' as InterestTab, label: '국채수익률' },
   { key: 'standard' as InterestTab, label: '기준금리' },
   { key: 'domestic' as InterestTab, label: '국내금리' },
 ];
@@ -53,7 +55,7 @@ const IndexBanner = ({ items, market }: { items: MarqueeItem[]; market: Market }
 export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
   const [tab, setTab] = useState<Tab>('market');
   const [market, setMarket] = useState<Market>('KOSPI');
-  const [interestTab, setInterestTab] = useState<InterestTab>('standard');
+  const [interestTab, setInterestTab] = useState<InterestTab>('bond');
   const isMarketTab = tab === 'market';
   const isCalendarTab = tab === 'calendar';
   const { data, loading, refresh } = useInvestorData(open, !isMarketTab);
@@ -80,15 +82,14 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
       onClose={onClose}
       onRefresh={!isCalendarTab ? handleRefresh : undefined}
       refreshing={loading}
+      noNavBorder
     >
-      <div css={st.segPadTop}>
-        <SegmentedControl items={TABS} value={tab} onChange={setTab} />
-      </div>
+      <Tabs items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
 
       {tab === 'market' ? (
         <>
-          <div css={st.segPad}>
-            <SegmentedControl items={MARKETS} value={market} onChange={setMarket} />
+          <div css={subTabPadStyle}>
+            <Tabs items={MARKETS} value={market} onChange={setMarket} variant="pill" size="sm" />
           </div>
           <IndexBanner items={marqueeItems} market={market} />
           <div css={st.body}>
@@ -99,8 +100,8 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
         <EconomicCalendar />
       ) : (
         <>
-          <div css={st.segPad}>
-            <SegmentedControl items={INTEREST_TABS} value={interestTab} onChange={setInterestTab} />
+          <div css={subTabPadStyle}>
+            <Tabs items={INTEREST_TABS} value={interestTab} onChange={setInterestTab} variant="pill" size="sm" />
           </div>
           <div css={st.body}>
             <InterestRateView tab={interestTab} refreshKey={interestRefreshKey} onLoadResult={handleInterestResult} />
@@ -113,8 +114,6 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
 
 /* --- Styles --- */
 const st = {
-  segPadTop: css`padding: ${spacing.lg}px ${spacing.xl}px ${spacing.md - 2}px; flex-shrink: 0;`,
-  segPad: css`padding: 0 ${spacing.xl}px ${spacing.md - 2}px; flex-shrink: 0;`,
   body: css`flex: 1; overflow-y: auto; padding: ${spacing.sm}px 0 ${spacing.lg}px;`,
   indexBanner: css`
     display: flex; flex-direction: column; gap: ${spacing.sm}px;

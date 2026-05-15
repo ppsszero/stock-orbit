@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { FiTrash2, FiCopy } from 'react-icons/fi';
 import { spacing, fontSize, fontWeight, radius, transition, opacity } from '@/shared/styles/tokens';
 import { LogEntry, LogLevel } from '@/shared/utils/logger';
-import { SheetLayout, SegmentedControl } from '@/shared/ui';
+import { SheetLayout, Tabs } from '@/shared/ui';
 import { useLogSheet, FilterKey } from '../hooks/useLogSheet';
 import { sem } from '@/shared/styles/semantic';
 
@@ -44,10 +44,8 @@ export const LogSheet = ({ open, onClose }: Props) => {
   );
 
   return (
-    <SheetLayout open={open} title="시스템 로그" onClose={onClose} navRight={navRight}>
-      <div css={st.filterWrap}>
-        <SegmentedControl items={FILTERS} value={filter} onChange={setFilter} />
-      </div>
+    <SheetLayout open={open} title="시스템 로그" onClose={onClose} navRight={navRight} noNavBorder>
+      <Tabs items={FILTERS} value={filter} onChange={setFilter} variant="underline" itemAlign="center" />
 
       <div css={st.logList} ref={listRef} onScroll={handleScroll}>
         {filtered.length === 0 && <div css={st.empty}>로그가 없습니다</div>}
@@ -90,22 +88,21 @@ const st = {
     transition: color ${transition.fast};
     &:hover { color: ${sem.action.danger}; }
   `,
-  filterWrap: css`padding: ${spacing.md}px ${spacing.lg}px; flex-shrink: 0;`,
   logList: css`flex: 1; overflow-y: auto; font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;`,
   empty: css`padding: ${spacing['4xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
   logRow: css`
-    padding: ${spacing.md}px ${spacing.xl}px; border-bottom: 1px solid ${sem.border.subtle}; cursor: pointer;
+    padding: ${spacing.md}px ${spacing.xl}px; cursor: pointer;
     transition: background 0.1s;
-    &:hover { background: ${sem.bg.surface}; }
-    &:active { background: ${sem.bg.elevated}; }
+    &:hover { background: ${sem.action.primarySoft}; }
+    &:active { background: ${sem.action.primarySelected}; }
   `,
   logHeader: css`display: flex; align-items: center; gap: ${spacing.md}px; margin-bottom: ${spacing.xs}px;`,
   levelBadge: (color: string) => css`
-    font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold}; padding: 1px 5px; border-radius: ${radius.xs}px;
+    font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold};  border-radius: ${radius.xs}px;
     background: ${color}18; color: ${color}; font-family: monospace;
   `,
   timestamp: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
   copyIcon: css`color: ${sem.text.tertiary}; opacity: 0; margin-left: auto; transition: opacity ${transition.fast}; *:hover > & { opacity: ${opacity.muted}; }`,
-  logMsg: css`font-size: ${fontSize.md}px; color: ${sem.text.primary}; line-height: 1.4;`,
+  logMsg: css`font-size: ${fontSize.md}px; color: ${sem.text.primary}; line-height: 1.4; margin-top: ${spacing.sm}px`,
   logDetail: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; margin-top: ${spacing.xs}px; word-break: break-all;`,
 };

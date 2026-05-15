@@ -2,6 +2,7 @@
 import { css, Global } from '@emotion/react';
 import { useCallback, useRef } from 'react';
 import { globalStyles } from '@/shared/styles/global';
+import { radius } from '@/shared/styles/tokens';
 import { useStore } from './store';
 import { useTheme, useIsDark, useDisplaySymbols } from './store/selectors';
 import { useDataPolling } from '@/features/stock/hooks/useDataPolling';
@@ -144,6 +145,6 @@ const AppContent = () => {
 const s = {
   app: css`
     height: 100vh; display: flex; flex-direction: column;
-    background: ${sem.bg.base}; border-radius: 12px; overflow: hidden;
+    background: ${sem.bg.base}; border-radius: ${radius['2xl']}px; overflow: hidden;
   `,
 };

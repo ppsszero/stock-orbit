@@ -47,16 +47,17 @@ const s = {
     &::before {
       content: '';
       position: absolute;
-      width: ${spacing['2xl']}px;
-      height: ${spacing['2xl']}px;
-      left: ${spacing.xs}px;
-      top: ${spacing.xs}px;
+      width: ${spacing.xl}px;
+      height: ${spacing.xl}px;
+      left: ${spacing.sm}px;
+      top: ${spacing.sm}px;
       background: white;
       border-radius: ${radius.full}px;
       transition: ${transition.normal};
       box-shadow: ${shadow.sm};
+      transform: scale(0.7);
     }
     input:checked + & { background: ${sem.action.primary}; }
-    input:checked + &::before { transform: translateX(${spacing['2xl']}px); }
+    input:checked + &::before { transform: translateX(${spacing['2xl']}px) scale(1.125); }
   `,
 };

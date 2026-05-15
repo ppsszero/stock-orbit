@@ -3,12 +3,13 @@ import { css } from '@emotion/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiRotateCcw, FiTerminal, FiBell, FiCopy, FiFolder } from 'react-icons/fi';
 import { AppSettings } from '@/shared/types';
-import { spacing, fontSize, fontWeight, radius, height, shadow, transition } from '@/shared/styles/tokens';
+import { DEFAULT_SETTINGS } from '@/app/store';
+import { spacing, fontSize, fontWeight, radius, height, transition } from '@/shared/styles/tokens';
 import { sectionTitleStyle } from '@/shared/styles/sharedStyles';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
 import { useSettingsActions } from '../hooks/useSettingsActions';
-import { SheetLayout, SegmentedControl, Toggle } from '@/shared/ui';
+import { SheetLayout, SegmentedControl, Toggle, NumberStepper } from '@/shared/ui';
 import { useShortcutCapture } from '@/features/screenshot/hooks/useShortcutCapture';
 import { useNoticeData, NoticeSheet } from '@/features/notice';
 import { LogSheet } from './LogSheet';
@@ -132,7 +133,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
   };
 
   return (
-    <SheetLayout open={open} title="설정" zIndex={500} onClose={onClose}>
+    <SheetLayout open={open} title="설정" zIndex={500} onClose={onClose} noNavBorder>
       <div css={s.content}>
         <div css={s.secT}>일반</div>
         <SettingRow label="윈도우 시작 시 자동실행">
@@ -172,14 +173,10 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         <SettingRow label="글자 크기">
           <SegmentedControl items={FONT_SIZES} value={settings.fontSize} onChange={v => onUpdate({ fontSize: v })} size="md" />
         </SettingRow>
-        <div css={s.sliderSection}>
-          <span>스크롤 속도</span>
-          <div css={s.sliderWrap}>
-            <input type="range" min="20" max="120" value={settings.tickerSpeed}
-              onChange={e => onUpdate({ tickerSpeed: parseInt(e.target.value) })} css={s.slider} />
-            <span css={s.sliderVal}>{settings.tickerSpeed}</span>
-          </div>
-        </div>
+        <SettingRow label="스크롤 속도">
+          <NumberStepper value={settings.tickerSpeed} defaultValue={DEFAULT_SETTINGS.tickerSpeed} min={20} max={120}
+            onChange={v => onUpdate({ tickerSpeed: v })} />
+        </SettingRow>
 
         <div css={s.secT}>스크린샷</div>
         <SettingRow label="단축키">
@@ -297,23 +294,6 @@ const s = {
     cursor: pointer; display: flex; align-items: center; gap: ${spacing.sm}px; flex-shrink: 0;
     &:hover { background: ${sem.bg.elevated}; }
   `,
-  sliderSection: css`
-    padding: ${spacing.lg}px ${spacing.xl}px;
-    display: flex; justify-content: space-between; align-items: center; gap: ${spacing.md}px;
-    font-size: ${fontSize.lg}px; color: ${sem.text.primary};
-  `,
-  sliderWrap: css`display: flex; align-items: center; gap: ${spacing.md + 2}px; min-width:180px `,
-  slider: css`
-    -webkit-appearance: none; flex: 1; height: ${spacing.sm}px;
-    border-radius: ${radius.xs}px; background: ${sem.bg.elevated}; outline: none;
-    &::-webkit-slider-thumb {
-      -webkit-appearance: none; width: ${spacing.xl}px; height: ${spacing.xl}px;
-      border-radius: ${radius.full}px; background: ${sem.action.primary};
-      cursor: pointer; border: 2px solid ${sem.bg.base};
-      box-shadow: ${shadow.sm};
-    }
-  `,
-  sliderVal: css`font-size: ${fontSize.md}px; color: ${sem.text.secondary}; min-width: 24px; text-align: right;`,
   resetRow: css`padding: ${spacing.md}px ${spacing.xl}px; display: flex; flex-direction: column; gap: ${spacing.md}px;`,
   resetBtn: css`
     height: ${height.row}px; border: 1px solid ${sem.action.danger}; background: transparent; border-radius: ${radius.xl}px;

@@ -201,7 +201,7 @@ const s = {
   `,
   tabCount: css`
     margin-left: 5px;
-    font-size: 10px; color: ${sem.text.tertiary};
+    font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};
     font-variant-numeric: tabular-nums;
   `,
   fixed: css`

@@ -41,6 +41,6 @@ export const globalStyles = (colors: Record<string, any>, isDark: boolean = true
 
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: ${colors.textTertiary}40; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb { background: ${colors.textTertiary}${isDark ? '25' : '60'}; border-radius: 2px; }
   .tabular-nums { font-variant-numeric: tabular-nums; }
 `;

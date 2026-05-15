@@ -16,6 +16,15 @@ export const groupHeaderStyle = css`
   z-index: 2;
 `;
 
+/**
+ * 2단 탭 패턴의 서브탭(pill) 영역 padding — 메인 underline 아래에 위치.
+ * RankingSheet, InvestorSheet(market/interest) 등 공유.
+ */
+export const subTabPadStyle = css`
+  padding: 0 ${spacing.xl}px ${spacing.lg}px;
+  flex-shrink: 0;
+`;
+
 /** 시트 내부 섹션 타이틀 — SettingsSheet, MarqueeSheet 등 공유 */
 export const sectionTitleStyle = css`
   font-size: ${fontSize.sm}px;

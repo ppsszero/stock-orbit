@@ -1,4 +1,6 @@
 export { SegmentedControl } from './SegmentedControl';
+export { Tabs } from './Tabs';
+export { NumberStepper } from './NumberStepper';
 export { SheetLayout } from './SheetLayout';
 export { WebViewPanel } from './WebViewPanel';
 export { Toggle } from './Toggle';

@@ -101,7 +101,7 @@ const s = {
     const base = `
       position: relative; padding: ${spacing.lg}px;
       min-width: 0; overflow: hidden;
-      background: ${sem.surface.card}; border: 1px solid ${sem.border.strong};
+      background: ${sem.surface.card}; border: none;
       border-radius: ${radius['2xl']}px; cursor: default;
       transition: background ${transition.fast}, box-shadow ${transition.fast};
       &:hover { background-color: ${sem.bg.surface}; box-shadow: ${sem.shadow.default}; }

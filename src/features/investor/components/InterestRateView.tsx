@@ -1,12 +1,12 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useEffect, useState } from 'react';
-import { FiLoader } from 'react-icons/fi';
-import { InterestRateItem, fetchStandardInterest, fetchDomesticInterest } from '@/shared/naver';
+import { InterestRateItem, fetchStandardInterest, fetchDomesticInterest, fetchBondYield } from '@/shared/naver';
 import { cached } from '@/shared/utils/cache';
-import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
-import { spinCss } from '@/shared/ui/LoadingCenter';
+import { LoadingCenter } from '@/shared/ui/LoadingCenter';
+import { WebViewPanel } from '@/shared/ui';
 import { dirArrow, getDirColor } from '@/shared/utils/format';
 
 /** YYYYMMDD → MM.DD. */
@@ -25,142 +25,148 @@ const fmtIsoDate = (d: string): string => {
 
 const FLAG_BASE = 'https://ssl.pstatic.net/imgstock/fn/real/logo/flag/Nation';
 
-const RateRow = ({ item, showFlag }: { item: InterestRateItem; showFlag?: boolean }) => {
+const RateRow = ({ item, showFlag, onClick }: { item: InterestRateItem; showFlag?: boolean; onClick?: () => void }) => {
   const dirColor = getDirColor(item.direction);
   const changeNum = parseFloat(item.change);
-  const ratioDisplay = item.changeRatio === '-' ? '' : `(${item.changeRatio}%)`;
+  const ratioDisplay = item.changeRatio === '-' ? '' : ` (${item.changeRatio}%)`;
 
   return (
-    <div css={s.row}>
-      <div css={s.nameCol}>
-        <div css={s.nameRow}>
-          {showFlag && item.nation && (
-            <img src={`${FLAG_BASE}${item.nation}.svg`} alt="" css={s.flag}
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          )}
-          <div>
-            <span css={s.name}>{item.name}</span>
-            <div css={s.sub}>
-              기준 {fmtIsoDate(item.date)}{showFlag && item.nextReleaseDate && ` · 다음 ${fmtDate(item.nextReleaseDate)}`}
-            </div>
-          </div>
-        </div>
+    <div css={s.row} onClick={onClick} role={onClick ? 'button' : undefined}>
+      {showFlag && item.nation && (
+        <img src={`${FLAG_BASE}${item.nation}.svg`} alt="" css={s.flag}
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+      )}
+      <div css={s.info}>
+        <div css={s.name}>{item.name}</div>
+        <div css={s.sub}>기준 {fmtIsoDate(item.date)}</div>
+        {showFlag && item.nextReleaseDate && (
+          <div css={s.next}>다음 {fmtDate(item.nextReleaseDate)}</div>
+        )}
       </div>
-      <div css={s.rateCol}>
-        <span css={s.rate}>{item.rate}%</span>
-      </div>
-      <div css={s.changeColWide}>
+      <div css={s.values}>
+        <div css={s.rate} style={{ color: dirColor }}>{item.rate}%</div>
         {changeNum !== 0 ? (
-          <span css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.medium}; font-variant-numeric: tabular-nums;`}>
-            {dirArrow(item.direction)} {Math.abs(changeNum).toFixed(3)} {ratioDisplay}
-          </span>
+          <div css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.medium}; font-variant-numeric: tabular-nums;`}>
+            {dirArrow(item.direction)} {Math.abs(changeNum).toFixed(3)}{ratioDisplay}
+          </div>
         ) : (
-          <span css={s.flat}>{parseFloat(item.change).toFixed(3)} {ratioDisplay}</span>
+          <div css={s.flat}>0.000{ratioDisplay}</div>
         )}
       </div>
     </div>
   );
 };
 
+type Tab = 'bond' | 'standard' | 'domestic';
+
 interface Props {
-  tab: 'standard' | 'domestic';
+  tab: Tab;
   refreshKey?: number;
   onLoadResult?: (ok: boolean) => void;
 }
 
+// tab → (fetcher, 깃발 표시 여부, 라벨) 매핑
+const TAB_CONFIG: Record<Tab, { fetcher: () => Promise<InterestRateItem[]>; showFlag: boolean; label: string }> = {
+  bond:     { fetcher: fetchBondYield,         showFlag: true,  label: '국채수익률' },
+  standard: { fetcher: fetchStandardInterest,  showFlag: true,  label: '기준금리'   },
+  domestic: { fetcher: fetchDomesticInterest,  showFlag: false, label: '국내금리'   },
+};
+
+const getRateUrl = (tab: Tab, item: InterestRateItem): string | null => {
+  if (tab === 'standard' && item.nation) {
+    return `https://m.stock.naver.com/marketindex/standardInterest/${item.nation}`;
+  }
+  if (tab === 'bond' && item.code) {
+    return `https://m.stock.naver.com/marketindex/bond/${item.code}`;
+  }
+  if (tab === 'domestic' && item.code) {
+    return `https://m.stock.naver.com/marketindex/domesticInterest/${item.code}`;
+  }
+  return null;
+};
+
 export const InterestRateView = ({ tab, refreshKey, onLoadResult }: Props) => {
-  const [standard, setStandard] = useState<InterestRateItem[]>([]);
-  const [domestic, setDomestic] = useState<InterestRateItem[]>([]);
+  const [items, setItems] = useState<InterestRateItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<{ url: string; title: string; sub: string } | null>(null);
 
   useEffect(() => {
+    // 빠른 탭 전환 시 이전 fetch 응답이 늦게 도착해 잘못된 setState 하는 것 방지.
+    let stale = false;
+
     const load = async () => {
       setLoading(true);
+      setItems([]);
       const isManualRefresh = (refreshKey ?? 0) > 0;
-      const fetcher = tab === 'standard' ? fetchStandardInterest : fetchDomesticInterest;
-      const setter = tab === 'standard' ? setStandard : setDomestic;
-      setter([]);
+      const { fetcher } = TAB_CONFIG[tab];
       try {
         const data = await cached(`interest-${tab}`, fetcher, 10 * 60 * 1000, isManualRefresh);
-        setter(data);
+        if (stale) return;
+        setItems(data);
         if (isManualRefresh) onLoadResult?.(data.length > 0);
       } catch {
+        if (stale) return;
         if (isManualRefresh) onLoadResult?.(false);
       } finally {
-        setLoading(false);
+        if (!stale) setLoading(false);
       }
     };
     load();
+
+    return () => { stale = true; };
   }, [tab, refreshKey, onLoadResult]);
 
   if (loading) {
-    return (
-      <div css={s.loading}>
-        <FiLoader size={20} css={spinCss} />
-        <span>금리 정보를 불러오는 중...</span>
-      </div>
-    );
+    return <LoadingCenter fill label="금리 정보를 불러오는 중..." />;
   }
+
+  const { showFlag, label } = TAB_CONFIG[tab];
 
   return (
     <div css={s.wrap}>
-      {tab === 'standard' && standard.length === 0 && <div css={s.empty}>금리 데이터가 없어요</div>}
-      {tab === 'standard' && standard.length > 0 && (
-        <>
-          <div css={s.header}>
-            <span css={s.hName}>중앙은행</span>
-            <span css={s.hRate}>금리</span>
-            <span css={s.hChangeWide}>전회대비</span>
-          </div>
-          {standard.map(item => (
-            <RateRow key={item.name} item={item} showFlag />
-          ))}
-        </>
-      )}
-
-      {tab === 'domestic' && domestic.length === 0 && <div css={s.empty}>금리 데이터가 없어요</div>}
-      {tab === 'domestic' && domestic.length > 0 && (
-        <>
-          <div css={s.header}>
-            <span css={s.hName}>금리종류</span>
-            <span css={s.hRate}>금리</span>
-            <span css={s.hChangeWide}>전일대비</span>
-          </div>
-          {domestic.map(item => (
-            <RateRow key={item.name} item={item} />
-          ))}
-        </>
-      )}
+      {items.length === 0 && <div css={s.empty}>데이터가 없어요</div>}
+      {items.map(item => {
+        const url = getRateUrl(tab, item);
+        return (
+          <RateRow key={item.name} item={item} showFlag={showFlag}
+            onClick={url ? () => setView({ url, title: item.name, sub: label }) : undefined} />
+        );
+      })}
+      <WebViewPanel url={view?.url ?? null} title={view?.title} subtitle={view?.sub}
+        onClose={() => setView(null)} />
     </div>
   );
 };
 
 const s = {
-  wrap: css`padding: ${spacing.sm}px 0 ${spacing.lg}px;`,
+  wrap: css`
+    display: flex; flex-direction: column;
+    padding: ${spacing.sm}px ${spacing.xl}px ${spacing.lg}px;
+  `,
   empty: css`padding: ${spacing['4xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
-  loading: css`
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: ${spacing.md}px; padding: ${spacing['4xl']}px 0;
-    color: ${sem.text.tertiary}; font-size: ${fontSize.base}px;
-  `,
-  header: css`
-    display: flex; align-items: center; padding: ${spacing.md}px ${spacing.xl}px;
-    border-bottom: 1px solid ${sem.border.subtle};
-  `,
-  hName: css`flex: 1; font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
-  hRate: css`width: 65px; text-align: right; font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
-  hChangeWide: css`width: 130px; text-align: right; font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
   row: css`
-    display: flex; align-items: center; padding: ${spacing.lg}px ${spacing.xl}px;
-    border-bottom: 1px solid ${sem.border.subtle};
+    display: flex; align-items: center; gap: ${spacing.lg}px;
+    padding: ${spacing.xl}px ${spacing.lg}px;
+    border-radius: ${radius.lg}px;
+    cursor: pointer;
+    &:not(:last-of-type) { border-bottom: 1px dotted ${sem.border.muted}; }
+    &:hover { background: ${sem.action.primarySelected}; }
   `,
-  nameCol: css`flex: 1; min-width: 0;`,
-  nameRow: css`display: flex; align-items: center; gap: ${spacing.md}px;`,
-  flag: css`width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex-shrink: 0;`,
-  name: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.primary};`,
-  sub: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary}; margin-top: 2px;`,
-  rateCol: css`width: 65px; text-align: right;`,
-  rate: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
-  changeColWide: css`width: 130px; text-align: right;`,
+  flag: css`width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0;`,
+  info: css`
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: ${spacing.sm}px;
+  `,
+  name: css`
+    font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.primary};
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  `,
+  sub: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
+  next: css`font-size: ${fontSize.xs}px; color: ${sem.action.warning}; font-weight: ${fontWeight.bold};`,
+  values: css`
+    display: flex; flex-direction: column; align-items: flex-end; gap:${spacing.xs}px;
+    flex-shrink: 0;
+  `,
+  rate: css`font-size: ${fontSize.xl}px; font-weight: ${fontWeight.extrabold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums; line-height: 1.1;`,
   flat: css`font-size: ${fontSize.sm}px; color: ${sem.feedback.flat}; font-variant-numeric: tabular-nums;`,
 };

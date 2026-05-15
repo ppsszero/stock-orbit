@@ -29,6 +29,7 @@ export const sem = {
     primaryTint:     v.accentTint,      // 15% bg
     primaryHover:    v.accentHover,     // 25% bg
     primarySubtle:   v.accentSubtle,    // 08% bg
+    primarySoft:     v.accentSoft,      // 11% bg (hover에 자주 사용)
     primarySelected: v.accentSelected,  // 14% bg
     primaryMedium:   v.accentMedium,    // 35% bg (badge hover)
     primaryStrong:   v.accentStrong,    // 40% (outline, border hover)

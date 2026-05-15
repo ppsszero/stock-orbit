@@ -11,7 +11,7 @@ const SETTINGS_KEY = 'orbit-settings';
 /** 네이버 API 차단 방지 — 전체 그룹에서 중복 없는 종목 수의 상한 (베타) */
 export const MAX_TOTAL_SYMBOLS = 30;
 
-const DEFAULT_SETTINGS: AppSettings = {
+export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   opacity: 0.95,
   alwaysOnTop: false,

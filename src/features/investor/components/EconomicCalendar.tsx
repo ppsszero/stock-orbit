@@ -49,7 +49,7 @@ export const EconomicCalendar = () => {
           <FiChevronRight size={16} />
         </button>
         {!isToday && (
-          <button css={s.navBtn} onClick={goToday} aria-label="오늘로 이동">
+          <button css={[s.navBtn, s.todayBtn]} onClick={goToday} aria-label="오늘로 이동">
             오늘
           </button>
         )}
@@ -81,18 +81,23 @@ const s = {
 
   nav: css`
     display: flex; align-items: center; justify-content: center; gap: ${spacing.sm}px;
-    padding: ${spacing.md}px ${spacing.xl}px; flex-shrink: 0;
+    padding: ${spacing.xs}px ${spacing.xl}px ${spacing.xl}px; flex-shrink: 0;
     position: relative;
   `,
   navBtn: css`
     height: 28px; min-width: 28px; padding: 0 ${spacing.sm}px;
-    border: 1px solid ${sem.border.default}; border-radius: ${radius.md}px;
-    background: transparent; color: ${sem.text.secondary}; cursor: pointer;
+    border: none; border-radius: ${radius.md}px;
+    background: ${sem.bg.surface}; color: ${sem.text.secondary}; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     font-family: inherit; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold};
     transition: all ${transition.fast};
-    &:hover:not(:disabled) { background: ${sem.bg.surface}; color: ${sem.text.primary}; }
+    &:hover:not(:disabled) { background: ${sem.bg.elevated}; color: ${sem.text.primary}; }
     &:disabled { opacity: ${opacity.disabledWeak}; cursor: default; }
+  `,
+  todayBtn: css`
+    background: ${sem.action.primarySelected};
+    color: ${sem.action.primary};
+    &:hover:not(:disabled) { background: ${sem.action.primaryHover}; color: ${sem.action.primary}; }
   `,
   dateArea: css`
     position: relative; display: flex; align-items: center; gap: ${spacing.sm}px;

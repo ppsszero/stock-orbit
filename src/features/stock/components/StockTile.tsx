@@ -2,7 +2,7 @@
 import { css } from '@emotion/react';
 import { useMemo, memo, useCallback, useRef, useState, useEffect } from 'react';
 import { FiTrash2, FiInfo } from 'react-icons/fi';
-import { IconButton } from '@/shared/ui';
+import { IconButton, LoadingCenter } from '@/shared/ui';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
@@ -168,6 +168,9 @@ export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGr
   }, [groups, prices]);
 
   if (symbols.length === 0) return <EmptyState />;
+  // 강력 새로고침 직후엔 prices가 비어 모든 타일이 1x1 회색으로 깔림.
+  // 시총 기반 layout 계산이 완료될 때까지 로더로 가림.
+  if (Object.keys(prices).length === 0) return <LoadingCenter fill label="데이터를 불러오는 중..." />;
 
   return (
     <div css={s.wrap}>

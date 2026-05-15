@@ -50,7 +50,7 @@ const s = {
   empty: css`padding:${spacing['5xl']}px;text-align:center;font-size:${fontSize.base}px;color:${sem.text.tertiary};`,
   row: css`
     display:flex;flex-direction:column;gap:${spacing.md}px;padding:${spacing.lg}px ${spacing.xl}px;
-    border-bottom:1px solid ${sem.border.subtle};cursor:pointer;&:hover{background:${sem.bg.surface};}
+    cursor:pointer;&:hover{background:${sem.action.primarySoft};}
   `,
   img: css`width:100%;height:120px;border-radius:${radius.xl}px;object-fit:cover;`,
   content: css`display:flex;flex-direction:column;gap:${spacing.xs}px;`,

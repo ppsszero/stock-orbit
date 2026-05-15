@@ -15,12 +15,14 @@ interface Props {
   onRefresh?: () => void;
   refreshing?: boolean;
   navRight?: ReactNode;
+  /** 시트 본문 시작이 Tabs 등 자체 border를 가진 컴포넌트일 때 nav 아래 라인 중복 방지 */
+  noNavBorder?: boolean;
   children: ReactNode;
 }
 
 export const SheetLayout = ({
   open, title, zIndex = 550,
-  onClose, onRefresh, refreshing, navRight, children,
+  onClose, onRefresh, refreshing, navRight, noNavBorder, children,
 }: Props) => {
   useBackAction(open, onClose);
 
@@ -29,7 +31,7 @@ export const SheetLayout = ({
   return (
     <div css={s.overlay(zIndex)}>
       <div css={s.sheet}>
-        <div css={s.nav}>
+        <div css={s.nav(!!noNavBorder)}>
           <button css={[s.navBtn, s.back]} onClick={onClose}>
             <FiArrowLeft size={18} />
           </button>
@@ -65,12 +67,12 @@ const s = {
     border-radius: ${radius['2xl']}px;
     overflow: hidden;
   `,
-  nav: css`
+  nav: (noBorder: boolean) => css`
     display: flex;
     align-items: center;
     height: ${height.nav}px;
     padding: 0 ${spacing.md + 2}px;
-    border-bottom: 1px solid ${sem.border.subtle};
+    ${noBorder ? '' : `border-bottom: 1px solid ${sem.border.subtle};`}
     gap: ${spacing.md}px;
     flex-shrink: 0;
     -webkit-app-region: drag;
@@ -96,7 +98,7 @@ const s = {
     &:hover { color: ${sem.action.primary}; }
   `,
   title: css`
-    font-size: 15px;
+    font-size: ${fontSize.xl}px;
     font-weight: 700;
     line-height: 0;
     color: ${sem.text.primary};

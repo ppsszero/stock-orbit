@@ -1,19 +1,21 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { FiX, FiLoader } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 import { spacing, fontSize, fontWeight, radius, height, transition } from '@/shared/styles/tokens';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 import { useWebView } from '@/shared/hooks/useWebView';
 import { sem } from '@/shared/styles/semantic';
-import { spinCss } from './LoadingCenter';
+import { LoadingCenter } from './LoadingCenter';
 
 interface Props {
   url: string | null;
   title?: string;
+  /** 우측 보조 텍스트 (예: 종목명/분류명) */
+  subtitle?: string;
   onClose: () => void;
 }
 
-export const WebViewPanel = ({ url, title = '종목 상세', onClose }: Props) => {
+export const WebViewPanel = ({ url, title = '종목 상세', subtitle, onClose }: Props) => {
   useBackAction(!!url, onClose);
   const { wvRef, loaded } = useWebView(!!url);
 
@@ -27,10 +29,11 @@ export const WebViewPanel = ({ url, title = '종목 상세', onClose }: Props) =
             <FiX size={16} />
           </button>
           <span css={s.title}>{title}</span>
+          {subtitle && <span css={s.sub}>{subtitle}</span>}
         </div>
         {!loaded && (
           <div css={s.loading}>
-            <FiLoader size={20} css={s.spin} />
+            <LoadingCenter label="페이지를 불러오는 중..." />
           </div>
         )}
         <div css={s.wvWrap} style={{ opacity: loaded ? 1 : 0 }}>
@@ -89,17 +92,27 @@ const s = {
   title: css`
     font-size: ${fontSize.xl}px;
     font-weight: ${fontWeight.bold};
+    line-height: 0;
     color: ${sem.text.primary};
-    flex: 1;
+    display: flex;
+    align-items: center;
+  `,
+  sub: css`
+    font-size: ${fontSize.md}px;
+    color: ${sem.text.tertiary};
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 50%;
+    text-align: right;
   `,
   loading: css`
     display: flex;
     justify-content: center;
     align-items: center;
     flex: 1;
-    color: ${sem.text.tertiary};
   `,
-  spin: spinCss,
   wvWrap: css`
     flex: 1;
     display: flex;

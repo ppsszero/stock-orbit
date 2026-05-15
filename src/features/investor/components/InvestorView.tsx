@@ -17,10 +17,29 @@ const Section = memo(({ label, children }: { label: string; children: React.Reac
 
 /* --- 3-column unified card with dividers --- */
 
+// "+12,345" / "-1,000" / "0" 같은 표시 문자열에서 부호를 분리해 direction을 도출.
+// 표시 문자열 역추론을 컴포넌트 안에서 inline 분기하지 않고 transform 단계로 일원화.
+type Direction = 'up' | 'down' | 'flat';
+const parseDirection = (value: string): Direction => {
+  // 천 단위 콤마/공백 무시하고 첫 비공백 부호 문자만 판단
+  const trimmed = value.trim();
+  if (trimmed.startsWith('+')) return 'up';
+  if (trimmed.startsWith('-')) {
+    // "-0", "-0.00" 등 사실상 0인 케이스는 flat으로
+    const num = parseFloat(trimmed);
+    if (num === 0) return 'flat';
+    return 'down';
+  }
+  return 'flat';
+};
+
+const directionColor = (d: Direction): string =>
+  d === 'up' ? sem.feedback.up : d === 'down' ? sem.feedback.down : sem.text.primary;
+
 const ValueRow = memo(({ items }: { items: { label: string; value: string }[] }) => (
   <div css={st.card}>
     {items.map((item, i) => {
-      const color = item.value.startsWith('+') ? sem.feedback.up : item.value.startsWith('-') ? sem.feedback.down : sem.text.primary;
+      const color = directionColor(parseDirection(item.value));
       return (
         <div key={item.label} css={st.cell}>
           {i > 0 && <div css={st.divider} />}
@@ -63,10 +82,14 @@ interface InvestorViewProps {
   data: InvestorData | null;
 }
 
-export const InvestorView = ({ data: d }: InvestorViewProps) => {
-  if (!d) {
-    return <div css={st.empty}>데이터를 불러오는 중...</div>;
-  }
+const PLACEHOLDER: InvestorData = {
+  dealTrend: { personal: '0', foreign: '0', institutional: '0' },
+  programTrend: { arbitrage: '0', nonArbitrage: '0', total: '0' },
+  upDown: { rise: 0, steady: 0, fall: 0, upper: 0, lower: 0 },
+};
+
+export const InvestorView = ({ data }: InvestorViewProps) => {
+  const d = data ?? PLACEHOLDER;
 
   return (
     <>
@@ -101,13 +124,13 @@ export const InvestorView = ({ data: d }: InvestorViewProps) => {
 /* --- Styles --- */
 
 const st = {
-  empty: css`padding: ${spacing['5xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
   section: css`margin-bottom: ${spacing.lg}px;`,
   secT: sectionTitleStyle,
   card: css`
     display: flex; align-items: stretch;
-    background: transparent; border: 1px solid ${sem.border.default};
-    border-radius: ${radius.xl}px; margin: 0 ${spacing.xl}px;
+    background: ${sem.surface.card};
+    border-radius: ${radius.lg}px;
+    margin: 0 ${spacing.xl}px;
   `,
   cell: css`
     flex: 1; display: flex; flex-direction: column; align-items: center;
@@ -118,7 +141,7 @@ const st = {
     position: absolute; left: 0; top: 20%; height: 60%;
     width: 1px; background: ${sem.border.muted};
   `,
-  cellLabel: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-weight: ${fontWeight.semibold};`,
+  cellLabel: css`font-size: ${fontSize.sm}px; color: ${sem.text.secondary}; font-weight: ${fontWeight.semibold};`,
   cellVal: css`font-size: ${fontSize.lg}px; font-weight: ${fontWeight.extrabold}; font-variant-numeric: tabular-nums;`,
   bar: css`
     display: flex; height: ${spacing.md}px; border-radius: ${radius.sm}px; overflow: hidden;

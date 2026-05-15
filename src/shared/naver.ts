@@ -55,9 +55,30 @@ const maybeResetBackoff = () => {
   }
 };
 
+// URL 패턴 → 사람이 읽을 수 있는 로그 타이틀.
+// 예) /polling/domestic/index?itemCodes=KOSPI%2CKOSDAQ%2CKPI200 → "국내 지수 (KOSPI, KOSDAQ, KPI200)"
+const describeApi = (path: string): string => {
+  const [pathOnly, query] = path.split('?');
+  const params = new URLSearchParams(query || '');
+
+  if (pathOnly.startsWith('/polling/')) {
+    const [, , region, kind] = pathOnly.split('/');
+    const regionKr = region === 'domestic' ? '국내' : region === 'overseas' ? '해외' : region;
+    const kindKr = kind === 'index' ? '지수' : kind === 'stock' ? '종목' : kind === 'futures' ? '선물' : kind;
+    const items = params.get('itemCodes')?.split(',').filter(Boolean) || [];
+    if (items.length === 0) return `${regionKr} ${kindKr} 폴링`;
+    return `${regionKr} ${kindKr} 폴링 — ${items.length}개`;
+  }
+
+  // 그 외 엔드포인트 — 마지막 path segment를 fallback
+  const segments = pathOnly.split('/').filter(Boolean);
+  return segments[segments.length - 1] || 'Fetch';
+};
+
 // Electron 메인 프로세스 프록시 (CORS 우회) + rate-limit 백오프
 const fetchJSON = async <T>(url: string): Promise<T> => {
-  logger.api('Fetch', url.replace(BASE, ''));
+  const path = url.replace(BASE, '');
+  logger.api(describeApi(path), path);
 
   // 백오프 중이면 대기
   const now = Date.now();
@@ -769,19 +790,24 @@ export const fetchEconomicCalendar = async (date: string): Promise<EconomicIndic
 
 export interface InterestRateItem {
   name: string;
+  code?: string;            // 종목 식별자 (US10YT=RR, KRCALLBOKK 등) — bond/domestic 라우팅용
   rate: string;             // "3.75", "2.516"
   change: string;           // "0.00", "-0.010"
   changeRatio: string;      // "-", "-0.39"
   direction: 'up' | 'down' | 'flat';
   date: string;             // "2026-04-15"
   nextReleaseDate?: string; // "20260430" (기준금리만)
-  nation?: string;          // "USA", "KOR" (기준금리만)
+  nation?: string;          // "USA", "KOR" (기준금리만) — standardInterest 라우팅용
   nationName?: string;      // "미국", "대한민국"
   description?: string;     // 금리 설명 (국내금리만)
 }
 
 interface InterestRateRaw {
   name?: string;
+  itemCode?: string;
+  code?: string;
+  reutersCode?: string;
+  symbolCode?: string;
   closePrice?: string;
   fluctuations?: string;
   fluctuationsRatio?: string;
@@ -799,6 +825,7 @@ const parseInterestRate = (d: InterestRateRaw): InterestRateItem => {
   const dateStr = d.localTradedAt ? d.localTradedAt.split('T')[0] : '';
   return {
     name: d.name || '',
+    code: d.itemCode || d.code || d.reutersCode || d.symbolCode || undefined,
     rate: d.closePrice || '0',
     change: d.fluctuations || '0',
     changeRatio: d.fluctuationsRatio || '-',
@@ -831,6 +858,18 @@ export const fetchDomesticInterest = async (): Promise<InterestRateItem[]> => {
     return (data || []).map(parseInterestRate);
   } catch (e) {
     logger.error('국내금리', (e as Error).message);
+    return [];
+  }
+};
+
+export const fetchBondYield = async (): Promise<InterestRateItem[]> => {
+  try {
+    const data = await fetchJSON<InterestRateRaw[]>(
+      `${BASE}/securityService/marketindex/majors/bond`
+    );
+    return (data || []).map(parseInterestRate);
+  } catch (e) {
+    logger.error('국채수익률', (e as Error).message);
     return [];
   }
 };

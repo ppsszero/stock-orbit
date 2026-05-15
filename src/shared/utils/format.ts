@@ -14,12 +14,15 @@ export const fmtTime = (d: Date | null): string =>
   d ? d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '--';
 
 // === 국가 뱃지 색상 ===
+// KR은 다크/라이트 accent 색이 달라서 hex 고정하면 다크 모드에서 본문 accent와 불일치.
+// → accent 토큰(sem.action.primary/primaryTint)으로 매핑해 모드별 자동 분기.
+// 나머지 국가는 모드 무관 단일 hue.
 export const NATION_BADGE: Record<string, { bg: string; fg: string }> = {
-  KR: { bg: '#3182F620', fg: '#3182F6' },
+  KR: { bg: sem.action.primaryTint, fg: sem.action.primary },
   US: { bg: '#FF980020', fg: '#E65100' },
-  JP: { bg: '#F0445220', fg: '#F04452' },
-  CN: { bg: '#FF525220', fg: '#B71C1C' },
-  HK: { bg: '#9C27B020', fg: '#6A1B9A' },
+  JP: { bg: '#26A69A20', fg: '#26A69A' },
+  CN: { bg: '#E91E6320', fg: '#E91E63' },
+  HK: { bg: '#9C27B020', fg: '#AB47BC' },
   UK: { bg: '#4CAF5020', fg: '#2E7D32' },
   VN: { bg: '#FFC10720', fg: '#F57F17' },
 };
@@ -71,9 +74,11 @@ export const getDirColor = (d: Direction): string =>
 export const fmtPercent = (d: Direction, pct: number): string =>
   `${dirSign(d)}${Math.abs(pct).toFixed(2)}%`;
 
-/** '▲ 1.35%' / '▼ 0.50%' / '─ 0.00%' — 마퀴/그리드/랭킹 공용 (화살표 + 절대%) */
-export const fmtPercentArrow = (d: Direction, pct: number): string =>
-  `${dirArrow(d) || '─'} ${Math.abs(pct).toFixed(2)}%`;
+/** '▲ 1.35%' / '▼ 0.50%' / '0.00%' — 마퀴/그리드/랭킹 공용 (화살표 + 절대%) */
+export const fmtPercentArrow = (d: Direction, pct: number): string => {
+  const arrow = dirArrow(d);
+  return arrow ? `${arrow} ${Math.abs(pct).toFixed(2)}%` : `${Math.abs(pct).toFixed(2)}%`;
+};
 
 /** '1.35%' — 방향 표시는 다른 곳에서 처리할 때 */
 export const fmtPercentAbs = (pct: number): string =>
@@ -83,8 +88,10 @@ export const fmtPercentAbs = (pct: number): string =>
  * '▲ 1,000 (+1.35%)' — 리스트/시장지표 공용 (화살표 + 값 + 부호%).
  * valueStr은 호출 측에서 통화/소수점 규칙에 맞게 미리 포맷한 문자열을 전달.
  */
-export const fmtChangeArrow = (d: Direction, pct: number, valueStr: string): string =>
-  `${dirArrow(d) || '─'} ${valueStr} (${fmtPercent(d, pct)})`;
+export const fmtChangeArrow = (d: Direction, pct: number, valueStr: string): string => {
+  const arrow = dirArrow(d);
+  return arrow ? `${arrow} ${valueStr} (${fmtPercent(d, pct)})` : `${valueStr} (${fmtPercent(d, pct)})`;
+};
 
 // === 타임스탬프 (파일명용) ===
 /** 'YYYYMMDD-HHmmss' 형식 */

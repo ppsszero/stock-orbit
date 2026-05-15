@@ -7,7 +7,8 @@ import { Preset, StockSymbol } from '@/shared/types';
 import { getNaverStockUrl } from '@/shared/naver';
 import { PresetTabs } from '@/features/preset/components/PresetTabs';
 import { useToast } from '@/shared/ui/Toast';
-import { SheetLayout, SegmentedControl, WebViewPanel, LoadingCenter } from '@/shared/ui';
+import { SheetLayout, Tabs, WebViewPanel, LoadingCenter } from '@/shared/ui';
+import { subTabPadStyle } from '@/shared/styles/sharedStyles';
 import { useRankingData, NATIONS, RANK_TYPES } from '@/features/ranking/hooks/useRankingData';
 import { MAX_TOTAL_SYMBOLS } from '@/app/store';
 import { RankRow } from '@/features/ranking/components/RankRow';
@@ -60,19 +61,14 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
   };
 
   return (
-    <SheetLayout open={open} title="글로벌 실시간 랭킹" onClose={onClose} onRefresh={handleRefresh} refreshing={loading}>
-      <PresetTabs presets={presets} activeId={activeGroupId} onSelect={onGroupSelect}
-        onAddPreset={onAddPreset} onRename={onRenamePreset} onRemove={onRemovePreset} compact />
-
-      <div css={st.segPad}>
-        <SegmentedControl items={NATIONS} value={nation} onChange={setNation} />
-      </div>
-      <div css={st.segPad}>
-        <SegmentedControl items={RANK_TYPES} value={rankType} onChange={setRankType} />
+    <SheetLayout open={open} title="글로벌 실시간 랭킹" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} noNavBorder>
+      <Tabs items={RANK_TYPES} value={rankType} onChange={setRankType} variant="underline" itemAlign="center" />
+      <div css={subTabPadStyle}>
+        <Tabs items={NATIONS} value={nation} onChange={setNation} variant="pill" size="sm" fluid />
       </div>
 
       <div css={st.list}>
-        {loading && <LoadingCenter />}
+        {loading && <LoadingCenter fill />}
         {!loading && items.length === 0 && <div css={st.empty}>데이터가 없습니다</div>}
         {!loading && items.map(item => (
           <RankRow
@@ -85,13 +81,18 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
         ))}
       </div>
 
+      <div css={st.footer}>
+        <PresetTabs presets={presets} activeId={activeGroupId} onSelect={onGroupSelect}
+          onAddPreset={onAddPreset} onRename={onRenamePreset} onRemove={onRemovePreset} compact />
+      </div>
+
       <WebViewPanel url={viewUrl} onClose={() => setViewUrl(null)} />
     </SheetLayout>
   );
 };
 
 const st = {
-  segPad: css`padding: 0 ${spacing.xl}px ${spacing.md - 2}px; flex-shrink: 0;`,
-  list: css`flex: 1; overflow-y: auto;`,
+  list: css`flex: 1; overflow-y: auto; display: flex; flex-direction: column;`,
   empty: css`padding: ${spacing['5xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
+  footer: css`border-top: 1px solid ${sem.border.subtle}; flex-shrink: 0;`,
 };

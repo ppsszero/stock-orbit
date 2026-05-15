@@ -50,8 +50,8 @@ const s = {
   empty: css`padding:${spacing['5xl']}px;text-align:center;font-size:${fontSize.base}px;color:${sem.text.tertiary};`,
   row: css`
     display:flex;gap:${spacing.md + 2}px;padding:${spacing.lg}px ${spacing.xl}px;
-    border-bottom:1px solid ${sem.border.subtle};cursor:pointer;
-    &:hover{background:${sem.bg.surface};}
+    cursor:pointer;
+    &:hover{background:${sem.action.primarySoft};}
   `,
   content: css`flex:1;display:flex;flex-direction:column;gap:${spacing.sm}px;min-width:0;`,
   title: css`font-size:${fontSize.xl}px;font-weight:${fontWeight.semibold};color:${sem.text.primary};line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;`,

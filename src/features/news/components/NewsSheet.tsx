@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useEffect, useCallback } from 'react';
 
 import { spacing } from '@/shared/styles/tokens';
-import { SheetLayout, SegmentedControl, WebViewPanel, LoadingCenter } from '@/shared/ui';
+import { SheetLayout, Tabs, WebViewPanel, LoadingCenter } from '@/shared/ui';
 import { useToast } from '@/shared/ui/Toast';
 import { useNewsData } from '../hooks/useNewsData';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
@@ -46,13 +46,11 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   if (!open) return null;
 
   return (
-    <SheetLayout open={open} title="뉴스" onClose={onClose} onRefresh={handleRefresh} refreshing={loading}>
-      <div css={s.tabWrap}>
-        <SegmentedControl items={TABS} value={tab} onChange={setTab} />
-      </div>
+    <SheetLayout open={open} title="뉴스" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} noNavBorder>
+      <Tabs items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
 
       {loading ? (
-        <div css={s.body}><LoadingCenter /></div>
+        <div css={s.body}><LoadingCenter fill /></div>
       ) : (
         <>
           <div css={s.tabBody(tab === 'briefing')}>
@@ -78,8 +76,7 @@ export const NewsSheet = ({ open, onClose }: Props) => {
 };
 
 const s = {
-  tabWrap: css`padding:${spacing.md + 2}px ${spacing.xl}px ${spacing.md - 2}px;flex-shrink:0;`,
-  body: css`flex:1;overflow-y:auto;`,
+  body: css`flex:1;overflow-y:auto;display:flex;flex-direction:column;`,
   tabBody: (visible: boolean) => css`flex:1;overflow-y:auto;display:${visible ? 'block' : 'none'};`,
   empty: css`padding:${spacing['5xl']}px;text-align:center;color:${sem.text.tertiary};`,
 };
