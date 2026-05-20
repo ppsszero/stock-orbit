@@ -43,8 +43,6 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
   const setDetailSymbol = useStore(s => s.setDetailSymbol);
   const infoSymbol = useStore(s => s.infoSymbol);
   const setInfoSymbol = useStore(s => s.setInfoSymbol);
-  const highlightCode = useStore(s => s.highlightCode);
-  const setHighlightCode = useStore(s => s.setHighlightCode);
   const resetAll = useStore(s => s.resetAll);
 
   const activePreset = useActivePreset();
@@ -53,11 +51,6 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
   const closeSheet = useCallback(() => setSheet(null), [setSheet]);
   const closeDetail = useCallback(() => setDetailSymbol(null), [setDetailSymbol]);
   const closeInfo = useCallback(() => setInfoSymbol(null), [setInfoSymbol]);
-
-  const closeMarquee = useCallback(() => {
-    setSheet(null);
-    setHighlightCode(null);
-  }, [setSheet, setHighlightCode]);
 
   const handleAddPreset = useCallback((name: string) => {
     addPreset(name);
@@ -81,8 +74,7 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
         onClose={closeSheet} onUpdate={updateSettings}
         onReset={resetAll} />
       <MarqueeSheet open={openSheet === 'marquee'} items={marqueeItems}
-        highlightCode={highlightCode}
-        onClose={closeMarquee} />
+        onClose={closeSheet} />
       <InvestorSheet open={openSheet === 'investor'} onClose={closeSheet} marqueeItems={marqueeItems} />
       <RankingSheet open={openSheet === 'ranking'}
         presets={presets} activeGroupId={activeGroupId}

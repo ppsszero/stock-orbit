@@ -47,24 +47,27 @@ export const NewsSheet = ({ open, onClose }: Props) => {
 
   return (
     <SheetLayout open={open} title="뉴스" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} noNavBorder>
-      <Tabs items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
+      <Tabs id="news" items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
 
       {loading ? (
         <div css={s.body}><LoadingCenter fill /></div>
       ) : (
         <>
-          <div css={s.tabBody(tab === 'briefing')}>
+          <div role="tabpanel" id="news-panel-briefing" aria-labelledby="news-tab-briefing"
+            hidden={tab !== 'briefing'} css={s.tabBody(tab === 'briefing')}>
             {briefing
               ? <BriefingView briefing={briefing} onLinkClick={setViewUrl} />
               : <div css={s.empty}>브리핑이 없습니다</div>
             }
           </div>
 
-          <div ref={newsScrollRef} css={s.tabBody(tab === 'news')}>
+          <div role="tabpanel" id="news-panel-news" aria-labelledby="news-tab-news"
+            hidden={tab !== 'news'} ref={newsScrollRef} css={s.tabBody(tab === 'news')}>
             <NewsList items={news} maxed={newsMaxed} onLinkClick={setViewUrl} />
           </div>
 
-          <div ref={storyScrollRef} css={s.tabBody(tab === 'story')}>
+          <div role="tabpanel" id="news-panel-story" aria-labelledby="news-tab-story"
+            hidden={tab !== 'story'} ref={storyScrollRef} css={s.tabBody(tab === 'story')}>
             <StoryList items={stories} maxed={storiesMaxed} onLinkClick={setViewUrl} />
           </div>
         </>

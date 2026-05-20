@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { logger } from '@/shared/utils/logger';
 
 /**
  * 웹뷰 공통 훅
- * - dom-ready 시점에 loaded=true — DOM 준비 즉시 표시 (이미지 등 리소스는 백그라운드 로드)
+ * - dom-ready 시점에 loaded=true (DOM 준비 즉시 표시)
  * - 3초 fallback — 이벤트 못 받는 극단 케이스 안전망
  * - 마우스 뒤로/앞으로 → 웹뷰 히스토리 네비게이션
- * - 웹뷰 내 팝업/새창 링크를 같은 웹뷰에서 열기
+ * - 마우스 드래그 → 페이지 스크롤 (가로 carousel 등 조작 가능)
+ * - 새창 → 같은 웹뷰에서 열기
  */
 const LOAD_FALLBACK_MS = 3000;
 
@@ -13,6 +15,8 @@ export const useWebView = (active: boolean) => {
   const wvRef = useRef<ElectronWebviewElement>(null);
   const [loaded, setLoaded] = useState(false);
   const shownOnce = useRef(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   useEffect(() => {
     if (!active) {
@@ -25,23 +29,29 @@ export const useWebView = (active: boolean) => {
     if (!wv) return;
 
     const markLoaded = () => {
+      // active false인 상태에서 timer가 늦게 발화하면 무시 (재open 사이 race 방지)
+      if (!activeRef.current) return;
       if (shownOnce.current) return;
       shownOnce.current = true;
       setLoaded(true);
     };
 
-    // dom-ready — DOM 준비 즉시 화면 표시 + 마우스 history/drag-scroll 주입
+    // dom-ready — DOM 준비 즉시 화면 표시 + 마우스 history/drag-scroll JS 주입.
+    // SPA 라우팅 등으로 dom-ready가 같은 document에서 다중 발화할 수 있어 가드 필수.
     const onDomReady = () => {
       markLoaded();
       wv.executeJavaScript(`
         (() => {
+          if (window.__sodragInjected) return;
+          window.__sodragInjected = true;
+
           // 마우스 4/5 버튼 → 브라우저 히스토리
           document.addEventListener('mouseup', (e) => {
             if (e.button === 3) { e.preventDefault(); history.back(); }
             if (e.button === 4) { e.preventDefault(); history.forward(); }
           });
 
-          // 마우스 드래그 → 스크롤 (모바일 페이지의 가로 carousel/tab strip 조작 가능)
+          // 마우스 드래그 → 스크롤 (가로 carousel/tab strip 조작용)
           let scrollEl = null;
           let startX = 0, startY = 0;
           let lastX = 0, lastY = 0;
@@ -61,7 +71,7 @@ export const useWebView = (active: boolean) => {
           };
 
           document.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
+            if (e.button !== 0) { scrollEl = null; return; }
             startX = lastX = e.clientX;
             startY = lastY = e.clientY;
             dragging = false;
@@ -95,7 +105,7 @@ export const useWebView = (active: boolean) => {
           document.addEventListener('mouseup', endDrag);
           document.addEventListener('mouseleave', endDrag);
 
-          // drag 도중에 click 이벤트 막아 link 등 우발 클릭 방지
+          // drag 도중에 click 이벤트 막아 link 우발 클릭 방지
           document.addEventListener('click', (e) => {
             if (Math.hypot(e.clientX - startX, e.clientY - startY) > THRESHOLD) {
               e.preventDefault();
@@ -103,7 +113,10 @@ export const useWebView = (active: boolean) => {
             }
           }, true);
         })();
-      `).catch(() => {});
+      `).catch((err: Error) => {
+        // 외부 페이지가 listener 차단 등으로 실패할 수 있음 — dev에선 흘려 보기
+        logger.warn('webview JS 주입 실패', err.message);
+      });
     };
 
     // 팝업/새창 → 같은 웹뷰에서 열기

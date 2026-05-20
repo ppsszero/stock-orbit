@@ -62,12 +62,15 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
 
   return (
     <SheetLayout open={open} title="글로벌 실시간 랭킹" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} noNavBorder>
-      <Tabs items={RANK_TYPES} value={rankType} onChange={setRankType} variant="underline" itemAlign="center" />
+      <Tabs id="ranking-type" items={RANK_TYPES} value={rankType} onChange={setRankType} variant="underline" itemAlign="center" />
       <div css={subTabPadStyle}>
-        <Tabs items={NATIONS} value={nation} onChange={setNation} variant="pill" size="sm" fluid />
+        <Tabs id="ranking-nation" items={NATIONS} value={nation} onChange={setNation} variant="pill" size="sm" fluid />
       </div>
 
-      <div css={st.list}>
+      <div role="tabpanel"
+        id={`ranking-type-panel-${rankType}`}
+        aria-labelledby={`ranking-type-tab-${rankType} ranking-nation-tab-${nation}`}
+        css={st.list}>
         {loading && <LoadingCenter fill />}
         {!loading && items.length === 0 && <div css={st.empty}>데이터가 없습니다</div>}
         {!loading && items.map(item => (

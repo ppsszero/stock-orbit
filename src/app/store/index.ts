@@ -128,8 +128,6 @@ interface AppState {
   setDetailSymbol: (sym: StockSymbol | null) => void;
   infoSymbol: { sym: StockSymbol; price: StockPrice } | null;
   setInfoSymbol: (info: { sym: StockSymbol; price: StockPrice } | null) => void;
-  highlightCode: string | null;
-  setHighlightCode: (code: string | null) => void;
 
   // Reset
   resetAll: () => void;
@@ -251,8 +249,6 @@ export const useStore = create<AppState>((set, get) => ({
   setDetailSymbol: (sym) => set({ detailSymbol: sym }),
   infoSymbol: null,
   setInfoSymbol: (info) => set({ infoSymbol: info }),
-  highlightCode: null,
-  setHighlightCode: (code) => set({ highlightCode: code }),
 
   /* ─── Reset ─── */
   // WARNING: localStorage.clear()가 아닌 앱 키만 선택 삭제.

@@ -45,9 +45,12 @@ export const LogSheet = ({ open, onClose }: Props) => {
 
   return (
     <SheetLayout open={open} title="시스템 로그" onClose={onClose} navRight={navRight} noNavBorder>
-      <Tabs items={FILTERS} value={filter} onChange={setFilter} variant="underline" itemAlign="center" />
+      <Tabs id="log-filter" items={FILTERS} value={filter} onChange={setFilter} variant="underline" itemAlign="center" />
 
-      <div css={st.logList} ref={listRef} onScroll={handleScroll}>
+      <div role="tabpanel"
+        id={`log-filter-panel-${filter}`}
+        aria-labelledby={`log-filter-tab-${filter}`}
+        css={st.logList} ref={listRef} onScroll={handleScroll}>
         {filtered.length === 0 && <div css={st.empty}>로그가 없습니다</div>}
         {visible.map(log => (
           <LogRow key={log.id} log={log} onClick={() => copyLog(log)} />

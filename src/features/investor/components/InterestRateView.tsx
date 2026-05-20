@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { InterestRateItem, fetchStandardInterest, fetchDomesticInterest, fetchBondYield } from '@/shared/naver';
 import { cached } from '@/shared/utils/cache';
 import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
@@ -73,14 +73,15 @@ const TAB_CONFIG: Record<Tab, { fetcher: () => Promise<InterestRateItem[]>; show
 };
 
 const getRateUrl = (tab: Tab, item: InterestRateItem): string | null => {
+  // code/nation에 '='(예: US10YT=RR) 등 reserved char가 포함될 수 있어 인코딩 필수
   if (tab === 'standard' && item.nation) {
-    return `https://m.stock.naver.com/marketindex/standardInterest/${item.nation}`;
+    return `https://m.stock.naver.com/marketindex/standardInterest/${encodeURIComponent(item.nation)}`;
   }
   if (tab === 'bond' && item.code) {
-    return `https://m.stock.naver.com/marketindex/bond/${item.code}`;
+    return `https://m.stock.naver.com/marketindex/bond/${encodeURIComponent(item.code)}`;
   }
   if (tab === 'domestic' && item.code) {
-    return `https://m.stock.naver.com/marketindex/domesticInterest/${item.code}`;
+    return `https://m.stock.naver.com/marketindex/domesticInterest/${encodeURIComponent(item.code)}`;
   }
   return null;
 };
@@ -90,23 +91,28 @@ export const InterestRateView = ({ tab, refreshKey, onLoadResult }: Props) => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<{ url: string; title: string; sub: string } | null>(null);
 
+  // 부모가 onLoadResult를 인라인 함수로 주는 경우 매 렌더마다 effect 재실행되는 것 방지
+  const onLoadResultRef = useRef(onLoadResult);
+  onLoadResultRef.current = onLoadResult;
+
   useEffect(() => {
     // 빠른 탭 전환 시 이전 fetch 응답이 늦게 도착해 잘못된 setState 하는 것 방지.
     let stale = false;
+    const isManualRefresh = (refreshKey ?? 0) > 0;
 
     const load = async () => {
       setLoading(true);
-      setItems([]);
-      const isManualRefresh = (refreshKey ?? 0) > 0;
+      // cached hit 시 빈 화면 깜빡임 방지 — items는 fetch 실패 시에만 비움
       const { fetcher } = TAB_CONFIG[tab];
       try {
         const data = await cached(`interest-${tab}`, fetcher, 10 * 60 * 1000, isManualRefresh);
         if (stale) return;
         setItems(data);
-        if (isManualRefresh) onLoadResult?.(data.length > 0);
+        if (isManualRefresh) onLoadResultRef.current?.(data.length > 0);
       } catch {
         if (stale) return;
-        if (isManualRefresh) onLoadResult?.(false);
+        setItems([]);
+        if (isManualRefresh) onLoadResultRef.current?.(false);
       } finally {
         if (!stale) setLoading(false);
       }
@@ -114,7 +120,7 @@ export const InterestRateView = ({ tab, refreshKey, onLoadResult }: Props) => {
     load();
 
     return () => { stale = true; };
-  }, [tab, refreshKey, onLoadResult]);
+  }, [tab, refreshKey]);
 
   if (loading) {
     return <LoadingCenter fill label="금리 정보를 불러오는 중..." />;

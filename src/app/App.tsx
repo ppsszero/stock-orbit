@@ -45,7 +45,6 @@ const AppContent = () => {
   const removePreset = useStore(s => s.removePreset);
   const renamePreset = useStore(s => s.renamePreset);
   const setSheet = useStore(s => s.setSheet);
-  const setHighlightCode = useStore(s => s.setHighlightCode);
   const updateSettings = useStore(s => s.updateSettings);
   const confirm = useConfirm();
 
@@ -71,10 +70,9 @@ const AppContent = () => {
   const displaySymbols = useDisplaySymbols();
   const { loading: dataLoading, fetching, lastUpdated, refresh, marqueeItems, progressRef, subscribeProgress } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);
 
-  const openMarquee = useCallback((item: { code: string }) => {
-    setHighlightCode(item.code);
+  const openMarquee = useCallback(() => {
     setSheet('marquee');
-  }, [setHighlightCode, setSheet]);
+  }, [setSheet]);
 
   const addPreset = useStore(s => s.addPreset);
   const openSearch = useCallback(() => setSheet('search'), [setSheet]);

@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useEffect, useMemo, useRef, useState } from 'react'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmtChangeArrow } from '@/shared/utils/format';
 import { MarqueeItem } from '@/shared/types';
 import { groupMarqueeItems } from '@/features/marquee/utils/groupMarqueeItems';
@@ -51,14 +51,19 @@ export const MarqueeSheet = ({ open, items, onClose }: Props) => {
   const [tab, setTab] = useState<Category>('index');
   const [view, setView] = useState<{ url: string; title: string; sub: string } | null>(null);
   const wasOpenRef = useRef(false);
+  // tab reset에서 최신 g/availableTabs 참조 — effect deps에 넣지 않고 polling 갱신 시 effect 재실행 회피
+  const gRef = useRef(g);
+  const availRef = useRef(availableTabs);
+  gRef.current = g;
+  availRef.current = availableTabs;
 
-  // open이 false→true로 *전환되는 순간*에만 reset (data polling 갱신 시에는 유지)
+  // open이 false→true로 *전환되는 순간*에만 reset
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      setTab(g.index.length > 0 ? 'index' : (availableTabs[0]?.key ?? 'index'));
+      setTab(gRef.current.index.length > 0 ? 'index' : (availRef.current[0]?.key ?? 'index'));
     }
     wasOpenRef.current = open;
-  }, [open, g, availableTabs]);
+  }, [open]);
 
   if (!open) return null;
   // 활성 탭이 사라진 경우 fallback (예: 카테고리 비어버림)
@@ -68,17 +73,21 @@ export const MarqueeSheet = ({ open, items, onClose }: Props) => {
   return (
     <SheetLayout open={open} title="시장지표" onClose={onClose} noNavBorder>
       {availableTabs.length > 1 && (
-        <Tabs items={availableTabs} value={safeTab} onChange={setTab} variant="underline" itemAlign="center" />
+        <Tabs id="marquee" items={availableTabs} value={safeTab} onChange={setTab} variant="underline" itemAlign="center" />
       )}
       <WebViewPanel url={view?.url ?? null} title={view?.title} subtitle={view?.sub}
         onClose={() => setView(null)} />
-      <div css={s.body}>
+      <div role="tabpanel"
+        id={`marquee-panel-${safeTab}`}
+        aria-labelledby={availableTabs.length > 1 ? `marquee-tab-${safeTab}` : undefined}
+        css={s.body}>
         {activeItems.map(i => (
           <div key={i.code}
             css={s.row}
             onClick={() => {
               const u = getMarqueeUrl(i);
-              if (u) setView({ url: u, title: i.name, sub: CATEGORY_LABELS[i.type as Category] ?? '' });
+              // sub는 현재 활성 탭 라벨 (i.type 직접 매핑 회피 — type union에 commodity 등 매핑 누락 안전)
+              if (u) setView({ url: u, title: i.name, sub: CATEGORY_LABELS[safeTab] });
             }}>
             <span css={s.name}>{i.name}</span>
             <div css={s.vals}>

@@ -6,6 +6,7 @@ import { useBackAction } from '@/shared/hooks/useBackAction';
 import { useWebView } from '@/shared/hooks/useWebView';
 import { sem } from '@/shared/styles/semantic';
 import { LoadingCenter } from './LoadingCenter';
+import { ElectronWebView } from './ElectronWebView';
 
 interface Props {
   url: string | null;
@@ -25,7 +26,7 @@ export const WebViewPanel = ({ url, title = '종목 상세', subtitle, onClose }
     <div css={s.overlay}>
       <div css={s.sheet}>
         <div css={s.nav}>
-          <button css={s.closeBtn} onClick={onClose}>
+          <button css={s.closeBtn} onClick={onClose} aria-label="웹뷰 닫기">
             <FiX size={16} />
           </button>
           <span css={s.title}>{title}</span>
@@ -37,13 +38,7 @@ export const WebViewPanel = ({ url, title = '종목 상세', subtitle, onClose }
           </div>
         )}
         <div css={s.wvWrap} style={{ opacity: loaded ? 1 : 0 }}>
-          <webview
-            ref={wvRef as React.Ref<HTMLElement>}
-            src={url}
-            css={s.webview}
-            allowpopups="true"
-            useragent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"
-          />
+          <ElectronWebView ref={wvRef} src={url} />
         </div>
       </div>
     </div>
@@ -118,5 +113,4 @@ const s = {
     display: flex;
     transition: opacity ${transition.normal};
   `,
-  webview: css`flex: 1; border: none;`,
 };

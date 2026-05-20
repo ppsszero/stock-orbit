@@ -110,7 +110,7 @@ const Tile = memo(({
       css={s.tile[span]}
       style={{
         background: bg,
-        viewTransitionName: `tile-${sym.code.replace(/[^\w]/g, '_')}`,
+        viewTransitionName: `tile-${sym.nation}-${sym.code.replace(/[^\w]/g, '_')}`,
       }}
       onClick={() => onClick(sym)}
     >

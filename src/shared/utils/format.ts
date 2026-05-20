@@ -56,7 +56,7 @@ export const getLogoUrlFromAutoComplete = (item: NaverAutoCompleteItem): string 
 // === 등락 표시 유틸 ===
 // NOTE: 네이버 API의 changeDirection 필드를 기반으로 화살표/부호를 결정.
 // change 값의 부호(양수/음수)로 판단하면 안 됨 — 국내주식 API에서 부호가 불일치하는 경우 있음.
-type Direction = 'up' | 'down' | 'flat';
+export type Direction = 'up' | 'down' | 'flat';
 
 /** '▲' / '▼' / '' */
 export const dirArrow = (d: Direction): string =>
@@ -69,6 +69,23 @@ export const dirSign = (d: Direction): string =>
 /** sem.feedback 색상 토큰을 direction에 따라 반환 */
 export const getDirColor = (d: Direction): string =>
   d === 'up' ? sem.feedback.up : d === 'down' ? sem.feedback.down : sem.feedback.flat;
+
+/**
+ * 부호 있는 표시 문자열에서 방향 추출 ("+12,345" → 'up', "-1,000" → 'down', "0"/"+0" → 'flat').
+ * raw 표시 문자열만 받는 외부 API 응답을 transform 단계에서 SignedValue로 만들 때 사용.
+ */
+export const parseSignDirection = (value: string): Direction => {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('+')) {
+    const num = parseFloat(trimmed);
+    return num === 0 ? 'flat' : 'up';
+  }
+  if (trimmed.startsWith('-')) {
+    const num = parseFloat(trimmed);
+    return num === 0 ? 'flat' : 'down';
+  }
+  return 'flat';
+};
 
 /** '+1.35%' / '-0.50%' / '0.00%' */
 export const fmtPercent = (d: Direction, pct: number): string =>

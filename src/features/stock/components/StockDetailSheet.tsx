@@ -9,6 +9,7 @@ import { spacing, fontSize, fontWeight, radius, height as h, zIndex, transition 
 import { getNaverStockUrl } from '@/shared/naver';
 import { sem } from '@/shared/styles/semantic';
 import { LoadingCenter } from '@/shared/ui/LoadingCenter';
+import { ElectronWebView } from '@/shared/ui/ElectronWebView';
 
 interface Props { symbol: StockSymbol | null; onClose: () => void; }
 
@@ -48,13 +49,7 @@ export const StockDetailSheet = ({ symbol, onClose }: Props) => {
           </div>
         )}
         <div css={s.wv} style={{ opacity: loaded ? 1 : 0 }}>
-          <webview
-            ref={wvRef as React.Ref<HTMLElement>}
-            src={getNaverStockUrl(symbol)}
-            css={s.webview}
-            allowpopups="true"
-            useragent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"
-          />
+          <ElectronWebView ref={wvRef} src={getNaverStockUrl(symbol)} />
         </div>
       </div>
     </div>
@@ -74,5 +69,4 @@ const s = {
   `,
   loading: css`flex:1;display:flex;align-items:center;justify-content:center;`,
   wv: css`flex:1;display:flex;transition:opacity ${transition.normal};`,
-  webview: css`flex:1;border:none;`,
 };

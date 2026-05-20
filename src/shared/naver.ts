@@ -1,5 +1,6 @@
 import { NaverAutoCompleteResponse, NaverAutoCompleteItem, StockPrice, StockSymbol, MarqueeItem, inferCategory } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
+import { parseSignDirection, type Direction } from '@/shared/utils/format';
 import type {
   NaverIndexPollingRaw,
   NaverCommodityItemRaw,
@@ -495,11 +496,21 @@ export const fetchFXRates = async (): Promise<MarqueeItem[]> => {
 };
 
 // === 투자정보 (투자자별 매매동향 + 프로그램 + 등락종목) ===
+// raw 표시 문자열(+12,345 등)과 방향을 함께 보관 — view에서 부호 재파싱 불필요
+export interface SignedValue {
+  value: string;
+  direction: Direction;
+}
 export interface InvestorData {
-  dealTrend: { personal: string; foreign: string; institutional: string };
-  programTrend: { arbitrage: string; nonArbitrage: string; total: string };
+  dealTrend: { personal: SignedValue; foreign: SignedValue; institutional: SignedValue };
+  programTrend: { arbitrage: SignedValue; nonArbitrage: SignedValue; total: SignedValue };
   upDown: { rise: number; steady: number; fall: number; upper: number; lower: number };
 }
+
+const toSigned = (raw: string | undefined): SignedValue => {
+  const value = raw || '0';
+  return { value, direction: parseSignDirection(value) };
+};
 
 export const fetchInvestorData = async (market: 'KOSPI' | 'KOSDAQ'): Promise<InvestorData | null> => {
   try {
@@ -509,14 +520,14 @@ export const fetchInvestorData = async (market: 'KOSPI' | 'KOSDAQ'): Promise<Inv
     const ud = d.upDownStockInfo || {};
     return {
       dealTrend: {
-        personal: deal.personalValue || '0',
-        foreign: deal.foreignValue || '0',
-        institutional: deal.institutionalValue || '0',
+        personal: toSigned(deal.personalValue),
+        foreign: toSigned(deal.foreignValue),
+        institutional: toSigned(deal.institutionalValue),
       },
       programTrend: {
-        arbitrage: prog.indexDifferenceReal || '0',
-        nonArbitrage: prog.indexBiDifferenceReal || '0',
-        total: prog.indexTotalReal || '0',
+        arbitrage: toSigned(prog.indexDifferenceReal),
+        nonArbitrage: toSigned(prog.indexBiDifferenceReal),
+        total: toSigned(prog.indexTotalReal),
       },
       upDown: {
         rise: parseInt(ud.riseCount || '0'),

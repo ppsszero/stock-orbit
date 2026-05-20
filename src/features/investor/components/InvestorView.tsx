@@ -3,8 +3,9 @@ import { css } from '@emotion/react';
 import { memo } from 'react';
 import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
 import { sectionTitleStyle } from '@/shared/styles/sharedStyles';
-import type { InvestorData } from '@/shared/naver';
+import type { InvestorData, SignedValue } from '@/shared/naver';
 import { sem } from '@/shared/styles/semantic';
+import { getDirColor } from '@/shared/utils/format';
 
 /* --- Section wrapper --- */
 
@@ -17,34 +18,15 @@ const Section = memo(({ label, children }: { label: string; children: React.Reac
 
 /* --- 3-column unified card with dividers --- */
 
-// "+12,345" / "-1,000" / "0" 같은 표시 문자열에서 부호를 분리해 direction을 도출.
-// 표시 문자열 역추론을 컴포넌트 안에서 inline 분기하지 않고 transform 단계로 일원화.
-type Direction = 'up' | 'down' | 'flat';
-const parseDirection = (value: string): Direction => {
-  // 천 단위 콤마/공백 무시하고 첫 비공백 부호 문자만 판단
-  const trimmed = value.trim();
-  if (trimmed.startsWith('+')) return 'up';
-  if (trimmed.startsWith('-')) {
-    // "-0", "-0.00" 등 사실상 0인 케이스는 flat으로
-    const num = parseFloat(trimmed);
-    if (num === 0) return 'flat';
-    return 'down';
-  }
-  return 'flat';
-};
-
-const directionColor = (d: Direction): string =>
-  d === 'up' ? sem.feedback.up : d === 'down' ? sem.feedback.down : sem.text.primary;
-
-const ValueRow = memo(({ items }: { items: { label: string; value: string }[] }) => (
+const ValueRow = memo(({ items }: { items: { label: string; signed: SignedValue }[] }) => (
   <div css={st.card}>
     {items.map((item, i) => {
-      const color = directionColor(parseDirection(item.value));
+      const color = item.signed.direction === 'flat' ? sem.text.primary : getDirColor(item.signed.direction);
       return (
         <div key={item.label} css={st.cell}>
           {i > 0 && <div css={st.divider} />}
           <span css={st.cellLabel}>{item.label}</span>
-          <span css={st.cellVal} style={{ color }}>{item.value}</span>
+          <span css={st.cellVal} style={{ color }}>{item.signed.value}</span>
         </div>
       );
     })}
@@ -82,9 +64,10 @@ interface InvestorViewProps {
   data: InvestorData | null;
 }
 
+const FLAT: SignedValue = { value: '0', direction: 'flat' };
 const PLACEHOLDER: InvestorData = {
-  dealTrend: { personal: '0', foreign: '0', institutional: '0' },
-  programTrend: { arbitrage: '0', nonArbitrage: '0', total: '0' },
+  dealTrend: { personal: FLAT, foreign: FLAT, institutional: FLAT },
+  programTrend: { arbitrage: FLAT, nonArbitrage: FLAT, total: FLAT },
   upDown: { rise: 0, steady: 0, fall: 0, upper: 0, lower: 0 },
 };
 
@@ -95,17 +78,17 @@ export const InvestorView = ({ data }: InvestorViewProps) => {
     <>
       <Section label="투자자별 매매동향">
         <ValueRow items={[
-          { label: '개인', value: d.dealTrend.personal },
-          { label: '외국인', value: d.dealTrend.foreign },
-          { label: '기관', value: d.dealTrend.institutional },
+          { label: '개인', signed: d.dealTrend.personal },
+          { label: '외국인', signed: d.dealTrend.foreign },
+          { label: '기관', signed: d.dealTrend.institutional },
         ]} />
       </Section>
 
       <Section label="프로그램 매매">
         <ValueRow items={[
-          { label: '차익', value: d.programTrend.arbitrage },
-          { label: '비차익', value: d.programTrend.nonArbitrage },
-          { label: '전체', value: d.programTrend.total },
+          { label: '차익', signed: d.programTrend.arbitrage },
+          { label: '비차익', signed: d.programTrend.nonArbitrage },
+          { label: '전체', signed: d.programTrend.total },
         ]} />
       </Section>
 

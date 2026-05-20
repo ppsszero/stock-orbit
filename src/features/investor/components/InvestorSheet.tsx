@@ -84,26 +84,34 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
       refreshing={loading}
       noNavBorder
     >
-      <Tabs items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
+      <Tabs id="investor" items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
 
       {tab === 'market' ? (
         <>
           <div css={subTabPadStyle}>
-            <Tabs items={MARKETS} value={market} onChange={setMarket} variant="pill" size="sm" />
+            <Tabs id="investor-market" items={MARKETS} value={market} onChange={setMarket} variant="pill" size="sm" />
           </div>
           <IndexBanner items={marqueeItems} market={market} />
-          <div css={st.body}>
+          <div role="tabpanel"
+            id="investor-panel-market"
+            aria-labelledby={`investor-tab-market investor-market-tab-${market}`}
+            css={st.body}>
             <InvestorView data={data[market]} />
           </div>
         </>
       ) : tab === 'calendar' ? (
-        <EconomicCalendar />
+        <div role="tabpanel" id="investor-panel-calendar" aria-labelledby="investor-tab-calendar" css={st.calendarPanel}>
+          <EconomicCalendar />
+        </div>
       ) : (
         <>
           <div css={subTabPadStyle}>
-            <Tabs items={INTEREST_TABS} value={interestTab} onChange={setInterestTab} variant="pill" size="sm" />
+            <Tabs id="investor-interest" items={INTEREST_TABS} value={interestTab} onChange={setInterestTab} variant="pill" size="sm" />
           </div>
-          <div css={st.body}>
+          <div role="tabpanel"
+            id="investor-panel-interest"
+            aria-labelledby={`investor-tab-interest investor-interest-tab-${interestTab}`}
+            css={st.body}>
             <InterestRateView tab={interestTab} refreshKey={interestRefreshKey} onLoadResult={handleInterestResult} />
           </div>
         </>
@@ -115,6 +123,7 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
 /* --- Styles --- */
 const st = {
   body: css`flex: 1; overflow-y: auto; padding: ${spacing.sm}px 0 ${spacing.lg}px;`,
+  calendarPanel: css`flex: 1; display: flex; flex-direction: column; min-height: 0;`,
   indexBanner: css`
     display: flex; flex-direction: column; gap: ${spacing.sm}px;
     padding: ${spacing.lg}px ${spacing.xl}px ${spacing.md}px;

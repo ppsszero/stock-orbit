@@ -10,7 +10,7 @@ interface Props {
   /** Controlled: 외부에서 값 관리. onChange와 함께 사용. */
   value?: number;
   onChange?: (value: number) => void;
-  /** Uncontrolled: 초기값. value/onChange 없이 단독 사용. 빈 입력 fallback도 이 값 사용. */
+  /** Uncontrolled: 초기값. value/onChange 없이 단독 사용. 빈 입력 fallback은 controlled value 우선. */
   defaultValue?: number;
 
   min?: number;
@@ -18,11 +18,8 @@ interface Props {
   step?: number;
   disabled?: boolean;
   size?: Size;
-  /** 숫자 입력 영역 너비. 미지정 시 size에 따라 자동. */
   inputWidth?: number;
-  /** 감소 버튼 aria-label. 상황에 맞게 변경 권장. */
   decreaseLabel?: string;
-  /** 증가 버튼 aria-label. */
   increaseLabel?: string;
 }
 
@@ -32,8 +29,6 @@ const SIZE_MAP: Record<Size, { btn: number; wrap: number; input: number }> = {
   lg: { btn: 32, wrap: 36, input: 48 },
 };
 
-// 숫자 stepper — 좌측 - / 중앙 input / 우측 + 버튼.
-// Controlled(value + onChange) / Uncontrolled(defaultValue) 둘 다 지원.
 export const NumberStepper = ({
   value: controlled, onChange, defaultValue = 0,
   min = 0, max = 999, step = 1,
@@ -41,10 +36,14 @@ export const NumberStepper = ({
   decreaseLabel = '감소', increaseLabel = '증가',
 }: Props) => {
   const [internal, setInternal] = useState(defaultValue);
-  const [draft, setDraft] = useState<string | null>(null);  // 입력 중 임시 텍스트
+  const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isControlled = controlled !== undefined;
   const value = isControlled ? controlled : internal;
+
+  // wheel/keyboard 핸들러에서 최신값 참조 — listener는 mount 시 1회만 bind
+  const stateRef = useRef({ value, min, max, step, disabled, isControlled });
+  stateRef.current = { value, min, max, step, disabled, isControlled };
 
   const setClamped = (v: number) => {
     if (disabled) return;
@@ -53,22 +52,25 @@ export const NumberStepper = ({
     onChange?.(clamped);
   };
 
-  // 포커스 상태일 때만 input의 휠 이벤트 가로채기 — 페이지 스크롤 방지
+  // 포커스 상태일 때만 input의 휠 이벤트 가로채기 — 페이지 스크롤 방지.
+  // listener는 mount 시 1회만 bind, 핸들러 안에선 stateRef로 최신값 참조.
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       if (document.activeElement !== el) return;
+      const { value, min, max, step, disabled, isControlled } = stateRef.current;
+      if (disabled) return;
       e.preventDefault();
       e.stopPropagation();
       const next = Math.max(min, Math.min(max, value + (e.deltaY < 0 ? step : -step)));
-      setClamped(next);
-      // draft가 있으면 display가 draft를 우선하므로 동기화 (휠 즉시 반영)
+      if (!isControlled) setInternal(next);
+      onChange?.(next);
       setDraft(String(next));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [value, step, min, max, disabled, isControlled]);
+  }, [onChange]);
 
   const dim = SIZE_MAP[size];
   const inW = inputWidth ?? dim.input;
@@ -84,9 +86,10 @@ export const NumberStepper = ({
         css={s.input(inW, dim.btn)}
         type="text"
         inputMode="numeric"
-        pattern="[0-9]*"
+        pattern="-?[0-9]*"
         value={display}
         disabled={disabled}
+        aria-label={decreaseLabel === '감소' ? '값 입력' : `${decreaseLabel.replace(/감소|줄이기/, '값')}`}
         onFocus={() => setDraft(String(value))}
         onChange={e => {
           const raw = e.target.value;
@@ -95,9 +98,12 @@ export const NumberStepper = ({
           if (!isNaN(v)) setClamped(v);
         }}
         onBlur={() => {
-          // 빈 입력/유효하지 않은 입력 → defaultValue 또는 min으로 fallback
+          // 빈/유효하지 않은 입력 fallback:
+          // - controlled: 외부 value로 복귀 (외부 store 의도 보존)
+          // - uncontrolled: defaultValue로 복귀
           if (draft === '' || draft === null || isNaN(parseInt(draft, 10))) {
-            setClamped(defaultValue);
+            const fallback = isControlled ? (controlled as number) : defaultValue;
+            setClamped(fallback);
           }
           setDraft(null);
         }}
@@ -105,7 +111,7 @@ export const NumberStepper = ({
       <button css={s.btn(dim.btn)} aria-label={increaseLabel} type="button"
         disabled={disabled || value >= max}
         onClick={() => setClamped(value + step)}>+</button>
-      {/* 스크린 리더 전용 — 값 변경 알림 (input value echo와 분리) */}
+      {/* 스크린 리더 전용 — 값 변경 알림 */}
       <span css={s.srOnly} aria-live="polite" aria-atomic="true">{value}</span>
     </div>
   );

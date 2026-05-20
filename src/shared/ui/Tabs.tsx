@@ -22,6 +22,13 @@ interface Props<T extends string> {
   align?: 'left' | 'center' | 'between' | 'end';
   /** 각 아이템 내부 텍스트 정렬. 'center' 시 자동 균등 너비. 기본 'left' */
   itemAlign?: 'left' | 'center';
+  /**
+   * ARIA 접근성용 id prefix. 지정 시:
+   *  - 각 탭 버튼: id=`${id}-tab-${key}`, aria-controls=`${id}-panel-${key}`
+   *  - 사용처는 각 패널 div에 `role="tabpanel" id="${id}-panel-${key}" aria-labelledby="${id}-tab-${key}"` 부여 권장.
+   *  - 단일 panel 패턴이면 panel id를 `${id}-panel-${value}`로 동적 매칭 가능.
+   */
+  id?: string;
 }
 
 // 시트 내 페이지/뷰 전환용 탭.
@@ -31,7 +38,7 @@ interface Props<T extends string> {
 //   pill      — 서브 탭. active만 pill 배경.
 export const Tabs = <T extends string>({
   items, value, onChange, variant = 'underline', size = 'md',
-  fluid = false, align = 'left', itemAlign = 'left',
+  fluid = false, align = 'left', itemAlign = 'left', id,
 }: Props<T>) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -43,6 +50,11 @@ export const Tabs = <T extends string>({
   const itemAlignRef = useRef(itemAlign);
   valueRef.current = value;
   itemAlignRef.current = itemAlign;
+
+  // variant 변경 시 (예: pill → underline) indicator를 다시 처음부터 배치
+  useLayoutEffect(() => {
+    mountedRef.current = false;
+  }, [variant]);
 
   // active 변경 시 indicator 슬라이딩 — 텍스트(span) 너비 기준
   useLayoutEffect(() => {
@@ -59,7 +71,7 @@ export const Tabs = <T extends string>({
       : { x: activeBtn.offsetLeft + activeLabel.offsetLeft, width: activeLabel.offsetWidth };
 
     if (!mountedRef.current) {
-      // 초기 마운트: 점프 없이 즉시 배치
+      // 초기 마운트 / variant 전환: 점프 없이 즉시 배치
       gsap.set(indicator, target);
       mountedRef.current = true;
     } else {
@@ -93,8 +105,11 @@ export const Tabs = <T extends string>({
     const ro = new ResizeObserver(reposition);
     ro.observe(wrap);
 
-    // 폰트 늦게 로드되어 텍스트 너비가 변하는 경우 — initial skip 우회해서 직접 호출
+    // 폰트 늦게 로드되어 텍스트 너비가 변하는 경우 — promise는 cancel 불가하니
+    // unmount 후 stale ref 건드리지 않도록 cancelled flag 가드
+    let cancelled = false;
     document.fonts?.ready?.then(() => {
+      if (cancelled) return;
       const v = valueRef.current;
       const ia = itemAlignRef.current;
       const activeBtn = btnRefs.current[v];
@@ -107,7 +122,10 @@ export const Tabs = <T extends string>({
       gsap.set(indicator, target);
     }).catch(() => {});
 
-    return () => ro.disconnect();
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+    };
   }, [variant]);
 
   const handleClick = (key: T, btn: HTMLButtonElement) => {
@@ -132,6 +150,9 @@ export const Tabs = <T extends string>({
             css={s.btn(variant, size, active, itemAlign)}
             role="tab"
             aria-selected={active}
+            id={id ? `${id}-tab-${item.key}` : undefined}
+            aria-controls={id ? `${id}-panel-${item.key}` : undefined}
+            tabIndex={active ? 0 : -1}
             onClick={(e) => handleClick(item.key, e.currentTarget)}
           >
             <span ref={(el) => { labelRefs.current[item.key] = el; }} css={s.label}>{item.label}</span>
