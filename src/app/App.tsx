@@ -7,6 +7,7 @@ import { useStore } from './store';
 import { useTheme, useIsDark, useDisplaySymbols } from './store/selectors';
 import { useDataPolling } from '@/features/stock/hooks/useDataPolling';
 import { useSyncElectron } from '@/features/settings/hooks/useSyncElectron';
+import { useWebviewKeyForward } from '@/shared/hooks/useWebviewKeyForward';
 
 import { TitleBar } from './layout/TitleBar';
 import { StatusBar } from './layout/StatusBar';
@@ -66,6 +67,7 @@ const AppContent = () => {
   }, [updateSettings]);
 
   useSyncElectron();
+  useWebviewKeyForward();
 
   const displaySymbols = useDisplaySymbols();
   const { loading: dataLoading, fetching, lastUpdated, refresh, marqueeItems, progressRef, subscribeProgress } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);

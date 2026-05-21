@@ -34,14 +34,16 @@ export const StockDetailSheet = ({ symbol, onClose }: Props) => {
 
   const displayName = symbol.nation !== 'KR' && !/[가-힣]/.test(symbol.name) && symbol.code
     ? symbol.code : symbol.name;
+  // 우측 서브타이틀 — 종목 코드 (해외는 reutersCode 우선)
+  const codeLabel = symbol.reutersCode || symbol.code;
 
   return (
     <div css={s.overlay}>
       <div css={s.sheet}>
         <div css={s.nav}>
           <button css={s.closeBtn} onClick={onClose} aria-label="닫기"><FiX size={16} /></button>
-          <span css={s.title}>Npay 증권</span>
-          <span css={s.sub}>{displayName}</span>
+          <span css={s.title}>{displayName}</span>
+          <span css={s.sub}>{codeLabel}</span>
         </div>
         {!loaded && (
           <div css={s.loading}>
@@ -60,7 +62,7 @@ const s = {
   overlay: css`position:fixed;inset:0;z-index:${zIndex.modal};display:flex;flex-direction:column;border-radius:${radius['2xl']}px;overflow:hidden;`,
   sheet: css`flex:1;background:${sem.bg.base};display:flex;flex-direction:column;border-radius:${radius['2xl']}px;overflow:hidden;`,
   nav: css`display:flex;align-items:center;height:${h.nav}px;padding:0 ${spacing.lg}px;border-bottom:1px solid ${sem.border.subtle};gap:${spacing.md}px;flex-shrink:0;-webkit-app-region:drag;`,
-  title: css`font-size:${fontSize.xl}px;font-weight:${fontWeight.bold};color:${sem.text.primary};`,
+  title: css`font-size:${fontSize.xl}px;font-weight:${fontWeight.bold};line-height:0;color:${sem.text.primary};display:flex;align-items:center;`,
   sub: css`font-size:${fontSize.md}px;color:${sem.text.tertiary};margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%;text-align:right;`,
   closeBtn: css`
     border:none;background:transparent;cursor:pointer;color:${sem.text.secondary};

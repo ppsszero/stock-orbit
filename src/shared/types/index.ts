@@ -148,6 +148,16 @@ export interface ElectronAPI {
   onUpdateNotAvailable: (callback: () => void) => () => void;
   onUpdateError: (callback: (info: { message: string }) => void) => () => void;
   onWebviewBack: (callback: () => void) => () => void;
+  onWebviewKey: (callback: (key: WebviewKeyEvent) => void) => () => void;
+}
+
+export interface WebviewKeyEvent {
+  key: string;
+  code: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  meta: boolean;
 }
 
 declare global {

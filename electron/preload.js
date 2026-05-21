@@ -62,4 +62,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('webview-back', handler);
     return () => ipcRenderer.removeListener('webview-back', handler);
   },
+  // webview에 포커스가 있어도 호스트가 단축키(F9 등)를 받을 수 있도록 forward
+  onWebviewKey: (cb) => {
+    const handler = (_, v) => cb(v);
+    ipcRenderer.on('webview-key', handler);
+    return () => ipcRenderer.removeListener('webview-key', handler);
+  },
 });

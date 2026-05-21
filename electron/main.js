@@ -234,6 +234,31 @@ function createTray() {
   });
 }
 
+// webview에 포커스가 있어도 앱 단축키(F9 스크린샷 등)가 동작하도록
+// — webview의 webContents.before-input-event를 잡아 메인 윈도우로 forward.
+// 메인 렌더러는 preload onWebviewKey로 받아 KeyboardEvent로 재발화해 기존 keydown listener에서 처리.
+app.on('web-contents-created', (_e, contents) => {
+  if (contents.getType() !== 'webview') return;
+  contents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const isFn = /^F([1-9]|1[0-2])$/.test(input.key);
+    const hasModifier = input.control || input.alt || input.meta;
+    // 일반 타이핑(글자 입력)은 보내지 않음 — 단축키 조합/펑션키만 forward
+    if (!isFn && !hasModifier) return;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send('webview-key', {
+      key: input.key,
+      code: input.code,
+      ctrl: input.control,
+      alt: input.alt,
+      shift: input.shift,
+      meta: input.meta,
+    });
+    // webview 안에서 처리 안 되도록 막음 (예: 페이지의 Ctrl+S 가로채기 방지)
+    if (hasModifier) event.preventDefault();
+  });
+});
+
 app.whenReady().then(() => {
   createWindow();
   createTray();

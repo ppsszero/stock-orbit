@@ -51,6 +51,15 @@ export const useWebView = (active: boolean) => {
             if (e.button === 4) { e.preventDefault(); history.forward(); }
           });
 
+          // 페이지 전체에서 텍스트 선택 차단 — drag = 항상 스크롤 (단순)
+          // input/textarea/contenteditable만 selection 허용
+          const styleEl = document.createElement('style');
+          styleEl.textContent = \`
+            html, body { user-select: none !important; -webkit-user-select: none !important; }
+            input, textarea, [contenteditable="true"] { user-select: text !important; -webkit-user-select: text !important; }
+          \`;
+          document.head.appendChild(styleEl);
+
           // 마우스 드래그 → 스크롤 (가로 carousel/tab strip 조작용)
           let scrollEl = null;
           let startX = 0, startY = 0;
@@ -72,6 +81,10 @@ export const useWebView = (active: boolean) => {
 
           document.addEventListener('mousedown', (e) => {
             if (e.button !== 0) { scrollEl = null; return; }
+            // 입력 필드는 selection 우선 (검색창 등)
+            if (e.target.closest && e.target.closest('input, textarea, [contenteditable="true"]')) {
+              scrollEl = null; return;
+            }
             startX = lastX = e.clientX;
             startY = lastY = e.clientY;
             dragging = false;
@@ -84,7 +97,6 @@ export const useWebView = (active: boolean) => {
               if (Math.hypot(e.clientX - startX, e.clientY - startY) > THRESHOLD) {
                 dragging = true;
                 document.body.style.cursor = 'grabbing';
-                document.body.style.userSelect = 'none';
               } else return;
             }
             e.preventDefault();
@@ -95,10 +107,7 @@ export const useWebView = (active: boolean) => {
           });
 
           const endDrag = () => {
-            if (dragging) {
-              document.body.style.cursor = '';
-              document.body.style.userSelect = '';
-            }
+            if (dragging) document.body.style.cursor = '';
             scrollEl = null;
             dragging = false;
           };
