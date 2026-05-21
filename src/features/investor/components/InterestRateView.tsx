@@ -149,10 +149,10 @@ export const InterestRateView = ({ tab, refreshKey, onLoadResult }: Props) => {
 const s = {
   wrap: css`
     display: flex; flex-direction: column;
-    padding: ${spacing.sm}px ${spacing.xl}px ${spacing.lg}px;
+    padding: 0 0 ${spacing.lg}px;
   `,
   empty: css`padding: ${spacing['4xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
-  row: css`gap: ${spacing.lg}px; padding: ${spacing.xl}px ${spacing.lg}px;`,
+  row: css`gap: ${spacing.lg}px; padding: ${spacing.xl}px;`,
   flag: css`width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0;`,
   info: css`
     flex: 1; min-width: 0;

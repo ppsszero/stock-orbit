@@ -1,69 +1,98 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  fetchMarketBriefing, fetchMainNews, fetchMoneyStory,
+  fetchMarketBriefing, fetchMoneyStory,
+  fetchNewsByCategory, fetchResearchByCategory,
   MarketBriefing, NewsArticle, MoneyStory,
+  NewsCategory, ResearchCategory, ResearchItem,
 } from '@/shared/naver';
 import { cached } from '@/shared/utils/cache';
 import { withMinSpin } from '@/shared/utils/withMinSpin';
 
-const PAGE_STEP = 10;
-const MAX_SIZE = 50;
+const PAGE_SIZE = 50;
 const CACHE_TTL = 10 * 60 * 1000;
 
+/**
+ * 뉴스 시트 데이터 매니저.
+ * - briefing/stories: 시트 열림 시 즉시 fetch (브리핑 탭 + 머니스토리 탭의 메인 데이터)
+ * - 첫 카테고리(flashnews, daily): 시트 열림 시 함께 fetch — 탭 진입 시 빈 화면 회피
+ * - 그 외 카테고리: ensureNews/ensureResearch로 lazy fetch (활성 탭에서 trigger)
+ * - 캐시는 cached util — 같은 시트 재오픈 시 즉시 표시
+ */
 export const useNewsData = (open: boolean) => {
   const [briefing, setBriefing] = useState<MarketBriefing | null>(null);
-  const [news, setNews] = useState<NewsArticle[]>([]);
   const [stories, setStories] = useState<MoneyStory[]>([]);
+  const [newsByCat, setNewsByCat] = useState<Partial<Record<NewsCategory, NewsArticle[]>>>({});
+  const [researchByCat, setResearchByCat] = useState<Partial<Record<ResearchCategory, ResearchItem[]>>>({});
   const [loading, setLoading] = useState(false);
 
-  const newsSize = useRef(PAGE_STEP);
-  const storySize = useRef(PAGE_STEP);
-  const fetching = useRef(false);
+  // lazy ensure 안에서 최신 값 참조 — useCallback deps 회피
+  const newsByCatRef = useRef(newsByCat);
+  const researchByCatRef = useRef(researchByCat);
+  newsByCatRef.current = newsByCat;
+  researchByCatRef.current = researchByCat;
 
-  const load = useCallback(async (forceRefresh = false): Promise<boolean> => {
+  const loadInitial = useCallback(async (forceRefresh = false): Promise<boolean> => {
     setLoading(true);
-    newsSize.current = PAGE_STEP;
-    storySize.current = PAGE_STEP;
     const fetchAll = () => Promise.all([
       cached('news-briefing', fetchMarketBriefing, CACHE_TTL, forceRefresh),
-      cached('news-main', () => fetchMainNews(PAGE_STEP), CACHE_TTL, forceRefresh),
-      cached('news-story', () => fetchMoneyStory(PAGE_STEP), CACHE_TTL, forceRefresh),
+      cached('news-story', () => fetchMoneyStory(PAGE_SIZE), CACHE_TTL, forceRefresh),
+      cached('news-cat-flashnews', () => fetchNewsByCategory('flashnews', PAGE_SIZE), CACHE_TTL, forceRefresh),
+      cached('research-cat-daily', () => fetchResearchByCategory('daily', PAGE_SIZE), CACHE_TTL, forceRefresh),
     ]);
-    // 수동 새로고침(forceRefresh)일 때만 스피너 최소 표시 — 캐시 히트라도 사용자가 갱신 인지
-    const [b, n, s] = forceRefresh ? await withMinSpin(fetchAll) : await fetchAll();
+    const [b, s, flash, daily] = forceRefresh ? await withMinSpin(fetchAll) : await fetchAll();
     setBriefing(b);
-    setNews(n);
     setStories(s);
+    setNewsByCat({ flashnews: flash });
+    setResearchByCat({ daily });
     setLoading(false);
-    return !!(b || n.length > 0 || s.length > 0);
+    return !!(b || s.length > 0 || flash.length > 0 || daily.length > 0);
   }, []);
 
-  const loadMoreNews = useCallback(async () => {
-    if (fetching.current || newsSize.current >= MAX_SIZE) return;
-    fetching.current = true;
-    newsSize.current = Math.min(newsSize.current + PAGE_STEP, MAX_SIZE);
-    const n = await fetchMainNews(newsSize.current);
-    setNews(n);
-    fetching.current = false;
+  // 빈 배열은 가드 통과하도록 — fetch 실패(timeout/network)로 빈 결과면 다음 탭 진입 시 재시도
+  const ensureNews = useCallback(async (cat: NewsCategory) => {
+    const existing = newsByCatRef.current[cat];
+    if (existing && existing.length > 0) return;
+    const data = await fetchNewsByCategory(cat, PAGE_SIZE);
+    setNewsByCat(prev => ({ ...prev, [cat]: data }));
   }, []);
 
-  const loadMoreStories = useCallback(async () => {
-    if (fetching.current || storySize.current >= MAX_SIZE) return;
-    fetching.current = true;
-    storySize.current = Math.min(storySize.current + PAGE_STEP, MAX_SIZE);
-    const s = await fetchMoneyStory(storySize.current);
+  const ensureResearch = useCallback(async (cat: ResearchCategory) => {
+    const existing = researchByCatRef.current[cat];
+    if (existing && existing.length > 0) return;
+    const data = await fetchResearchByCategory(cat, PAGE_SIZE);
+    setResearchByCat(prev => ({ ...prev, [cat]: data }));
+  }, []);
+
+  // 활성 탭 단위 강제 새로고침 — 새로고침 버튼은 사용자가 *보고 있는* 데이터만 갱신
+  const refreshBriefing = useCallback(async () => {
+    const b = await fetchMarketBriefing();
+    setBriefing(b);
+    return !!b;
+  }, []);
+  const refreshStories = useCallback(async () => {
+    const s = await fetchMoneyStory(PAGE_SIZE);
     setStories(s);
-    fetching.current = false;
+    return s.length > 0;
+  }, []);
+  const refreshNews = useCallback(async (cat: NewsCategory) => {
+    const data = await fetchNewsByCategory(cat, PAGE_SIZE);
+    setNewsByCat(prev => ({ ...prev, [cat]: data }));
+    return data.length > 0;
+  }, []);
+  const refreshResearch = useCallback(async (cat: ResearchCategory) => {
+    const data = await fetchResearchByCategory(cat, PAGE_SIZE);
+    setResearchByCat(prev => ({ ...prev, [cat]: data }));
+    return data.length > 0;
   }, []);
 
   useEffect(() => {
-    if (open) load();
-  }, [open, load]);
+    if (open) loadInitial();
+  }, [open, loadInitial]);
 
   return {
-    briefing, news, stories, loading, refresh: load,
-    loadMoreNews, loadMoreStories,
-    newsMaxed: news.length > 0 && newsSize.current >= MAX_SIZE,
-    storiesMaxed: stories.length > 0 && storySize.current >= MAX_SIZE,
+    briefing, stories, newsByCat, researchByCat,
+    loading,
+    ensureNews, ensureResearch,
+    refreshBriefing, refreshStories, refreshNews, refreshResearch,
   };
 };

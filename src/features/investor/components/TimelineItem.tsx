@@ -85,11 +85,11 @@ const s = {
     line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
   `,
   tlMeta: css`display: flex; align-items: center; gap: ${spacing.md}px;`,
-  tlImp: (color: string) => css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; color: ${color};`,
-  tlPeriod: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary};`,
-  tlValues: css`display: flex; align-items: baseline; gap: ${spacing['2xl']}px; margin-top: 2px;`,
+  tlImp: (color: string) => css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; color: ${color};`,
+  tlPeriod: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary};`,
+  tlValues: css`display: flex; align-items: baseline; gap: ${spacing['2xl']}px; margin-top: ${spacing.xs}px;`,
   valBlock: css`display: flex; flex-direction: column; gap: ${spacing.sm}px;`,
-  valLabel: css`font-size: 10px; color: ${sem.text.tertiary}; letter-spacing: 0.2px;`,
+  valLabel: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; letter-spacing: 0.2px;`,
   valNum: (highlight?: boolean, color?: string) => css`
     font-size: ${highlight ? fontSize.xl : fontSize.base}px;
     font-weight: ${highlight ? fontWeight.extrabold : fontWeight.semibold};

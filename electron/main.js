@@ -331,22 +331,34 @@ app.whenReady().then(() => {
   // IPC fetch: naver 서브도메인만 허용. 서브도메인 변경·추가에 유연하게 대응.
   const isAllowedHost = (host) => host === 'naver.com' || host.endsWith('.naver.com');
   ipcMain.handle('naver-fetch', async (_, url) => {
+    const FETCH_TIMEOUT_MS = 10_000;
     try {
       let parsed;
       try { parsed = new URL(url); } catch { return { error: 'invalid url' }; }
       if (parsed.protocol !== 'https:' || !isAllowedHost(parsed.host)) {
         return { error: 'host not allowed' };
       }
-      const res = await fetch(parsed.toString(), {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-        },
-      });
-      if (!res.ok) return { error: `HTTP ${res.status}` };
-      return { data: await res.json() };
+      // AbortController로 timeout — 일부 endpoint(m.stock.naver.com/front-api/...)가
+      // 간헐적으로 응답을 끝내지 않아 fetch가 영원히 hang하는 케이스 방지
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+      try {
+        const res = await fetch(parsed.toString(), {
+          signal: ac.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+            // m.stock.naver.com front-api는 Referer 없으면 차단되는 경로가 있어 안전하게 동일 도메인으로 세팅
+            'Referer': `${parsed.protocol}//${parsed.host}/`,
+          },
+        });
+        if (!res.ok) return { error: `HTTP ${res.status}` };
+        return { data: await res.json() };
+      } finally {
+        clearTimeout(timer);
+      }
     } catch (err) {
-      return { error: err.message };
+      return { error: err.name === 'AbortError' ? 'request timeout' : err.message };
     }
   });
 

@@ -134,20 +134,6 @@ export interface NaverMarketBriefingRaw {
   articles?: NaverBriefingArticleRaw[];
 }
 
-export interface NaverNewsArticleRaw {
-  title?: string;
-  datetime?: string;
-  subcontent?: string;
-  thumbUrl?: string;
-  officeId?: string;
-  articleId?: string;
-  officeHname?: string;
-}
-
-export interface NaverNewsListRaw {
-  articles?: NaverNewsArticleRaw[];
-}
-
 // ── 머니스토리 ───────────────────────────────────────────────────────────
 
 export interface NaverMoneyStoryItemRaw {

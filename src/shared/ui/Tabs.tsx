@@ -128,6 +128,70 @@ export const Tabs = <T extends string>({
     };
   }, [variant]);
 
+  // fluid 모드: 휠 → 가로 스크롤, 마우스 drag-to-scroll, active 탭 자동 가시화
+  useEffect(() => {
+    if (!fluid) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    const DRAG_THRESHOLD = 5;
+    let isDown = false, startX = 0, baseScrollLeft = 0, dragged = false;
+
+    const onWheel = (e: WheelEvent) => {
+      // 세로 휠 → 가로 스크롤 (스크롤바 숨김 상태에서도 휠로 탐색)
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        wrap.scrollLeft += e.deltaY;
+      }
+    };
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      isDown = true; dragged = false;
+      startX = e.pageX;
+      baseScrollLeft = wrap.scrollLeft;
+    };
+    const onMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      const dx = e.pageX - startX;
+      if (!dragged && Math.abs(dx) > DRAG_THRESHOLD) {
+        dragged = true;
+        wrap.style.cursor = 'grabbing';
+      }
+      if (dragged) {
+        e.preventDefault();
+        wrap.scrollLeft = baseScrollLeft - dx;
+      }
+    };
+    const endDrag = () => { isDown = false; wrap.style.cursor = ''; };
+    // drag 도중 click 막아 우발 탭 변경 방지
+    const onClickCapture = (e: MouseEvent) => {
+      if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
+    };
+
+    wrap.addEventListener('wheel', onWheel, { passive: false });
+    wrap.addEventListener('mousedown', onDown);
+    wrap.addEventListener('mousemove', onMove);
+    wrap.addEventListener('mouseup', endDrag);
+    wrap.addEventListener('mouseleave', endDrag);
+    wrap.addEventListener('click', onClickCapture, true);
+
+    return () => {
+      wrap.removeEventListener('wheel', onWheel);
+      wrap.removeEventListener('mousedown', onDown);
+      wrap.removeEventListener('mousemove', onMove);
+      wrap.removeEventListener('mouseup', endDrag);
+      wrap.removeEventListener('mouseleave', endDrag);
+      wrap.removeEventListener('click', onClickCapture, true);
+    };
+  }, [fluid]);
+
+  // fluid 모드에서 active 탭이 화면 밖이면 자동 가시화 (외부 value 변경 케이스 대응)
+  useEffect(() => {
+    if (!fluid) return;
+    const activeBtn = btnRefs.current[value];
+    activeBtn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [value, fluid]);
+
   const handleClick = (key: T, btn: HTMLButtonElement) => {
     if (key !== value) {
       // click pulse — 미세하고 짧게

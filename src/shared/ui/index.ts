@@ -3,6 +3,8 @@ export { Tabs } from './Tabs';
 export { NumberStepper } from './NumberStepper';
 export { SheetLayout } from './SheetLayout';
 export { WebViewPanel } from './WebViewPanel';
+export { BottomSheet } from './BottomSheet';
+export { Modal } from './Modal';
 export { ElectronWebView } from './ElectronWebView';
 export { Toggle } from './Toggle';
 export { Badge, StatusDot } from './Badge';

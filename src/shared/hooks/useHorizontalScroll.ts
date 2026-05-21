@@ -23,18 +23,59 @@ export const useHorizontalScroll = (deps: React.DependencyList = []) => {
     setCanScrollR(el.scrollLeft + el.clientWidth < el.scrollWidth - THRESHOLD);
   }, []);
 
-  // 마우스 휠 → 가로 스크롤 변환 (스크롤바 숨김 상태에서도 휠로 탐색 가능)
+  // 마우스 휠 → 가로 스크롤 + drag-to-scroll
+  // (스크롤바 숨김 상태에서도 휠/드래그로 탐색 가능)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+
     const handleWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         e.preventDefault();
         el.scrollLeft += e.deltaY;
       }
     };
+
+    const DRAG_THRESHOLD = 5;
+    let isDown = false, startX = 0, baseScrollLeft = 0, dragged = false;
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      isDown = true; dragged = false;
+      startX = e.pageX;
+      baseScrollLeft = el.scrollLeft;
+    };
+    const onMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      const dx = e.pageX - startX;
+      if (!dragged && Math.abs(dx) > DRAG_THRESHOLD) {
+        dragged = true;
+        el.style.cursor = 'grabbing';
+      }
+      if (dragged) {
+        e.preventDefault();
+        el.scrollLeft = baseScrollLeft - dx;
+      }
+    };
+    const endDrag = () => { isDown = false; el.style.cursor = ''; };
+    // drag 도중 발생한 click은 capture phase에서 stopPropagation해 자식 탭의 onClick 차단
+    const onClickCapture = (e: MouseEvent) => {
+      if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
+    };
+
     el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('mousemove', onMove);
+    el.addEventListener('mouseup', endDrag);
+    el.addEventListener('mouseleave', endDrag);
+    el.addEventListener('click', onClickCapture, true);
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('mousedown', onDown);
+      el.removeEventListener('mousemove', onMove);
+      el.removeEventListener('mouseup', endDrag);
+      el.removeEventListener('mouseleave', endDrag);
+      el.removeEventListener('click', onClickCapture, true);
+    };
   }, []);
 
   useEffect(() => {

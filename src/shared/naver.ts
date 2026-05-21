@@ -10,13 +10,13 @@ import type {
   NaverPriceDirection,
   NaverInvestorDataRaw,
   NaverMarketBriefingRaw,
-  NaverNewsListRaw,
   NaverMoneyStoryRaw,
   NaverEconomicCalendarRaw,
   NaverEconomicIndicatorRaw,
 } from './naver-types';
 
 const BASE = 'https://stock.naver.com/api';
+const MOBILE_BASE = 'https://m.stock.naver.com';
 
 /**
  * Rate-limit 백오프 상태 (모듈 전역).
@@ -678,6 +678,14 @@ export interface MarketBriefing {
   articles: { title: string; officeName: string; officeId: string; articleId: string }[];
 }
 
+export interface NewsRelatedItem {
+  reutersCode: string;
+  itemName: string;
+  /** 부호 있는 등락률 (예: "1.98", "-2.29") — 방향은 부호로 판단 */
+  fluctuationsRatio: string;
+  endUrl: string;
+}
+
 export interface NewsArticle {
   title: string;
   datetime: string;
@@ -686,6 +694,10 @@ export interface NewsArticle {
   officeId: string;
   articleId: string;
   officeHname: string;
+  /** 기사 상세 페이지 URL (카테고리별로 다른 패턴 — fetch 단계에서 완성) */
+  url: string;
+  /** 기사와 연관된 종목 (해외뉴스 등에서 제공) */
+  relatedItems?: NewsRelatedItem[];
 }
 
 export interface MoneyStory {
@@ -716,15 +728,245 @@ export const fetchMarketBriefing = async (): Promise<MarketBriefing | null> => {
   } catch (e) { logger.error('AI 브리핑', (e as Error).message); return null; }
 };
 
-export const fetchMainNews = async (pageSize: number = 50): Promise<NewsArticle[]> => {
+// ── 뉴스 카테고리 (m.stock.naver.com front-api) ──────────────────────────
+// 응답: { isSuccess, result: [{ articleId, title, body, datetime(YYYYMMDDHHMMSS), officeId, officeName, imageOriginLink, hasImage, ... }] }
+
+export type NewsCategory = 'flashnews' | 'mainnews' | 'ranknews' | 'worldnews';
+
+interface NewsRelatedItemRaw {
+  reutersCode?: string;
+  itemName?: string;
+  fluctuationsRatio?: string;
+  endUrl?: string;
+}
+interface NewsCategoryItemRaw {
+  articleId?: string;
+  title?: string;
+  titleFull?: string;
+  body?: string;
+  datetime?: string;
+  officeId?: string;
+  officeName?: string;
+  imageOriginLink?: string | null;
+  hasImage?: boolean | null;
+  relatedItems?: NewsRelatedItemRaw[];
+}
+interface NewsCategoryResponseRaw {
+  isSuccess?: boolean;
+  result?: NewsCategoryItemRaw[];
+}
+
+/** YYYYMMDDHHMMSS → ISO local (formatTime이 new Date()로 파싱 가능하도록) */
+const parseNewsDatetime = (dt?: string): string => {
+  if (!dt || dt.length < 14) return dt || '';
+  return `${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}T${dt.slice(8,10)}:${dt.slice(10,12)}:${dt.slice(12,14)}`;
+};
+
+/** 카테고리별 기사 상세 URL — 해외뉴스는 별도 패턴(officeId가 'fnGuide' 등 비표준이라 n.news.naver.com 미지원) */
+const buildNewsArticleUrl = (cat: NewsCategory, officeId: string, articleId: string): string => {
+  if (cat === 'worldnews') {
+    return `${MOBILE_BASE}/investment/news/worldnews/${officeId}/${articleId}`;
+  }
+  return `https://n.news.naver.com/article/${officeId}/${articleId}`;
+};
+
+export const fetchNewsByCategory = async (category: NewsCategory, pageSize: number = 50): Promise<NewsArticle[]> => {
+  const path = category === 'worldnews'
+    ? `${MOBILE_BASE}/front-api/news/worldnews?pageSize=${pageSize}&page=1`
+    : `${MOBILE_BASE}/front-api/news/category?category=${category}&pageSize=${pageSize}&page=1`;
   try {
-    const d = await fetchJSON<NaverNewsListRaw>(`${BASE}/domestic/news/list?category=MAINNEWS&page=1&pageSize=${pageSize}`);
-    return (d.articles || []).map(a => ({
-      title: a.title ?? '', datetime: a.datetime ?? '', subcontent: a.subcontent ?? '',
-      thumbUrl: a.thumbUrl, officeId: a.officeId ?? '', articleId: a.articleId ?? '',
-      officeHname: a.officeHname ?? '',
+    const d = await fetchJSON<NewsCategoryResponseRaw>(path);
+    return (d.result || []).map(a => {
+      const officeId = a.officeId ?? '';
+      const articleId = a.articleId ?? '';
+      return {
+        title: a.title ?? a.titleFull ?? '',
+        datetime: parseNewsDatetime(a.datetime),
+        subcontent: a.body ?? '',
+        // hasImage가 명시적 true이고 URL이 있을 때만 — broken image (X박스) 방지
+        thumbUrl: a.hasImage === true && a.imageOriginLink ? a.imageOriginLink : undefined,
+        officeId,
+        articleId,
+        officeHname: a.officeName ?? '',
+        url: buildNewsArticleUrl(category, officeId, articleId),
+        relatedItems: a.relatedItems && a.relatedItems.length > 0
+          ? a.relatedItems.map(r => ({
+              reutersCode: r.reutersCode ?? '',
+              itemName: r.itemName ?? '',
+              fluctuationsRatio: r.fluctuationsRatio ?? '0',
+              endUrl: r.endUrl ?? '',
+            }))
+          : undefined,
+      };
+    });
+  } catch (e) { logger.error(`뉴스 ${category}`, (e as Error).message); return []; }
+};
+
+// ── 리서치 카테고리 ───────────────────────────────────────────────────────
+// 응답: { isSuccess, result: [{ researchId, title, brokerName, writeDate, readCount, endUrl, itemCode?, itemName?, ... }] }
+
+export type ResearchCategory = 'daily' | 'company' | 'industry' | 'invest' | 'economy' | 'debenture';
+
+export interface ResearchItem {
+  researchId: number;
+  category: string;
+  title: string;
+  brokerName: string;
+  writeDate: string;
+  readCount: string;
+  endUrl: string;
+  itemCode?: string;
+  itemName?: string;
+}
+
+interface ResearchItemRaw {
+  researchId?: number;
+  researchCategory?: string;
+  category?: string;
+  title?: string;
+  brokerName?: string;
+  writeDate?: string;
+  readCount?: string;
+  endUrl?: string;
+  itemCode?: string;
+  itemName?: string;
+}
+interface ResearchResponseRaw {
+  isSuccess?: boolean;
+  result?: ResearchItemRaw[];
+}
+
+export const fetchResearchByCategory = async (category: ResearchCategory, pageSize: number = 50): Promise<ResearchItem[]> => {
+  try {
+    const d = await fetchJSON<ResearchResponseRaw>(
+      `${MOBILE_BASE}/front-api/research/list?category=${category}&pageSize=${pageSize}&page=1`
+    );
+    return (d.result || []).map(r => ({
+      researchId: r.researchId ?? 0,
+      category: r.researchCategory || r.category || '',
+      title: r.title ?? '',
+      brokerName: r.brokerName ?? '',
+      writeDate: r.writeDate ?? '',
+      readCount: r.readCount ?? '0',
+      endUrl: r.endUrl ?? '',
+      itemCode: r.itemCode,
+      itemName: r.itemName,
     }));
-  } catch (e) { logger.error('메인뉴스', (e as Error).message); return []; }
+  } catch (e) { logger.error(`리서치 ${category}`, (e as Error).message); return []; }
+};
+
+// ── 섹터(증시 현황) ───────────────────────────────────────────────────────
+// m.stock.naver.com/front-api/stock/sectors/all/price
+// 응답: { result: { totalRisingCount, totalFallingCount, totalUnChangedCount, sectors: [{ sectorCode, sectorName, changeRate, totalMarketCap, risingCount, ..., items: [...] }] } }
+
+export type SectorNation = 'domestic' | 'USA';
+
+export interface SectorStock {
+  name: string;
+  code: string;
+  reutersCode?: string;
+  currentPrice: number;
+  currency: string;
+  changePercent: number;
+  changeAbs: string;
+  direction: 'up' | 'down' | 'flat';
+  nation: string; // KR / US
+}
+
+export interface Sector {
+  code: string;
+  name: string;
+  changeRate: number;
+  marketCap: number;
+  risingCount: number;
+  unchangedCount: number;
+  fallingCount: number;
+  topStocks: SectorStock[];
+}
+
+export interface SectorOverview {
+  totalRisingCount: number;
+  totalUnchangedCount: number;
+  totalFallingCount: number;
+  sectors: Sector[];
+}
+
+interface SectorStockItemRaw {
+  name?: string;
+  id?: string;
+  itemCode?: string;
+  reutersCode?: string;
+  currentPrice?: number;
+  currencyType?: string;
+  fluctuationsType?: string;
+  fluctuations?: string;
+  fluctuationsRatio?: string;
+  nationType?: string;
+}
+interface SectorRaw {
+  sectorCode?: string;
+  sectorName?: string;
+  changeRate?: number;
+  totalMarketCap?: number;
+  risingCount?: number;
+  unChangedCount?: number;
+  fallingCount?: number;
+  items?: SectorStockItemRaw[];
+}
+interface SectorOverviewRaw {
+  isSuccess?: boolean;
+  result?: {
+    totalRisingCount?: number;
+    totalUnChangedCount?: number;
+    totalFallingCount?: number;
+    sectors?: SectorRaw[];
+  };
+}
+
+const dirFromFluctuationsType = (t?: string): 'up' | 'down' | 'flat' =>
+  t === 'RISING' ? 'up' : t === 'FALLING' ? 'down' : 'flat';
+
+export const fetchSectors = async (nation: SectorNation): Promise<SectorOverview | null> => {
+  const extra = nation === 'domestic' ? '&sectorType=upjong' : '';
+  try {
+    const d = await fetchJSON<SectorOverviewRaw>(
+      `${MOBILE_BASE}/front-api/stock/sectors/all/price?businessDayCategory=daily&nationType=${nation}&sectorSortType=MARKET_VALUE${extra}&page=1&pageSize=20`
+    );
+    const r = d.result;
+    if (!r) return null;
+    return {
+      totalRisingCount: r.totalRisingCount ?? 0,
+      totalUnchangedCount: r.totalUnChangedCount ?? 0,
+      totalFallingCount: r.totalFallingCount ?? 0,
+      sectors: (r.sectors || []).map(s => ({
+        code: s.sectorCode ?? '',
+        name: s.sectorName ?? '',
+        changeRate: s.changeRate ?? 0,
+        marketCap: s.totalMarketCap ?? 0,
+        risingCount: s.risingCount ?? 0,
+        unchangedCount: s.unChangedCount ?? 0,
+        fallingCount: s.fallingCount ?? 0,
+        topStocks: (s.items || []).map(it => {
+          const dir = dirFromFluctuationsType(it.fluctuationsType);
+          const pct = parseFloat(it.fluctuationsRatio || '0');
+          return {
+            name: it.name ?? '',
+            code: it.itemCode || it.id || '',
+            reutersCode: it.reutersCode,
+            currentPrice: it.currentPrice ?? 0,
+            currency: it.currencyType ?? 'KRW',
+            changePercent: dir === 'down' ? -pct : pct,
+            changeAbs: it.fluctuations ?? '0',
+            direction: dir,
+            nation: it.nationType === 'USA' ? 'US' : nation === 'domestic' ? 'KR' : 'US',
+          };
+        }),
+      })),
+    };
+  } catch (e) {
+    logger.error(`섹터 ${nation}`, (e as Error).message);
+    return null;
+  }
 };
 
 export const fetchMoneyStory = async (size: number = 50): Promise<MoneyStory[]> => {

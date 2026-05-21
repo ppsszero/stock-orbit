@@ -2,7 +2,7 @@
 import { css } from '@emotion/react';
 import { useState, useCallback } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { spacing, fontSize, fontWeight, radius, transition, opacity } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition, opacity, height } from '@/shared/styles/tokens';
 import { useEconomicCalendar } from '@/features/investor/hooks/useEconomicCalendar';
 import { DatePicker } from '@/features/investor/components/DatePicker';
 import { TimelineItem } from '@/features/investor/components/TimelineItem';
@@ -81,15 +81,16 @@ const s = {
 
   nav: css`
     display: flex; align-items: center; justify-content: center; gap: ${spacing.sm}px;
-    padding: ${spacing.xs}px ${spacing.xl}px ${spacing.xl}px; flex-shrink: 0;
+    padding: 0 ${spacing.xl}px ${spacing.lg}px;
+    flex-shrink: 0;
     position: relative;
   `,
   navBtn: css`
-    height: 28px; min-width: 28px; padding: 0 ${spacing.sm}px;
+    height: ${height.segMd}px; min-width: ${height.segMd}px; padding: 0 ${spacing.md}px;
     border: none; border-radius: ${radius.md}px;
     background: ${sem.bg.surface}; color: ${sem.text.secondary}; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-family: inherit; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold};
+    font-family: inherit; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold};
     transition: all ${transition.fast};
     &:hover:not(:disabled) { background: ${sem.bg.elevated}; color: ${sem.text.primary}; }
     &:disabled { opacity: ${opacity.disabledWeak}; cursor: default; }

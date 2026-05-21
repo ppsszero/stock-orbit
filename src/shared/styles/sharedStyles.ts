@@ -1,7 +1,7 @@
 import { css, keyframes } from '@emotion/react';
 import { v } from './vars';
 import { sem } from './semantic';
-import { spacing, fontSize, fontWeight, letterSpacing, radius } from './tokens';
+import { spacing, fontSize, fontWeight, letterSpacing } from './tokens';
 
 /** 그룹 헤더 (국내주식/해외주식 등) — StockList, StockGrid, StockTile 공유 */
 export const groupHeaderStyle = css`
@@ -31,12 +31,17 @@ export const subTabPadStyle = css`
  * 행 내부 layout(좌측 정보 / 우측 값)은 사용처에서 조립.
  */
 export const listRowStyle = css`
+  position: relative;
   display: flex;
   align-items: center;
-  border-radius: ${radius.lg}px;
   cursor: pointer;
-  &:not(:last-of-type) { border-bottom: 1px dotted ${sem.border.muted}; }
   &:hover { background: ${sem.action.primarySoft}; }
+  /* divider는 양옆 여백 두고 inset — 풀폭 hover와 분리 */
+  &:not(:last-of-type)::after {
+    content: '';
+    position: absolute; left: ${spacing.xl}px; right: ${spacing.xl}px; bottom: 0;
+    border-bottom: 1px dotted ${sem.border.muted};
+  }
 `;
 
 /** 시트 내부 섹션 타이틀 — SettingsSheet, MarketSheet 등 공유 */

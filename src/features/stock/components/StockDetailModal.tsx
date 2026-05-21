@@ -1,12 +1,10 @@
 /** @jsxImportSource @emotion/react */
-import { css, } from '@emotion/react';
-import { useCallback } from 'react';
-import { FiX } from 'react-icons/fi';
+import { css } from '@emotion/react';
 import { StockPrice, StockSymbol } from '@/shared/types';
-import { spacing, fontSize, fontWeight, radius, shadow, sp } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, sp } from '@/shared/styles/tokens';
 import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName, getDirColor } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
-import { useBackAction } from '@/shared/hooks/useBackAction';
+import { Modal } from '@/shared/ui';
 
 interface Props {
   symbol: StockSymbol | null;
@@ -22,34 +20,33 @@ const Row = ({ label, value, color }: { label: string; value: string; color?: st
 );
 
 export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
-  const handleClose = useCallback(() => onClose(), [onClose]);
-  useBackAction(!!symbol && !!price, handleClose);
-  if (!symbol || !price) return null;
+  const open = !!symbol && !!price;
+  if (!symbol || !price) {
+    return <Modal open={open} onClose={onClose}>{null}</Modal>;
+  }
   const p = price;
   const c = p.currency;
   const dirColor = getDirColor(p.changeDirection);
 
   return (
-    <div css={s.overlay} onClick={onClose}>
-      <div css={s.modal} onClick={e => e.stopPropagation()}>
-        {/* 헤더 */}
+    <Modal open={open} onClose={onClose}>
+      <Modal.Overlay />
+      <Modal.Content>
+        {/* 헤더 — X 버튼 없음. 정보 중심. */}
         <div css={s.header}>
-          <button css={s.closeBtn} onClick={onClose}><FiX size={16} /></button>
-          <div css={s.headerCenter}>
-            <img
-              src={getLogoUrl(symbol.nation, symbol.code, symbol.reutersCode)}
-              alt="" css={s.logo}
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-            <div css={s.name}>{getDisplayName(p, symbol)}</div>
-            <div css={s.codeLine}>
-              <span css={s.tag}>{symbol.reutersCode || symbol.code}</span>
-              {p.exchange && <span css={s.tag}>{p.exchange}</span>}
-              {p.isTradingHalt
-                ? <span css={s.tagHalt}>거래정지</span>
-                : <span css={s.tagStatus[String(p.marketStatus === 'OPEN')]}>{p.marketStatus === 'OPEN' ? 'LIVE' : 'CLOSE'}</span>
-              }
-            </div>
+          <img
+            src={getLogoUrl(symbol.nation, symbol.code, symbol.reutersCode)}
+            alt="" css={s.logo}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div css={s.name}>{getDisplayName(p, symbol)}</div>
+          <div css={s.codeLine}>
+            <span css={s.tag}>{symbol.reutersCode || symbol.code}</span>
+            {p.exchange && <span css={s.tag}>{p.exchange}</span>}
+            {p.isTradingHalt
+              ? <span css={s.tagHalt}>거래정지</span>
+              : <span css={s.tagStatus[String(p.marketStatus === 'OPEN')]}>{p.marketStatus === 'OPEN' ? 'LIVE' : 'CLOSE'}</span>
+            }
           </div>
         </div>
 
@@ -79,60 +76,61 @@ export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
               {p.marketCap && <Row label="시가총액" value={p.marketCap} />}
             </div>
           </>}
-
         </div>
-      </div>
-    </div>
+
+        {/* CTA */}
+        <div css={s.ctaWrap}>
+          <Modal.CTA onClick={onClose}>확인</Modal.CTA>
+        </div>
+      </Modal.Content>
+    </Modal>
   );
 };
 
 const s = {
-  overlay: css`
-    position: fixed; inset: 0; background: ${sem.overlay.dim}; z-index: 450;
-    display: flex; align-items: center; justify-content: center; padding: ${spacing['3xl']}px;
-    border-radius: ${radius['2xl']}px;
-  `,
-  modal: css`
-    background: ${sem.surface.card}; border-radius: 16px; width: 100%; max-width: 360px;
-    max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
-    box-shadow: ${shadow.lg}; border: 1px solid ${sem.border.default};
-  `,
   header: css`
-    position: relative; display: flex; flex-direction: column; align-items: center;
-    padding: ${spacing.xl}px ${spacing.xl}px ${spacing.lg}px; border-bottom: 1px solid ${sem.border.subtle}; gap: ${sp('sm', 'xs')};
+    position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    padding: ${spacing.xl}px ${spacing.xl}px ${spacing.lg}px;
+    gap: ${sp('sm', 'xs')};
+    &::after {
+      content: ''; position: absolute; left: ${spacing.xl}px; right: ${spacing.xl}px; bottom: 0;
+      height: 1px; background: ${sem.border.subtle};
+    }
   `,
-  headerCenter: css`display: flex; flex-direction: column; align-items: center; gap: ${spacing.md}px;`,
-  logo: css`width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; border-radius: 50%; object-fit: cover; background: rgba(128,128,128,0.1);`,
+  logo: css`width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; border-radius: 50%; object-fit: cover; background: ${sem.bg.elevated};`,
   name: css`font-size: ${fontSize.lg}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; text-align: center;`,
   codeLine: css`display: flex; align-items: center; justify-content: center; gap: ${spacing.sm}px;`,
   tag: css`
-    padding: ${spacing.xs}px 7px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold};
+    padding: ${spacing.xs}px ${spacing.sm + 3}px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold};
     background: ${sem.bg.elevated}; color: ${sem.text.tertiary}; line-height: 1;
   `,
   tagStatus: {
-    true: css`padding: ${spacing.xs}px 7px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; line-height: 1; background: ${sem.action.successTint}; color: ${sem.action.success};`,
-    false: css`padding: ${spacing.xs}px 7px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; line-height: 1; background: ${sem.overlay.subtle}; color: ${sem.text.tertiary};`,
+    true: css`padding: ${spacing.xs}px ${spacing.sm + 3}px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; line-height: 1; background: ${sem.action.successTint}; color: ${sem.action.success};`,
+    false: css`padding: ${spacing.xs}px ${spacing.sm + 3}px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; line-height: 1; background: ${sem.overlay.subtle}; color: ${sem.text.tertiary};`,
   } as Record<string, ReturnType<typeof css>>,
   tagHalt: css`
-    padding: ${spacing.xs}px 7px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; line-height: 1;
+    padding: ${spacing.xs}px ${spacing.sm + 3}px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.semibold}; line-height: 1;
     background: ${sem.action.dangerTint}; color: ${sem.action.danger};
   `,
-  closeBtn: css`
-    position: absolute; top: ${spacing.lg}px; right: ${spacing.lg}px;
-    width: 28px; height: 28px; border: none; background: ${sem.bg.surface};
-    border-radius: 50%; cursor: pointer; color: ${sem.text.secondary};
-    display: flex; align-items: center; justify-content: center; z-index: 1;
-    &:hover { background: ${sem.bg.elevated}; }
-  `,
   priceSection: css`
-    padding: ${sp('lg', 'xs')} ${spacing.xl}px; display: flex; flex-direction: column; align-items: center; gap: ${spacing.xs}px;
-    border-bottom: 1px solid ${sem.border.subtle};
+    position: relative;
+    padding: ${sp('lg', 'xs')} ${spacing.xl}px;
+    display: flex; flex-direction: column; align-items: center; gap: ${spacing.xs}px;
+    &::after {
+      content: ''; position: absolute; left: ${spacing.xl}px; right: ${spacing.xl}px; bottom: 0;
+      height: 1px; background: ${sem.border.subtle};
+    }
   `,
   currentPrice: css`font-size: ${fontSize['3xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
-  body: css`padding: ${spacing.md}px 0; overflow-y: auto;`,
+  body: css`flex: 1; padding: ${spacing.md}px 0; overflow-y: auto;`,
   sectionTitle: css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; color: ${sem.text.tertiary}; padding: ${sp('md', 'xs')} ${spacing.xl}px ${spacing.sm}px; text-transform: uppercase; letter-spacing: 0.3px;`,
   grid: css`display: flex; flex-direction: column;`,
   row: css`display: flex; align-items: center; justify-content: space-between; padding: ${spacing.md}px ${spacing.xl}px;`,
   label: css`font-size: ${fontSize.md}px; color: ${sem.text.tertiary};`,
   value: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.semibold}; color: ${sem.text.secondary}; font-variant-numeric: tabular-nums;`,
+  ctaWrap: css`
+    flex-shrink: 0;
+    padding: ${spacing.lg}px ${spacing.xl}px ${spacing.xl}px;
+  `,
 };

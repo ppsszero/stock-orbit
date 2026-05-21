@@ -10,12 +10,10 @@ import { sem } from '@/shared/styles/semantic';
 
 interface Props {
   items: MoneyStory[];
-
-  maxed: boolean;
   onLinkClick: (url: string) => void;
 }
 
-export const StoryList = memo(({ items, maxed, onLinkClick }: Props) => {
+export const StoryList = memo(({ items, onLinkClick }: Props) => {
   if (items.length === 0) return <div css={s.empty}>콘텐츠가 없습니다</div>;
 
   return (
@@ -36,12 +34,10 @@ export const StoryList = memo(({ items, maxed, onLinkClick }: Props) => {
           </div>
         </div>
       ))}
-      {maxed && (
-        <MoreLink
-          label="머니스토리 더보기"
-          onClick={() => onLinkClick('https://story.pay.naver.com/popular')}
-        />
-      )}
+      <MoreLink
+        label="머니스토리 더보기"
+        onClick={() => onLinkClick('https://story.pay.naver.com/popular')}
+      />
     </>
   );
 });

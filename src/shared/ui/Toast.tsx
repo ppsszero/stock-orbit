@@ -38,8 +38,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const refreshResult = useCallback((ok: boolean, label: string) => {
+    // 한국어 목적격 조사 자동 선택: 받침 있으면 '을', 없으면 '를'
+    const last = label.charCodeAt(label.length - 1) - 0xAC00;
+    const hasJongseong = last >= 0 && last < 11172 && last % 28 !== 0;
+    const josa = hasJongseong ? '을' : '를';
     show(
-      ok ? `${label}을 새로 불러왔어요` : `${label}을 불러오지 못했어요`,
+      ok ? `${label}${josa} 새로 불러왔어요` : `${label}${josa} 불러오지 못했어요`,
       ok ? 'success' : 'error',
     );
   }, [show]);

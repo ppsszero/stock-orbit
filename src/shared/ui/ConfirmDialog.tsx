@@ -1,10 +1,9 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useRef, useEffect, createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import ReactDOM from 'react-dom';
-import gsap from 'gsap';
+import { useEffect, useRef, createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { sem } from '@/shared/styles/semantic';
-import { spacing, fontSize, fontWeight, radius, transition, zIndex, shadow, sp, opacity } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
+import { Modal } from './Modal';
 
 interface ConfirmOptions {
   title: string;
@@ -43,78 +42,63 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      {state && ReactDOM.createPortal(
-        <ConfirmModal opts={state.opts} onResult={handle} />,
-        document.body
-      )}
+      <ConfirmModal state={state} onResult={handle} />
     </ConfirmContext.Provider>
   );
 };
 
-const ConfirmModal = ({ opts, onResult }: {
-  opts: ConfirmOptions; onResult: (v: boolean) => void;
+const ConfirmModal = ({ state, onResult }: {
+  state: { opts: ConfirmOptions; resolve: (v: boolean) => void } | null;
+  onResult: (v: boolean) => void;
 }) => {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
+  // 모달이 새로 열릴 때 확인 버튼에 포커스
   useEffect(() => {
-    if (overlayRef.current) gsap.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.15 });
-    if (modalRef.current) gsap.fromTo(modalRef.current,
-      { opacity: 0, scale: 0.95, y: 8 },
-      { opacity: 1, scale: 1, y: 0, duration: 0.2, ease: 'power2.out' }
-    );
-    // 모달 열리면 확인 버튼에 포커스
-    modalRef.current?.querySelector<HTMLButtonElement>('button:last-child')?.focus();
-  }, []);
+    if (state) {
+      const id = setTimeout(() => confirmBtnRef.current?.focus(), 80);
+      return () => clearTimeout(id);
+    }
+  }, [state]);
 
-  // Escape 키로 닫기
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(false); };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, []);
-
-  const close = (result: boolean) => {
-    if (overlayRef.current) gsap.to(overlayRef.current, { opacity: 0, duration: 0.1 });
-    if (modalRef.current) gsap.to(modalRef.current, {
-      opacity: 0, scale: 0.97, y: 4, duration: 0.12, ease: 'power2.in',
-      onComplete: () => onResult(result),
-    });
-  };
+  const open = !!state;
+  const opts = state?.opts;
 
   return (
-    <div ref={overlayRef} css={s.overlay} onClick={() => close(false)}>
-      <div ref={modalRef} css={s.modal} role="alertdialog" aria-labelledby="confirm-title" onClick={e => e.stopPropagation()}>
-        <div css={s.title} id="confirm-title">{opts.title}</div>
-        {opts.message && <div css={s.message}>{opts.message}</div>}
-        <div css={s.actions}>
-          {!opts.hideCancel && (
-            <button css={s.cancelBtn} onClick={() => close(false)}>
-              {opts.cancelText || '취소'}
-            </button>
+    <Modal open={open} onClose={() => onResult(false)}>
+      <Modal.Overlay />
+      <Modal.Content style={{ maxWidth: 280 }}>
+        <div css={s.body} role="alertdialog">
+          {opts && <div css={s.title}>{opts.title}</div>}
+          {opts?.message && <div css={s.message}>{opts.message}</div>}
+          {opts?.hideCancel ? (
+            <Modal.CTA ref={confirmBtnRef}
+              variant={opts.danger ? 'danger' : 'primary'}
+              onClick={() => onResult(true)}>
+              {opts.confirmText || '확인'}
+            </Modal.CTA>
+          ) : (
+            <Modal.Actions>
+              <Modal.CTA variant="secondary" onClick={() => onResult(false)}>
+                {opts?.cancelText || '취소'}
+              </Modal.CTA>
+              <Modal.CTA ref={confirmBtnRef}
+                variant={opts?.danger ? 'danger' : 'primary'}
+                onClick={() => onResult(true)}>
+                {opts?.confirmText || '확인'}
+              </Modal.CTA>
+            </Modal.Actions>
           )}
-          <button css={s.confirmBtn(opts.danger)} onClick={() => close(true)}>
-            {opts.confirmText || '확인'}
-          </button>
         </div>
-      </div>
-    </div>
+      </Modal.Content>
+    </Modal>
   );
 };
 
 const s = {
-  overlay: css`
-    position: fixed; inset: 0; z-index: ${zIndex.modal};
-    background: ${sem.overlay.dim}; border-radius: ${radius['2xl']}px;
-    display: flex; align-items: center; justify-content: center;
-    padding: ${spacing['4xl']}px;
-  `,
-  modal: css`
-    background: ${sem.surface.card}; border-radius: ${radius['2xl']}px;
-    width: 100%; max-width: 280px;
-    padding: ${spacing['3xl']}px ${spacing['2xl']}px ${spacing.xl}px;
-    box-shadow: ${shadow.lg};
-    border: 1px solid ${sem.border.default};
+  body: css`
+    padding: ${spacing['2xl']}px ${spacing.xl}px ${spacing.xl}px;
+    display: flex; flex-direction: column;
   `,
   title: css`
     font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary};
@@ -122,24 +106,7 @@ const s = {
   `,
   message: css`
     font-size: ${fontSize.base}px; color: ${sem.text.secondary};
-    text-align: center; line-height: 1.5; margin-bottom: ${sp('xl', 'xs')};
+    text-align: center; line-height: 1.5;
     white-space: pre-line;
-  `,
-  actions: css`
-    display: flex; gap: ${spacing.md}px;
-  `,
-  cancelBtn: css`
-    flex: 1; padding: ${sp('md', 'xs')}; border: none;
-    background: ${sem.bg.surface}; color: ${sem.text.secondary};
-    border-radius: ${radius.xl}px; font-size: ${fontSize.lg}px; font-weight: ${fontWeight.semibold};
-    font-family: inherit; cursor: pointer; transition: background ${transition.fast};
-    &:hover { background: ${sem.bg.elevated}; }
-  `,
-  confirmBtn: (danger?: boolean) => css`
-    flex: 1; padding: ${sp('md', 'xs')}; border: none;
-    background: ${danger ? sem.action.danger : sem.action.primary};
-    color: ${sem.text.inverse}; border-radius: ${radius.xl}px; font-size: ${fontSize.lg}px; font-weight: ${fontWeight.semibold};
-    font-family: inherit; cursor: pointer; transition: opacity ${transition.fast};
-    &:hover { opacity: ${opacity.hover}; }
   `,
 };

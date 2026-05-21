@@ -186,8 +186,8 @@ export const MarketSheet = ({ open, items, onClose }: Props) => {
 
 const s = {
   panel: css`flex:1;display:flex;flex-direction:column;min-height:0;overflow-y:auto;`,
-  body: css`flex:1;padding:${spacing.sm}px ${spacing.xl}px ${spacing.md}px;`,
-  row: css`justify-content: space-between; padding: ${spacing.lg}px ${spacing.md}px;`,
+  body: css`flex:1;padding:0 0 ${spacing.md}px;`,
+  row: css`justify-content: space-between; padding: ${spacing.lg}px ${spacing.xl}px;`,
   name: css`font-size:${fontSize.lg}px;font-weight:${fontWeight.semibold};color:${sem.text.primary};`,
   vals: css`display:flex;flex-direction:column;align-items:flex-end;gap:${spacing.xs}px;`,
   val: (d: 'up'|'down'|'flat') => css`

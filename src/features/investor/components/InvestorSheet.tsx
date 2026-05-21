@@ -3,24 +3,27 @@ import { css } from '@emotion/react';
 import { useState, useCallback } from 'react';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { MarqueeItem } from '@/shared/types';
-import { SheetLayout, Tabs } from '@/shared/ui';
+import { SheetLayout, Tabs, WebViewPanel } from '@/shared/ui';
 import { subTabPadStyle } from '@/shared/styles/sharedStyles';
 import { useToast } from '@/shared/ui/Toast';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
 import { useInvestorData } from '@/features/investor/hooks/useInvestorData';
 import { InvestorView } from '@/features/investor/components/InvestorView';
 import { EconomicCalendar } from '@/features/investor/components/EconomicCalendar';
+import { SectorView } from '@/features/investor/components/SectorView';
 import { sem } from '@/shared/styles/semantic';
 import { dirArrow, fmtPercentAbs, getDirColor } from '@/shared/utils/format';
 import { formatMarqueeValue, formatMarqueeChange } from '@/features/marquee/utils/formatMarqueeValue';
 
 interface Props { open: boolean; onClose: () => void; marqueeItems?: MarqueeItem[]; }
 
-type Tab = 'market' | 'calendar';
+type Tab = 'market' | 'calendar' | 'sectors';
 type Market = 'KOSPI' | 'KOSDAQ';
 
 const TABS = [
-  { key: 'market' as Tab, label: '국내 매매동향' },
-  { key: 'calendar' as Tab, label: '경제 캘린더' },
+  { key: 'market' as Tab, label: '매매동향' },
+  { key: 'sectors' as Tab, label: '증시현황' },
+  { key: 'calendar' as Tab, label: '경제캘린더' },
 ];
 const MARKETS = [
   { key: 'KOSPI' as Market, label: '코스피' },
@@ -49,7 +52,9 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
   const [market, setMarket] = useState<Market>('KOSPI');
   const isMarketTab = tab === 'market';
   const isCalendarTab = tab === 'calendar';
+  const isSectorsTab = tab === 'sectors';
   const { data, loading, refresh } = useInvestorData(open, !isMarketTab);
+  const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
 
   const handleRefresh = useCallback(async () => {
@@ -62,13 +67,13 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
       open={open}
       title="투자정보"
       onClose={onClose}
-      onRefresh={!isCalendarTab ? handleRefresh : undefined}
+      onRefresh={isMarketTab ? handleRefresh : undefined}
       refreshing={loading}
       noNavBorder
     >
       <Tabs id="investor" items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
 
-      {isMarketTab ? (
+      {isMarketTab && (
         <>
           <div css={subTabPadStyle}>
             <Tabs id="investor-market" items={MARKETS} value={market} onChange={setMarket} variant="pill" size="sm" />
@@ -81,11 +86,21 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
             <InvestorView data={data[market]} />
           </div>
         </>
-      ) : (
+      )}
+
+      {isCalendarTab && (
         <div role="tabpanel" id="investor-panel-calendar" aria-labelledby="investor-tab-calendar" css={st.calendarPanel}>
           <EconomicCalendar />
         </div>
       )}
+
+      {isSectorsTab && (
+        <div role="tabpanel" id="investor-panel-sectors" aria-labelledby="investor-tab-sectors" css={st.sectorsPanel}>
+          <SectorView active={open && isSectorsTab} onStockClick={openView} />
+        </div>
+      )}
+
+      <WebViewPanel url={view?.url ?? null} onClose={closeView} />
     </SheetLayout>
   );
 };
@@ -94,9 +109,10 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
 const st = {
   body: css`flex: 1; overflow-y: auto; padding: ${spacing.sm}px 0 ${spacing.lg}px;`,
   calendarPanel: css`flex: 1; display: flex; flex-direction: column; min-height: 0;`,
+  sectorsPanel: css`flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative;`,
   indexBanner: css`
     display: flex; flex-direction: column; gap: ${spacing.sm}px;
-    padding: ${spacing.lg}px ${spacing.xl}px ${spacing.md}px;
+    padding: ${spacing.md}px ${spacing.xl}px ${spacing.md}px;
     flex-shrink: 0;
   `,
   indexLabel: css`
