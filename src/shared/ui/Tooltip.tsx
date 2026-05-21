@@ -98,6 +98,19 @@ export const Tooltip = ({ content, children, position = 'bottom', delay = 200, d
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // 툴팁 표시 중 휠/스크롤 → 즉시 숨김 (앵커 요소 위치가 어긋나는 것 방지).
+  // scroll은 버블링 안 하므로 capture phase로 부착해 내부 스크롤도 잡음.
+  useEffect(() => {
+    if (!visible) return;
+    const onScroll = () => hideImmediate();
+    window.addEventListener('wheel', onScroll, true);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('wheel', onScroll, true);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [visible]);
+
   const wrapStyle = display
     ? css`display: ${display};`
     : css`display: contents; & > * { pointer-events: auto; }`;

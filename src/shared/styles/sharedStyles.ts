@@ -1,7 +1,7 @@
 import { css, keyframes } from '@emotion/react';
 import { v } from './vars';
 import { sem } from './semantic';
-import { spacing, fontSize, fontWeight, letterSpacing } from './tokens';
+import { spacing, fontSize, fontWeight, letterSpacing, radius } from './tokens';
 
 /** 그룹 헤더 (국내주식/해외주식 등) — StockList, StockGrid, StockTile 공유 */
 export const groupHeaderStyle = css`
@@ -25,7 +25,21 @@ export const subTabPadStyle = css`
   flex-shrink: 0;
 `;
 
-/** 시트 내부 섹션 타이틀 — SettingsSheet, MarqueeSheet 등 공유 */
+/**
+ * 시트 내 리스트 행 — dotted divider + accent hover tint 공통 패턴.
+ * MarketSheet, InterestRateView 등 "row 클릭 → 웹뷰" 시트들이 공유.
+ * 행 내부 layout(좌측 정보 / 우측 값)은 사용처에서 조립.
+ */
+export const listRowStyle = css`
+  display: flex;
+  align-items: center;
+  border-radius: ${radius.lg}px;
+  cursor: pointer;
+  &:not(:last-of-type) { border-bottom: 1px dotted ${sem.border.muted}; }
+  &:hover { background: ${sem.action.primarySoft}; }
+`;
+
+/** 시트 내부 섹션 타이틀 — SettingsSheet, MarketSheet 등 공유 */
 export const sectionTitleStyle = css`
   font-size: ${fontSize.sm}px;
   font-weight: ${fontWeight.bold};

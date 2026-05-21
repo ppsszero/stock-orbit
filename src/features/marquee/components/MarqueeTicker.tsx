@@ -16,10 +16,10 @@ interface Props {
 }
 
 export const MarqueeTicker = memo(({ items: rawItems, speed, onItemClick }: Props) => {
-  // 시장지표 시트 표기 순서로 정렬: 주요지수 → 환율 → 에너지 → 금속
+  // 상단 ticker는 시장 흐름 파악용 — 주요지수 + 환율만 노출 (원자재/채권은 시장지표 시트에서)
   const items = useMemo(() => {
     const g = groupMarqueeItems(rawItems);
-    return [...g.index, ...g.fx, ...g.energy, ...g.metals];
+    return [...g.index, ...g.fx];
   }, [rawItems]);
 
   const trackRef = useRef<HTMLDivElement>(null);

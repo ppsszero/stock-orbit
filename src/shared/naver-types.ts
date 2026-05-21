@@ -56,10 +56,6 @@ export interface NaverCommodityItemRaw {
   unit?: string;
 }
 
-export interface NaverCommodityPollingRaw {
-  datas?: NaverCommodityItemRaw[];
-}
-
 // ── 환율 ─────────────────────────────────────────────────────────────────
 
 export interface NaverFXInfoRaw {
@@ -74,26 +70,6 @@ export interface NaverFXInfoRaw {
 /** 최상위 응답이 exchangeInfo 래퍼를 가질 수도, 직접 info일 수도 있음 */
 export interface NaverFXRaw extends NaverFXInfoRaw {
   exchangeInfo?: NaverFXInfoRaw;
-}
-
-// ── 국내 랭킹 ────────────────────────────────────────────────────────────
-
-export interface NaverDomesticRankingItemRaw {
-  itemCode?: string;
-  symbolCode?: string;
-  stockName?: string;
-  closePriceRaw?: string;
-  closePrice?: string;
-  compareToPreviousClosePriceRaw?: string;
-  fluctuationsRatioRaw?: string;
-  fluctuationsRatio?: string;
-  accumulatedTradingVolumeRaw?: string;
-  accumulatedTradingValueRaw?: string;
-  compareToPreviousPrice?: NaverPriceDirection;
-}
-
-export interface NaverDomesticRankingRaw {
-  datas?: NaverDomesticRankingItemRaw[];
 }
 
 // ── 해외 랭킹 ────────────────────────────────────────────────────────────

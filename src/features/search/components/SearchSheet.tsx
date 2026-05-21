@@ -1,6 +1,5 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState } from 'react';
 import { FiSearch, FiX, FiInfo } from 'react-icons/fi';
 import { Preset, StockSymbol } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, zIndex as z } from '@/shared/styles/tokens';
@@ -8,6 +7,7 @@ import { useSearchSheet } from '../hooks/useSearchSheet';
 import { PresetTabs } from '@/features/preset/components/PresetTabs';
 import { SearchResultItem } from './SearchResultItem';
 import { SheetLayout, WebViewPanel, LoadingCenter } from '@/shared/ui';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
 import { getNaverStockUrl } from '@/shared/naver';
 import { mapNationCode } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
@@ -35,7 +35,7 @@ export const SearchSheet = ({ open, existingCodes, presetName, presets, activeGr
   // 전체 그룹 통틀어 중복 없는 종목 수 — 안내 메시지에 현재 저장량 표시
   const totalCount = useTotalUniqueSymbolCount();
 
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const { view, open: openView, close: closeView } = useWebViewState(open);
 
   return (
     <SheetLayout open={open} title="종목검색" zIndex={z.overlay} onClose={onClose} noNavBorder>
@@ -70,7 +70,7 @@ export const SearchSheet = ({ open, existingCodes, presetName, presets, activeGr
             added={existingCodes.includes(item.code)}
             selected={idx === selectedIdx}
             onToggle={handleToggle}
-            onLink={it => setViewUrl(getNaverStockUrl({
+            onLink={it => openView(getNaverStockUrl({
               code: it.code,
               nation: mapNationCode(it.nationCode),
               reutersCode: it.reutersCode,
@@ -83,7 +83,7 @@ export const SearchSheet = ({ open, existingCodes, presetName, presets, activeGr
           onAddPreset={onAddPreset} onRename={onRenamePreset} onRemove={onRemovePreset} compact />
       </div>
 
-      <WebViewPanel url={viewUrl} title="종목 정보" onClose={() => setViewUrl(null)} />
+      <WebViewPanel url={view?.url ?? null} title="종목 정보" onClose={closeView} />
     </SheetLayout>
   );
 };

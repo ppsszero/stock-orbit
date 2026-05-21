@@ -1,10 +1,11 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import { spacing } from '@/shared/styles/tokens';
 import { SheetLayout, Tabs, WebViewPanel, LoadingCenter } from '@/shared/ui';
 import { useToast } from '@/shared/ui/Toast';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
 import { useNewsData } from '../hooks/useNewsData';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { BriefingView } from './BriefingView';
@@ -25,7 +26,7 @@ const TABS: { key: Tab; label: string }[] = [
 // 데이터 → useNewsData, 스크롤 감지 → useInfiniteScroll, UI → 각 리스트 컴포넌트.
 export const NewsSheet = ({ open, onClose }: Props) => {
   const [tab, setTab] = useState<Tab>('briefing');
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
   const {
     briefing, news, stories, loading, refresh,
@@ -41,8 +42,6 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   const newsScrollRef = useInfiniteScroll(loadMoreNews, !newsMaxed);
   const storyScrollRef = useInfiniteScroll(loadMoreStories, !storiesMaxed);
 
-  useEffect(() => { if (open) setViewUrl(null); }, [open]);
-
   if (!open) return null;
 
   return (
@@ -56,24 +55,24 @@ export const NewsSheet = ({ open, onClose }: Props) => {
           <div role="tabpanel" id="news-panel-briefing" aria-labelledby="news-tab-briefing"
             hidden={tab !== 'briefing'} css={s.tabBody(tab === 'briefing')}>
             {briefing
-              ? <BriefingView briefing={briefing} onLinkClick={setViewUrl} />
+              ? <BriefingView briefing={briefing} onLinkClick={openView} />
               : <div css={s.empty}>브리핑이 없습니다</div>
             }
           </div>
 
           <div role="tabpanel" id="news-panel-news" aria-labelledby="news-tab-news"
             hidden={tab !== 'news'} ref={newsScrollRef} css={s.tabBody(tab === 'news')}>
-            <NewsList items={news} maxed={newsMaxed} onLinkClick={setViewUrl} />
+            <NewsList items={news} maxed={newsMaxed} onLinkClick={openView} />
           </div>
 
           <div role="tabpanel" id="news-panel-story" aria-labelledby="news-tab-story"
             hidden={tab !== 'story'} ref={storyScrollRef} css={s.tabBody(tab === 'story')}>
-            <StoryList items={stories} maxed={storiesMaxed} onLinkClick={setViewUrl} />
+            <StoryList items={stories} maxed={storiesMaxed} onLinkClick={openView} />
           </div>
         </>
       )}
 
-      <WebViewPanel url={viewUrl} title="뉴스" onClose={() => setViewUrl(null)} />
+      <WebViewPanel url={view?.url ?? null} title="뉴스" onClose={closeView} />
     </SheetLayout>
   );
 };

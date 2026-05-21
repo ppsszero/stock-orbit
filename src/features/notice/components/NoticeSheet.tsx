@@ -1,9 +1,10 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { spacing, fontSize, fontWeight, transition } from '@/shared/styles/tokens';
 import { SheetLayout, TimelineRow, WebViewPanel } from '@/shared/ui';
 import { useToast } from '@/shared/ui/Toast';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
 import { NoticeItem } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
 
@@ -19,16 +20,11 @@ interface Props {
 const releaseUrl = (version: string) => `https://github.com/ppsszero/stock-orbit/releases/tag/v${version}`;
 
 export const NoticeSheet = ({ open, notices, loading, onClose, onRefresh }: Props) => {
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
-  const [viewTitle, setViewTitle] = useState<string>('');
+  const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
 
-  // 시트가 닫히면 웹뷰도 초기화 (NewsSheet와 동일 패턴)
-  useEffect(() => { if (!open) setViewUrl(null); }, [open]);
-
   const handleItemClick = (n: NoticeItem) => {
-    setViewUrl(releaseUrl(n.version));
-    setViewTitle(`v${n.version} 릴리즈 노트`);
+    openView(releaseUrl(n.version), { title: `v${n.version} 릴리즈 노트` });
   };
 
   const handleRefresh = useCallback(async () => {
@@ -69,7 +65,7 @@ export const NoticeSheet = ({ open, notices, loading, onClose, onRefresh }: Prop
         )}
       </div>
 
-      <WebViewPanel url={viewUrl} title={viewTitle} onClose={() => setViewUrl(null)} />
+      <WebViewPanel url={view?.url ?? null} title={view?.title} onClose={closeView} />
     </SheetLayout>
   );
 };

@@ -3,10 +3,12 @@ import { css } from '@emotion/react';
 import { useEffect, useRef, useState } from 'react';
 import { InterestRateItem, fetchStandardInterest, fetchDomesticInterest, fetchBondYield } from '@/shared/naver';
 import { cached } from '@/shared/utils/cache';
-import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 import { LoadingCenter } from '@/shared/ui/LoadingCenter';
 import { WebViewPanel } from '@/shared/ui';
+import { listRowStyle } from '@/shared/styles/sharedStyles';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
 import { dirArrow, getDirColor } from '@/shared/utils/format';
 
 /** YYYYMMDD → MM.DD. */
@@ -31,7 +33,7 @@ const RateRow = ({ item, showFlag, onClick }: { item: InterestRateItem; showFlag
   const ratioDisplay = item.changeRatio === '-' ? '' : ` (${item.changeRatio}%)`;
 
   return (
-    <div css={s.row} onClick={onClick} role={onClick ? 'button' : undefined}>
+    <div css={[listRowStyle, s.row]} onClick={onClick} role={onClick ? 'button' : undefined}>
       {showFlag && item.nation && (
         <img src={`${FLAG_BASE}${item.nation}.svg`} alt="" css={s.flag}
           onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -89,7 +91,7 @@ const getRateUrl = (tab: Tab, item: InterestRateItem): string | null => {
 export const InterestRateView = ({ tab, refreshKey, onLoadResult }: Props) => {
   const [items, setItems] = useState<InterestRateItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<{ url: string; title: string; sub: string } | null>(null);
+  const { view, open: openView, close: closeView } = useWebViewState();
 
   // 부모가 onLoadResult를 인라인 함수로 주는 경우 매 렌더마다 effect 재실행되는 것 방지
   const onLoadResultRef = useRef(onLoadResult);
@@ -135,11 +137,11 @@ export const InterestRateView = ({ tab, refreshKey, onLoadResult }: Props) => {
         const url = getRateUrl(tab, item);
         return (
           <RateRow key={item.name} item={item} showFlag={showFlag}
-            onClick={url ? () => setView({ url, title: item.name, sub: label }) : undefined} />
+            onClick={url ? () => openView(url, { title: item.name, subtitle: label }) : undefined} />
         );
       })}
-      <WebViewPanel url={view?.url ?? null} title={view?.title} subtitle={view?.sub}
-        onClose={() => setView(null)} />
+      <WebViewPanel url={view?.url ?? null} title={view?.title} subtitle={view?.subtitle}
+        onClose={closeView} />
     </div>
   );
 };
@@ -150,14 +152,7 @@ const s = {
     padding: ${spacing.sm}px ${spacing.xl}px ${spacing.lg}px;
   `,
   empty: css`padding: ${spacing['4xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
-  row: css`
-    display: flex; align-items: center; gap: ${spacing.lg}px;
-    padding: ${spacing.xl}px ${spacing.lg}px;
-    border-radius: ${radius.lg}px;
-    cursor: pointer;
-    &:not(:last-of-type) { border-bottom: 1px dotted ${sem.border.muted}; }
-    &:hover { background: ${sem.action.primarySelected}; }
-  `,
+  row: css`gap: ${spacing.lg}px; padding: ${spacing.xl}px ${spacing.lg}px;`,
   flag: css`width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0;`,
   info: css`
     flex: 1; min-width: 0;

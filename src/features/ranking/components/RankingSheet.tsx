@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 
 import { spacing, fontSize } from '@/shared/styles/tokens';
 import { Preset, StockSymbol } from '@/shared/types';
@@ -9,7 +9,8 @@ import { PresetTabs } from '@/features/preset/components/PresetTabs';
 import { useToast } from '@/shared/ui/Toast';
 import { SheetLayout, Tabs, WebViewPanel, LoadingCenter } from '@/shared/ui';
 import { subTabPadStyle } from '@/shared/styles/sharedStyles';
-import { useRankingData, NATIONS, RANK_TYPES } from '@/features/ranking/hooks/useRankingData';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
+import { useRankingData, NATIONS, RANK_TYPES, isDomesticOnlyRank } from '@/features/ranking/hooks/useRankingData';
 import { MAX_TOTAL_SYMBOLS } from '@/app/store';
 import { RankRow } from '@/features/ranking/components/RankRow';
 import { sem } from '@/shared/styles/semantic';
@@ -31,7 +32,7 @@ interface Props {
 export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onRemove, onGroupSelect, onAddPreset, onRenamePreset, onRemovePreset }: Props) => {
   const toast = useToast();
   const { nation, setNation, rankType, setRankType, items, loading, load } = useRankingData(open);
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const { view, open: openView, close: closeView } = useWebViewState(open);
 
   const activePreset = presets.find(p => p.id === activeGroupId) || presets[0];
   const existingCodes = activePreset?.symbols.map(s => s.code) || [];
@@ -63,9 +64,11 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
   return (
     <SheetLayout open={open} title="글로벌 실시간 랭킹" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} noNavBorder>
       <Tabs id="ranking-type" items={RANK_TYPES} value={rankType} onChange={setRankType} variant="underline" itemAlign="center" />
-      <div css={subTabPadStyle}>
-        <Tabs id="ranking-nation" items={NATIONS} value={nation} onChange={setNation} variant="pill" size="sm" fluid />
-      </div>
+      {!isDomesticOnlyRank(rankType) && (
+        <div css={subTabPadStyle}>
+          <Tabs id="ranking-nation" items={NATIONS} value={nation} onChange={setNation} variant="pill" size="sm" fluid />
+        </div>
+      )}
 
       <div role="tabpanel"
         id={`ranking-type-panel-${rankType}`}
@@ -78,7 +81,7 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
             key={item.code + item.rank}
             item={item}
             added={existingCodes.includes(item.code)}
-            onLink={() => setViewUrl(getNaverStockUrl({ code: item.code, nation: item.nation, reutersCode: item.reutersCode }))}
+            onLink={() => openView(getNaverStockUrl({ code: item.code, nation: item.nation, reutersCode: item.reutersCode }))}
             onToggle={() => handleToggle(item)}
           />
         ))}
@@ -89,13 +92,13 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
           onAddPreset={onAddPreset} onRename={onRenamePreset} onRemove={onRemovePreset} compact />
       </div>
 
-      <WebViewPanel url={viewUrl} onClose={() => setViewUrl(null)} />
+      <WebViewPanel url={view?.url ?? null} onClose={closeView} />
     </SheetLayout>
   );
 };
 
 const st = {
-  list: css`flex: 1; overflow-y: auto; display: flex; flex-direction: column;`,
+  list: css`flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding-bottom:${spacing.xl}px`,
   empty: css`padding: ${spacing['5xl']}px; text-align: center; font-size: ${fontSize.base}px; color: ${sem.text.tertiary};`,
   footer: css`border-top: 1px solid ${sem.border.subtle}; flex-shrink: 0;`,
 };

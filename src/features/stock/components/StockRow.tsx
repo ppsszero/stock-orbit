@@ -123,9 +123,9 @@ export const StockRow = memo(({
 const s = {
   row: css`
     display: flex; align-items: center; justify-content: space-between;
-    padding: ${sp('md', 'xs')} ${spacing.md}px; border-bottom: 1px solid ${sem.border.faint}; cursor: default;
+    padding: ${sp('md', 'xs')} ${spacing.md}px; cursor: default;
     background: ${sem.bg.base};
-    &:hover { background: ${sem.bg.surface}; }
+    &:hover { background: ${sem.action.primarySoft}; }
     &:hover .drag-handle { opacity: 1; }
   `,
   dragging: css`opacity: ${opacity.disabled}; z-index: 10; box-shadow: ${shadow.lg};`,

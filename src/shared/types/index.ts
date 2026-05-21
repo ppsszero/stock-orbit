@@ -116,7 +116,7 @@ export interface MarqueeItem {
   change: number;
   changePercent: number;
   changeDirection: 'up' | 'down' | 'flat';
-  type: 'index' | 'fx' | 'commodity' | 'metals' | 'energy';
+  type: 'index' | 'fx' | 'commodity' | 'metals' | 'energy' | 'agricultural' | 'transport';
 }
 
 // === Electron API ===

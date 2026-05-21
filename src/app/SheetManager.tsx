@@ -10,7 +10,7 @@ import { StockDetailSheet, StockDetailModal } from '@/features/stock';
 import { InvestorSheet } from '@/features/investor';
 import { RankingSheet } from '@/features/ranking';
 import { NewsSheet } from '@/features/news';
-import { MarqueeSheet } from '@/features/marquee';
+import { MarketSheet } from '@/features/marquee';
 import { NewGroupModal } from '@/features/preset';
 
 interface Props {
@@ -73,7 +73,7 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
       <SettingsSheet open={openSheet === 'settings'} settings={settings}
         onClose={closeSheet} onUpdate={updateSettings}
         onReset={resetAll} />
-      <MarqueeSheet open={openSheet === 'marquee'} items={marqueeItems}
+      <MarketSheet open={openSheet === 'marquee'} items={marqueeItems}
         onClose={closeSheet} />
       <InvestorSheet open={openSheet === 'investor'} onClose={closeSheet} marqueeItems={marqueeItems} />
       <RankingSheet open={openSheet === 'ranking'}

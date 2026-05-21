@@ -4,9 +4,7 @@ import { parseSignDirection, type Direction } from '@/shared/utils/format';
 import type {
   NaverIndexPollingRaw,
   NaverCommodityItemRaw,
-  NaverCommodityPollingRaw,
   NaverFXRaw,
-  NaverDomesticRankingRaw,
   NaverForeignRankingRaw,
   NaverForeignRankingItemRaw,
   NaverPriceDirection,
@@ -58,6 +56,15 @@ const maybeResetBackoff = () => {
 
 // URL 패턴 → 사람이 읽을 수 있는 로그 타이틀.
 // 예) /polling/domestic/index?itemCodes=KOSPI%2CKOSDAQ%2CKPI200 → "국내 지수 (KOSPI, KOSDAQ, KPI200)"
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  quantTop:  '거래량 상위',
+  priceTop:  '거래대금 상위',
+  searchTop: '검색 상위',
+};
+const NATION_LABELS: Record<string, string> = {
+  USA: '미국', CHN: '중국', JPN: '일본', HKG: '홍콩', VNM: '베트남',
+};
+
 const describeApi = (path: string): string => {
   const [pathOnly, query] = path.split('?');
   const params = new URLSearchParams(query || '');
@@ -69,6 +76,19 @@ const describeApi = (path: string): string => {
     const items = params.get('itemCodes')?.split(',').filter(Boolean) || [];
     if (items.length === 0) return `${regionKr} ${kindKr} 폴링`;
     return `${regionKr} ${kindKr} 폴링 — ${items.length}개`;
+  }
+
+  // 국내 랭킹 — /domestic/market/stock/default?orderType=...
+  if (pathOnly === '/domestic/market/stock/default') {
+    const ot = params.get('orderType') || '';
+    return `국내 ${ORDER_TYPE_LABELS[ot] || '랭킹'}`;
+  }
+
+  // 해외 랭킹 — /foreign/market/stock/global?nation=...&orderType=...
+  if (pathOnly === '/foreign/market/stock/global') {
+    const ot = params.get('orderType') || '';
+    const nation = params.get('nation') || '';
+    return `${NATION_LABELS[nation] || nation} ${ORDER_TYPE_LABELS[ot] || '랭킹'}`;
   }
 
   // 그 외 엔드포인트 — 마지막 path segment를 fallback
@@ -436,9 +456,9 @@ export const fetchWorldIndices = async (): Promise<MarqueeItem[]> => {
   } catch (e) { logger.error('세계지수', (e as Error).message); return []; }
 };
 
-// 원자재 배치 호출 — metals 7개 + energy 5개 = 총 2회 요청
-const METALS_CODES = 'GCcv1,M04020000,SIcv1,HGcv1,PLcv1,PAcv1,TIOc1';
-const ENERGY_CODES = 'CLcv1,LCOcv1,RBcv1,HOcv1,DCBc1';
+// 원자재 — securityService 배열 endpoint: 종목코드 명시 없이 카테고리 전체 받음
+type CommodityCategory = 'energy' | 'metals' | 'agricultural' | 'transport';
+const COMMODITY_CATEGORIES: CommodityCategory[] = ['energy', 'metals', 'agricultural', 'transport'];
 
 const parseCommodityItem = (d: NaverCommodityItemRaw, type: MarqueeItem['type']): MarqueeItem => {
   const c = parseFloat(d.fluctuations || '0');
@@ -456,15 +476,20 @@ const parseCommodityItem = (d: NaverCommodityItemRaw, type: MarqueeItem['type'])
 
 export const fetchCommodities = async (): Promise<MarqueeItem[]> => {
   const out: MarqueeItem[] = [];
-  try {
-    const [metals, energy] = await Promise.all([
-      fetchJSON<NaverCommodityPollingRaw>(`${BASE}/polling/marketindex/metals/${METALS_CODES}`),
-      fetchJSON<NaverCommodityPollingRaw>(`${BASE}/polling/marketindex/energy/${ENERGY_CODES}`),
-    ]);
-    for (const d of metals.datas || []) out.push(parseCommodityItem(d, 'metals'));
-    for (const d of energy.datas || []) out.push(parseCommodityItem(d, 'energy'));
-  } catch (e) {
-    logger.error('원자재', (e as Error).message);
+  const results = await Promise.all(
+    COMMODITY_CATEGORIES.map(async (cat) => {
+      try {
+        // securityService는 배열 응답 (polling endpoint와 달리 datas 래퍼 없음)
+        const arr = await fetchJSON<NaverCommodityItemRaw[]>(`${BASE}/securityService/marketindex/${cat}`);
+        return { cat, items: Array.isArray(arr) ? arr : [] };
+      } catch (e) {
+        logger.error(`원자재 ${cat}`, (e as Error).message);
+        return { cat, items: [] as NaverCommodityItemRaw[] };
+      }
+    })
+  );
+  for (const { cat, items } of results) {
+    for (const d of items) out.push(parseCommodityItem(d, cat));
   }
   return out;
 };
@@ -558,33 +583,39 @@ export interface RankingItem {
   logoUrl?: string;
 }
 
-// 국내 랭킹: polling API (거래량 상위 1~10, 거래대금 상위 11~20)
-// 미리 알려진 상위 종목코드를 polling에 넘기는 방식
-const DOMESTIC_RANKING_CODES = '047040,008350,152550,003280,062970,010170,004410,032820,017900,011930,005930,000660,000250,005380,005935,034020,006360,000720,009150,003550';
+// 국내 랭킹 — 새 endpoint(domestic/market/stock/default): 종목코드 하드코딩 없이 서버 사이드 정렬된 상위 10개.
+// orderType: quantTop(거래량) / priceTop(거래대금) / searchTop(검색)
+// 응답 필드명이 기존 polling endpoint와 완전히 달라서 별도 raw 타입 사용
+interface NaverDomesticRankingNewItem {
+  itemname?: string;
+  itemcode?: string;
+  /** 1/2=상승, 3=보합, 4/5=하락 */
+  upDownGb?: string;
+  nowPrice?: string;
+  /** 전일 대비 변동 — 절댓값. 부호는 upDownGb로 결정 */
+  prevChangePrice?: string;
+  prevChangeRate?: string;
+}
 
-export const fetchDomesticRanking = async (type: 'volume' | 'value'): Promise<RankingItem[]> => {
+export const fetchDomesticRanking = async (type: 'volume' | 'value' | 'search'): Promise<RankingItem[]> => {
+  const orderType = type === 'volume' ? 'quantTop' : type === 'value' ? 'priceTop' : 'searchTop';
   try {
-    const data = await fetchJSON<NaverDomesticRankingRaw>(
-      `${BASE}/polling/domestic/stock?itemCodes=${encodeURIComponent(DOMESTIC_RANKING_CODES)}`
+    const data = await fetchJSON<NaverDomesticRankingNewItem[]>(
+      `${BASE}/domestic/market/stock/default?tradeType=KRX&marketType=ALL&orderType=${orderType}&startIdx=0&pageSize=10`
     );
-    const items = data.datas || [];
-    // 거래량/거래대금 기준 정렬
-    const sorted = [...items].sort((a, b) => {
-      const aVal = parseInt((type === 'volume' ? a.accumulatedTradingVolumeRaw : a.accumulatedTradingValueRaw) || '0');
-      const bVal = parseInt((type === 'volume' ? b.accumulatedTradingVolumeRaw : b.accumulatedTradingValueRaw) || '0');
-      return bVal - aVal;
-    }).slice(0, 10);
-
-    return sorted.map((d, i) => {
-      const code = d.compareToPreviousPrice?.code;
-      const dir = code === '2' || code === '1' ? 1 : code === '5' || code === '4' ? -1 : 0;
+    const items = Array.isArray(data) ? data : [];
+    return items.slice(0, 10).map((d, i) => {
+      const ud = d.upDownGb;
+      const dir = ud === '1' || ud === '2' ? 1 : ud === '4' || ud === '5' ? -1 : 0;
+      const change = num(d.prevChangePrice);
+      const changePct = num(d.prevChangeRate);
       return {
         rank: i + 1,
-        code: d.itemCode || d.symbolCode || '',
-        name: d.stockName || '',
-        price: num(d.closePriceRaw || d.closePrice),
-        change: num(d.compareToPreviousClosePriceRaw),
-        changePercent: num(d.fluctuationsRatioRaw || d.fluctuationsRatio),
+        code: d.itemcode || '',
+        name: d.itemname || '',
+        price: num(d.nowPrice),
+        change: dir >= 0 ? change : -change,
+        changePercent: dir >= 0 ? changePct : -changePct,
         changeDirection: parseDir(dir),
         nation: 'KR',
       };

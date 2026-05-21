@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { MarqueeItem } from '@/shared/types';
 import { SheetLayout, Tabs } from '@/shared/ui';
@@ -9,30 +9,22 @@ import { useToast } from '@/shared/ui/Toast';
 import { useInvestorData } from '@/features/investor/hooks/useInvestorData';
 import { InvestorView } from '@/features/investor/components/InvestorView';
 import { EconomicCalendar } from '@/features/investor/components/EconomicCalendar';
-import { InterestRateView } from '@/features/investor/components/InterestRateView';
 import { sem } from '@/shared/styles/semantic';
 import { dirArrow, fmtPercentAbs, getDirColor } from '@/shared/utils/format';
 import { formatMarqueeValue, formatMarqueeChange } from '@/features/marquee/utils/formatMarqueeValue';
 
 interface Props { open: boolean; onClose: () => void; marqueeItems?: MarqueeItem[]; }
 
-type Tab = 'market' | 'calendar' | 'interest';
+type Tab = 'market' | 'calendar';
 type Market = 'KOSPI' | 'KOSDAQ';
-type InterestTab = 'bond' | 'standard' | 'domestic';
 
 const TABS = [
   { key: 'market' as Tab, label: '국내 매매동향' },
   { key: 'calendar' as Tab, label: '경제 캘린더' },
-  { key: 'interest' as Tab, label: '채권·금리' },
 ];
 const MARKETS = [
   { key: 'KOSPI' as Market, label: '코스피' },
   { key: 'KOSDAQ' as Market, label: '코스닥' },
-];
-const INTEREST_TABS = [
-  { key: 'bond' as InterestTab, label: '국채수익률' },
-  { key: 'standard' as InterestTab, label: '기준금리' },
-  { key: 'domestic' as InterestTab, label: '국내금리' },
 ];
 
 /** 마퀴 아이템에서 KOSPI/KOSDAQ 지수 데이터 추출 */
@@ -55,25 +47,15 @@ const IndexBanner = ({ items, market }: { items: MarqueeItem[]; market: Market }
 export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
   const [tab, setTab] = useState<Tab>('market');
   const [market, setMarket] = useState<Market>('KOSPI');
-  const [interestTab, setInterestTab] = useState<InterestTab>('bond');
   const isMarketTab = tab === 'market';
   const isCalendarTab = tab === 'calendar';
   const { data, loading, refresh } = useInvestorData(open, !isMarketTab);
-  const [interestRefreshKey, setInterestRefreshKey] = useState(0);
   const toast = useToast();
 
-  const handleInterestResult = useCallback((ok: boolean) => {
-    toast.refreshResult(ok, '금리 정보');
-  }, [toast]);
-
   const handleRefresh = useCallback(async () => {
-    if (tab === 'interest') {
-      setInterestRefreshKey(k => k + 1);
-      return;
-    }
     const ok = await refresh();
     toast.refreshResult(ok, '투자정보');
-  }, [refresh, toast, tab]);
+  }, [refresh, toast]);
 
   return (
     <SheetLayout
@@ -86,7 +68,7 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
     >
       <Tabs id="investor" items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
 
-      {tab === 'market' ? (
+      {isMarketTab ? (
         <>
           <div css={subTabPadStyle}>
             <Tabs id="investor-market" items={MARKETS} value={market} onChange={setMarket} variant="pill" size="sm" />
@@ -99,22 +81,10 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
             <InvestorView data={data[market]} />
           </div>
         </>
-      ) : tab === 'calendar' ? (
+      ) : (
         <div role="tabpanel" id="investor-panel-calendar" aria-labelledby="investor-tab-calendar" css={st.calendarPanel}>
           <EconomicCalendar />
         </div>
-      ) : (
-        <>
-          <div css={subTabPadStyle}>
-            <Tabs id="investor-interest" items={INTEREST_TABS} value={interestTab} onChange={setInterestTab} variant="pill" size="sm" />
-          </div>
-          <div role="tabpanel"
-            id="investor-panel-interest"
-            aria-labelledby={`investor-tab-interest investor-interest-tab-${interestTab}`}
-            css={st.body}>
-            <InterestRateView tab={interestTab} refreshKey={interestRefreshKey} onLoadResult={handleInterestResult} />
-          </div>
-        </>
       )}
     </SheetLayout>
   );
@@ -130,7 +100,7 @@ const st = {
     flex-shrink: 0;
   `,
   indexLabel: css`
-    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold}; 
+    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold};
     color: ${sem.text.tertiary}; margin-bottom: ${spacing.xs}px;
   `,
   indexValue: css`font-size: ${fontSize['3xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
