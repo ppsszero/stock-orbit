@@ -4,7 +4,7 @@ import { FiExternalLink } from 'react-icons/fi';
 
 import { spacing, fontSize, fontWeight, radius, height } from '@/shared/styles/tokens';
 import { RankingItem } from '@/shared/naver';
-import { NATION_BADGE, getLogoUrl, fmtNum, fmtPercentArrow } from '@/shared/utils/format';
+import { NATION_BADGE, getLogoUrl, fmtNum, fmtPercentArrow, getDirColor } from '@/shared/utils/format';
 import { StockLogo, AddButton } from '@/shared/ui';
 import { sem } from '@/shared/styles/semantic';
 
@@ -66,7 +66,7 @@ const st = {
   badge: (bg: string, fg: string) => css`padding: 1px 5px; border-radius: ${radius.sm}px; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold}; background: ${bg}; color: ${fg}; flex-shrink: 0;`,
   subRow: css`display: flex; align-items: center; gap: ${spacing.md}px;`,
   price: css`font-size: ${fontSize.md}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
-  change: (d: 'up' | 'down' | 'flat') => css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; color: ${d === 'up' ? sem.feedback.up : d === 'down' ? sem.feedback.down : sem.feedback.flat}; font-variant-numeric: tabular-nums;`,
+  change: (d: 'up' | 'down' | 'flat') => css`font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; color: ${getDirColor(d)}; font-variant-numeric: tabular-nums;`,
   linkBtn: css`
     width: ${height.control}px; height: ${height.control}px; border: none; border-radius: ${radius.lg}px; cursor: pointer;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;

@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fmtChangeArrow } from '@/shared/utils/format';
+import { fmtChangeArrow, getDirColor } from '@/shared/utils/format';
 import { MarqueeItem } from '@/shared/types';
 import { groupMarqueeItems } from '@/features/marquee/utils/groupMarqueeItems';
 import { formatMarqueeValue, formatMarqueeChange } from '@/features/marquee/utils/formatMarqueeValue';
@@ -195,5 +195,5 @@ const s = {
     color:${d==='up'?sem.feedback.up:d==='down'?sem.feedback.down:sem.text.primary};
     font-variant-numeric:tabular-nums;line-height:1.1;
   `,
-  chg: (d: 'up'|'down'|'flat') => css`font-size:${fontSize.sm}px;font-weight:${fontWeight.semibold};color:${d==='up'?sem.feedback.up:d==='down'?sem.feedback.down:sem.feedback.flat};font-variant-numeric:tabular-nums;`,
+  chg: (d: 'up'|'down'|'flat') => css`font-size:${fontSize.sm}px;font-weight:${fontWeight.semibold};color:${getDirColor(d)};font-variant-numeric:tabular-nums;`,
 };
