@@ -1,14 +1,14 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback, useEffect, memo } from 'react';
-import { FiTrash2, FiMenu, FiInfo, FiExternalLink } from 'react-icons/fi';
+import { useState, useCallback, memo } from 'react';
+import { FiInfo, FiEdit2 } from 'react-icons/fi';
+import { useStore } from '@/app/store';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
-import { spacing, fontSize, fontWeight, transition, zIndex, shadow, sp, opacity } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, sp } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
-import { useSortableStyle } from '../hooks/useSortableStyle';
-import { useSymbolRemove } from '../hooks/useSymbolRemove';
-import { Badge, StatusDot, StockLogo, IconButton } from '@/shared/ui';
+import { Badge, StatusDot, StockLogo, Menu } from '@/shared/ui';
+import { EditSymbolsSheet } from '@/features/preset';
 import { CATEGORY_BADGE } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
 import { priceFlash, makeDirectionalChange } from '@/shared/styles/sharedStyles';
@@ -25,53 +25,57 @@ interface Props {
 
 export const StockRow = memo(({
   sym, price: p, currencyMode, usdkrw,
-  onRemove, onClick, onDetail,
+  onClick, onDetail,
 }: Props) => {
-  const [hovered, setHovered] = useState(false);
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const presets = useStore(s => s.presets);
+  const activeId = useStore(s => s.activeId);
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
   const flash = usePriceFlash(p, vm.direction);
 
-  // 데이터 갱신(가격 변경) 시 hover 유령 상태 방지:
-  // DOM 재배치로 mouseLeave가 누락될 수 있으므로 강제 리셋.
-  // 실제로 마우스가 위에 있으면 mouseEnter가 즉시 다시 발생하여 복원됨.
-  useEffect(() => {
-    if (hovered) setHovered(false);
-  }, [p]); // hovered 의도적 제외 — p 변경 시에만 리셋
-
-  // NOTE: setNodeRef → 행 전체, listeners → 로고 영역에만 적용.
-  // 행 전체가 드래그되면 클릭/호버 이벤트와 충돌하므로 핸들을 로고로 제한.
-  const { attributes, listeners, setNodeRef, style, isDragging } = useSortableStyle(sym.code);
-
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleRowClick = useCallback(() => {
     onClick(sym);
   }, [onClick, sym]);
 
-  const handleDetail = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDetail = useCallback(() => {
     if (p) onDetail(sym, p);
+    setCtxPos(null);
   }, [onDetail, sym, p]);
 
-  const handleRemove = useSymbolRemove(sym, vm.displayName, onRemove);
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setCtxPos({ x: e.clientX, y: e.clientY });
+  }, []);
+  const closeCtx = useCallback(() => setCtxPos(null), []);
+
+  const openEdit = useCallback(() => {
+    setCtxPos(null);
+    setEditOpen(true);
+  }, []);
+  // 안정 참조 — inline 함수면 매 렌더마다 새 ref가 되어 useBackAction 스택이 reshuffle됨
+  const closeEdit = useCallback(() => setEditOpen(false), []);
+
+  // 편집 시트는 우클릭한 종목이 실제로 속한 그룹을 편집.
+  // 전체 탭에서 우클릭하면 activeId가 '__all__'이라 그룹 매칭이 안 돼 첫 그룹으로 가는 버그 방지.
+  const editPreset = presets.find(p => p.symbols.some(s => s.code === sym.code))
+    ?? presets.find(p => p.id === activeId)
+    ?? presets[0];
 
   return (
     <div
-      ref={setNodeRef}
-      {...attributes}
       role="listitem"
-      style={style}
-      css={[s.row, isDragging && s.dragging]}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      css={s.row}
+      onClick={handleRowClick}
+      onContextMenu={handleContextMenu}
     >
-      <div css={s.logoWrap} {...listeners}>
+      <div css={s.logoWrap}>
         <StockLogo
           src={vm.logoUrl}
           fallbackChar={vm.displayName.charAt(0)}
           fallbackBg={vm.badge.bg} fallbackFg={vm.badge.fg}
           size={spacing['4xl']}
         />
-        <div css={s.handleOverlay} className="drag-handle"><FiMenu size={12} /></div>
       </div>
 
       <div css={s.left}>
@@ -99,13 +103,7 @@ export const StockRow = memo(({
       </div>
 
       <div css={s.right}>
-        {hovered && vm.hasPrice ? (
-          <div css={s.hoverActions}>
-            <IconButton icon={<FiExternalLink size={13} />} size={28} onClick={handleClick} ariaLabel="외부 링크 열기" />
-            <IconButton icon={<FiInfo size={13} />} size={28} onClick={handleDetail} ariaLabel="상세 보기" />
-            <IconButton icon={<FiTrash2 size={13} />} size={28} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />
-          </div>
-        ) : vm.hasPrice ? (
+        {vm.hasPrice ? (
           <>
             <span css={[s.price, flash && priceFlash[flash]]}>{vm.priceLabel}</span>
             <span css={[s.change[vm.direction], flash && priceFlash[flash]]}>{vm.changeLabel}</span>
@@ -114,6 +112,28 @@ export const StockRow = memo(({
           <span css={s.dots}>···</span>
         )}
       </div>
+
+      <Menu open={!!ctxPos}
+        anchorPoint={ctxPos ?? { x: 0, y: 0 }}
+        onClose={closeCtx}>
+        {vm.hasPrice && (
+          <Menu.Item icon={<FiInfo size={13} />} onClick={handleDetail}>
+            상세 정보 보기
+          </Menu.Item>
+        )}
+        <Menu.Item icon={<FiEdit2 size={13} />} onClick={openEdit}>
+          편집
+        </Menu.Item>
+      </Menu>
+
+      {editPreset && (
+        <EditSymbolsSheet
+          open={editOpen}
+          preset={editPreset}
+          presets={presets}
+          onClose={closeEdit}
+        />
+      )}
     </div>
   );
 });
@@ -123,22 +143,13 @@ export const StockRow = memo(({
 const s = {
   row: css`
     display: flex; align-items: center; justify-content: space-between;
-    padding: ${sp('md', 'xs')} ${spacing.md}px; cursor: default;
+    padding: ${sp('sm', 'xs')} ${spacing.xl}px;
+    cursor: pointer;
     background: ${sem.bg.base};
     &:hover { background: ${sem.action.primarySoft}; }
-    &:hover .drag-handle { opacity: 1; }
   `,
-  dragging: css`opacity: ${opacity.disabled}; z-index: 10; box-shadow: ${shadow.lg};`,
   logoWrap: css`
-    position: relative; width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; flex-shrink: 0; margin-right: ${sp('md', 'xs')};
-    cursor: grab; touch-action: none;
-    &:active { cursor: grabbing; }
-  `,
-  handleOverlay: css`
-    position: absolute; inset: 0; border-radius: 50%; z-index: ${zIndex.base};
-    display: flex; align-items: center; justify-content: center;
-    background: ${sem.overlay.dim}; color: ${sem.text.inverse};
-    opacity: 0; transition: opacity ${transition.fast};
+    width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; flex-shrink: 0; margin-right: ${sp('md', 'xs')};
   `,
   left: css`display: flex; flex-direction: column; gap: ${spacing.xs}px; min-width: 0; flex: 1;`,
   nameRow: css`display: flex; align-items: center; gap: ${spacing.sm + spacing.xs}px;`,
@@ -153,5 +164,4 @@ const s = {
   price: css`font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
   change: makeDirectionalChange(fontSize.sm),
   dots: css`font-size: ${fontSize.lg}px; color: ${sem.text.tertiary};`,
-  hoverActions: css`display: flex; align-items: center; gap: ${spacing.sm}px;`,
 };

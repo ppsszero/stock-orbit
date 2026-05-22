@@ -1,14 +1,14 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useState, useCallback, memo } from 'react';
-import { FiTrash2, FiInfo, FiExternalLink, FiMenu } from 'react-icons/fi';
+import { FiInfo, FiEdit2 } from 'react-icons/fi';
+import { useStore } from '@/app/store';
 import { StockSymbol, StockPrice } from '@/shared/types';
-import { spacing, fontSize, fontWeight, radius, transition, shadow, opacity } from '@/shared/styles/tokens';
+import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
-import { useSortableStyle } from '../hooks/useSortableStyle';
-import { useSymbolRemove } from '../hooks/useSymbolRemove';
-import { IconButton } from '@/shared/ui';
+import { Menu } from '@/shared/ui';
+import { EditSymbolsSheet } from '@/features/preset';
 import { sem } from '@/shared/styles/semantic';
 import { priceFlash, makeDirectionalChange } from '@/shared/styles/sharedStyles';
 
@@ -24,49 +24,77 @@ interface Props {
 
 export const GridCard = memo(({
   sym, price: p, currencyMode, usdkrw,
-  onRemove, onClick, onDetail,
+  onClick, onDetail,
 }: Props) => {
   const [logoFailed, setLogoFailed] = useState(false);
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const presets = useStore(s => s.presets);
+  const activeId = useStore(s => s.activeId);
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
   const flash = usePriceFlash(p, vm.direction);
 
-  const { attributes, listeners, setNodeRef, style, isDragging } = useSortableStyle(sym.code);
-
   const tintDir = vm.direction;
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCardClick = useCallback(() => {
     onClick(sym);
   }, [onClick, sym]);
-  const handleDetail = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDetail = useCallback(() => {
     if (p) onDetail(sym, p);
+    setCtxPos(null);
   }, [onDetail, sym, p]);
-  const handleRemove = useSymbolRemove(sym, vm.displayName, onRemove);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setCtxPos({ x: e.clientX, y: e.clientY });
+  }, []);
+  const closeCtx = useCallback(() => setCtxPos(null), []);
+
+  const openEdit = useCallback(() => {
+    setCtxPos(null);
+    setEditOpen(true);
+  }, []);
+  const closeEdit = useCallback(() => setEditOpen(false), []);
+  // 우클릭한 카드의 종목이 실제로 속한 그룹 우선 (전체 탭에서 activeId='__all__' 매칭 실패 사고 방지)
+  const editPreset = presets.find(p => p.symbols.some(s => s.code === sym.code))
+    ?? presets.find(p => p.id === activeId)
+    ?? presets[0];
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      css={[s.card[tintDir], isDragging && s.dragging]}
-      {...attributes}
+      css={s.card[tintDir]}
+      onClick={handleCardClick}
+      onContextMenu={handleContextMenu}
     >
-      <div css={s.actions} className="card-actions">
-        <IconButton icon={<FiExternalLink size={11} />} size={22} onClick={handleClick} ariaLabel="외부 링크 열기" />
+      <Menu open={!!ctxPos}
+        anchorPoint={ctxPos ?? { x: 0, y: 0 }}
+        onClose={closeCtx}>
         {vm.hasPrice && (
-          <IconButton icon={<FiInfo size={11} />} size={22} onClick={handleDetail} ariaLabel="상세 보기" />
+          <Menu.Item icon={<FiInfo size={13} />} onClick={handleDetail}>
+            상세 정보 보기
+          </Menu.Item>
         )}
-        <IconButton icon={<FiTrash2 size={11} />} size={22} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />
-      </div>
+        <Menu.Item icon={<FiEdit2 size={13} />} onClick={openEdit}>
+          편집
+        </Menu.Item>
+      </Menu>
+
+      {editPreset && (
+        <EditSymbolsSheet
+          open={editOpen}
+          preset={editPreset}
+          presets={presets}
+          onClose={closeEdit}
+        />
+      )}
 
       <div css={s.cardTop}>
-        <div css={s.logoWrap} {...listeners}>
+        <div css={s.logoWrap}>
           {vm.logoUrl && !logoFailed ? (
             <img src={vm.logoUrl} alt="" css={s.logo} onError={() => setLogoFailed(true)} />
           ) : (
             <div css={s.fallback(vm.badge.bg, vm.badge.fg)}>{vm.displayName.charAt(0)}</div>
           )}
-          <div css={s.handleOverlay} className="drag-handle"><FiMenu size={10} /></div>
         </div>
         <div css={s.nameArea}>
           <span css={s.name}>{vm.displayName}</span>
@@ -102,11 +130,9 @@ const s = {
       position: relative; padding: ${spacing.lg}px;
       min-width: 0; overflow: hidden;
       background: ${sem.surface.card}; border: none;
-      border-radius: ${radius['2xl']}px; cursor: default;
+      border-radius: ${radius['2xl']}px; cursor: pointer;
       transition: background ${transition.fast}, box-shadow ${transition.fast};
       &:hover { background-color: ${sem.bg.surface}; box-shadow: ${sem.shadow.default}; }
-      &:hover .card-actions { opacity: 1; }
-      &:hover .drag-handle { opacity: 1; }
     `;
     return {
       up: css`${base}`,
@@ -114,31 +140,18 @@ const s = {
       flat: css`${base}`,
     };
   })() as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
-  dragging: css`opacity: ${opacity.disabled}; z-index: 10; box-shadow: ${shadow.lg};`,
-  actions: css`
-    position: absolute; bottom: 6px; right: 6px; z-index: 3;
-    display: flex; gap: ${spacing.xs}px; opacity: 0; transition: opacity ${transition.fast};
-  `,
   cardTop: css`display: flex; align-items: center; gap: ${spacing.md}px; margin-bottom: ${spacing.md}px;`,
   logoWrap: css`
-    position: relative; width: 24px; height: 24px; flex-shrink: 0;
-    cursor: grab; touch-action: none;
-    &:active { cursor: grabbing; }
+    width: 24px; height: 24px; flex-shrink: 0;
   `,
   logo: css`
     width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
-    background: rgba(128,128,128,0.1); position: relative; z-index: 1;
+    background: rgba(128,128,128,0.1);
   `,
   fallback: (bg: string, fg: string) => css`
     width: 24px; height: 24px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     background: ${bg}; color: ${fg}; font-size: ${fontSize.xs}px; font-weight: ${fontWeight.bold};
-  `,
-  handleOverlay: css`
-    position: absolute; inset: 0; border-radius: 50%; z-index: 2;
-    display: flex; align-items: center; justify-content: center;
-    background: ${sem.overlay.dim}; color: ${sem.text.inverse};
-    opacity: 0; transition: opacity ${transition.fast};
   `,
   nameArea: css`display: flex; flex-direction: column; min-width: 0; flex: 1;`,
   name: css`

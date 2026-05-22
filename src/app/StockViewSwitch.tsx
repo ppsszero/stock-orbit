@@ -16,7 +16,6 @@ export const StockViewSwitch = memo(() => {
   const displaySymbols = useDisplaySymbols();
   const allGroups = useGroupedSymbols();
   const removeSymbol = useStore(s => s.removeSymbol);
-  const reorderByCode = useStore(s => s.reorderByCode);
   const setDetailSymbol = useStore(s => s.setDetailSymbol);
   const setInfoSymbol = useStore(s => s.setInfoSymbol);
 
@@ -44,9 +43,9 @@ export const StockViewSwitch = memo(() => {
   const view = (() => {
     switch (settings.viewMode) {
       case 'list':
-        return <StockList {...commonProps} onReorder={reorderByCode} />;
+        return <StockList {...commonProps} />;
       case 'grid':
-        return <StockGrid {...commonProps} onReorder={reorderByCode} />;
+        return <StockGrid {...commonProps} />;
       case 'tile':
         return <StockTile {...commonProps} />;
     }

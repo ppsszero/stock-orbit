@@ -80,10 +80,12 @@ export const StatusBar = memo(({
 
   return (
     <div css={s.bar}>
-      <button css={s.searchPill} onClick={onSearch}>
-        <FiSearch size={12} />
-        <span>종목 검색</span>
-      </button>
+      <Tooltip content="종목 추가" position="top" display="inline-flex">
+        <button css={s.searchPill} onClick={onSearch}>
+          <FiSearch size={12} />
+          <span>종목 검색</span>
+        </button>
+      </Tooltip>
 
       <div css={s.controls}>
         <Tooltip content="실시간 랭킹" position="top" display="inline-flex">
@@ -134,7 +136,7 @@ const flashOut = keyframes`
 const s = {
   bar: css`
     display: flex; align-items: center; justify-content: space-between;
-    height: 42px; padding: 0 ${spacing.md}px;
+    height: 42px; padding: 0 ${spacing.xl}px;
     background: ${sem.surface.titleBar};
     flex-shrink: 0; border-radius: 0 0 ${radius['2xl']}px ${radius['2xl']}px; gap: ${spacing.md}px;
   `,

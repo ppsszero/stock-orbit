@@ -29,7 +29,8 @@ const FLAG_BASE = 'https://ssl.pstatic.net/imgstock/fn/real/logo/flag/Nation';
 
 const RateRow = ({ item, showFlag, onClick }: { item: InterestRateItem; showFlag?: boolean; onClick?: () => void }) => {
   const dirColor = getDirColor(item.direction);
-  const changeNum = parseFloat(item.change);
+  // 콤마 안전 처리 — 금리 change가 큰 값이면 콤마 포함 가능 ("1,000")
+  const changeNum = parseFloat((item.change || '0').replace(/,/g, '')) || 0;
   const ratioDisplay = item.changeRatio === '-' ? '' : ` (${item.changeRatio}%)`;
 
   return (

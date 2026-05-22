@@ -39,11 +39,20 @@ export const SectorView = ({ active, onStockClick, refreshSignal }: Props) => {
       </div>
       {overview && !loading && (
         <div css={s.summary}>
-          <span><span css={css`color:${sem.feedback.up};font-weight:${fontWeight.bold};`}>상승 {overview.totalRisingCount.toLocaleString()}</span></span>
+          <span css={s.stat}>
+            <span css={s.statLabel}>상승</span>
+            <span css={s.statNum(sem.feedback.up)}>{overview.totalRisingCount.toLocaleString()}</span>
+          </span>
           <span css={s.dot}>·</span>
-          <span css={s.flat}>보합 {overview.totalUnchangedCount.toLocaleString()}</span>
+          <span css={s.stat}>
+            <span css={s.statLabel}>보합</span>
+            <span css={s.statNum(sem.feedback.flat)}>{overview.totalUnchangedCount.toLocaleString()}</span>
+          </span>
           <span css={s.dot}>·</span>
-          <span><span css={css`color:${sem.feedback.down};font-weight:${fontWeight.bold};`}>하락 {overview.totalFallingCount.toLocaleString()}</span></span>
+          <span css={s.stat}>
+            <span css={s.statLabel}>하락</span>
+            <span css={s.statNum(sem.feedback.down)}>{overview.totalFallingCount.toLocaleString()}</span>
+          </span>
         </div>
       )}
       <div css={s.body}>
@@ -61,13 +70,23 @@ export const SectorView = ({ active, onStockClick, refreshSignal }: Props) => {
 
 const s = {
   summary: css`
-    display: flex; align-items: center; gap: ${spacing.sm}px;
-    padding: ${spacing.md}px ${spacing.xl}px ${spacing.md}px;
-    font-size: ${fontSize.sm}px; color: ${sem.text.secondary};
+    display: flex; align-items: baseline; gap: ${spacing.md}px;
+    padding: ${spacing.sm}px ${spacing.xl}px ${spacing.md}px ;
     flex-shrink: 0;
   `,
-  dot: css`color: ${sem.text.tertiary};`,
-  flat: css`color: ${sem.feedback.flat}; font-weight: ${fontWeight.semibold};`,
+  stat: css`
+    display: inline-flex; align-items: baseline; gap: ${spacing.sm}px;
+  `,
+  statLabel: css`
+    font-size: ${fontSize.sm}px; color: ${sem.text.tertiary};
+    font-weight: ${fontWeight.medium};
+  `,
+  statNum: (color: string) => css`
+    font-size: ${fontSize.xl}px; color: ${color};
+    font-weight: ${fontWeight.extrabold};
+    font-variant-numeric: tabular-nums;
+  `,
+  dot: css`color: ${sem.text.tertiary}; font-size: ${fontSize.sm}px;`,
   body: css`
     flex: 1; min-height: 0;
     padding: 0 ${spacing.xl}px ${spacing.xl}px;

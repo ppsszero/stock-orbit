@@ -65,6 +65,7 @@ export const sem = {
     shadowMd:   v.tileShadowMd,
   },
   overlay: {
+    strong: 'rgba(0,0,0,0.7)',   // 강한 딤 (밝은 로고 위 drag handle 등)
     dim:    'rgba(0,0,0,0.5)',   // 모달 배경
     medium: 'rgba(0,0,0,0.3)',   // box-shadow 내부
     light:  'rgba(0,0,0,0.2)',   // 가벼운 딤

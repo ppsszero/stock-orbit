@@ -74,9 +74,32 @@ export const useStockGroups = (
     if (customGroups) {
       const allItems = customGroups.flatMap(g => g.items).filter(sym => sym?.code && sym?.nation);
       const filtered = customGroups.filter(g => g.items.length > 0);
+      // "전체" 탭에서도 프리셋 내부를 카테고리(국내/해외/지수·선물) 순으로 정렬해서
+      // 편집 시트와 시각 순서를 일치시킴. sortByMarketOpen이면 개장 중인 시장이 위로.
+      const orderByCategory = (items: StockSymbol[]): StockSymbol[] => {
+        const domestic: StockSymbol[] = [];
+        const overseas: StockSymbol[] = [];
+        const indexFutures: StockSymbol[] = [];
+        items.forEach(sym => {
+          const cat = inferCategory(sym);
+          if (cat === 'index' || cat === 'futures') indexFutures.push(sym);
+          else if (sym.nation === 'KR') domestic.push(sym);
+          else overseas.push(sym);
+        });
+        // 개장 중인 시장 우선 — 단일 그룹 뷰와 동일 규칙
+        let stockOrder: StockSymbol[][] = [domestic, overseas];
+        if (options?.sortByMarketOpen) {
+          const domesticLive = domestic.some(s => prices[s.code]?.marketStatus === 'OPEN');
+          const overseasLive = overseas.some(s => prices[s.code]?.marketStatus === 'OPEN');
+          // 해외만 열려있으면 해외를 위로
+          if (overseasLive && !domesticLive) stockOrder = [overseas, domestic];
+        }
+        return [...stockOrder[0], ...stockOrder[1], ...indexFutures];
+      };
+      const categorized = filtered.map(g => ({ ...g, items: orderByCategory(g.items) }));
       return {
         validSymbols: allItems,
-        groups: sortGroups(filtered),
+        groups: sortGroups(categorized),
       };
     }
 

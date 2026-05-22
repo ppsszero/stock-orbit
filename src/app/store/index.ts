@@ -110,12 +110,23 @@ interface AppState {
   presets: Preset[];
   activeId: string;
   setActiveId: (id: string) => void;
-  addPreset: (name: string) => void;
+  /** 그룹 추가. activate=false면 활성 그룹 전환 없이 생성만 (편집 시트 안에서의 신규 그룹 추가 등). */
+  addPreset: (name: string, options?: { activate?: boolean }) => void;
   removePreset: (id: string) => void;
   renamePreset: (id: string, name: string) => void;
+  /** 그룹(프리셋) 순서 재정렬 */
+  reorderPresets: (orderedIds: string[]) => void;
   /** 종목 추가. true = 성공, false = 전체 30개 제한 초과로 거부됨 */
   addSymbol: (symbol: StockSymbol) => boolean;
   removeSymbol: (code: string) => void;
+  /** 활성 그룹의 종목을 다른 그룹으로 이동 (중복이면 활성 그룹에서 제거만) */
+  moveSymbolToGroup: (code: string, targetGroupId: string) => void;
+  /** 편집 시트용 — 여러 종목을 한 번에 삭제 */
+  removeSymbolsBatch: (codes: string[], fromPresetId?: string) => void;
+  /** 편집 시트용 — 여러 종목을 한 번에 다른 그룹으로 이동 */
+  moveSymbolsBatch: (codes: string[], targetGroupId: string, fromPresetId?: string) => void;
+  /** 편집 시트용 — 특정 그룹의 종목 순서를 명시적으로 설정 (DnD 결과 반영) */
+  reorderSymbolsByCodes: (presetId: string, orderedCodes: string[]) => void;
   reorderSymbols: (from: number, to: number) => void;
   reorderByCode: (activeCode: string, overCode: string) => void;
 
@@ -151,12 +162,17 @@ export const useStore = create<AppState>((set, get) => ({
     set({ activeId: id });
   },
 
-  addPreset: (name) => {
+  addPreset: (name, options) => {
+    const activate = options?.activate ?? true;
     const id = `preset-${Date.now()}`;
     const next = [...get().presets, { id, name, symbols: [] }];
     savePresets(next);
-    localStorage.setItem(ACTIVE_KEY, id);
-    set({ presets: next, activeId: id });
+    if (activate) {
+      localStorage.setItem(ACTIVE_KEY, id);
+      set({ presets: next, activeId: id });
+    } else {
+      set({ presets: next });
+    }
     logger.info('그룹 추가', name);
   },
 
@@ -174,6 +190,17 @@ export const useStore = create<AppState>((set, get) => ({
     const next = get().presets.map(p => p.id === id ? { ...p, name } : p);
     savePresets(next);
     set({ presets: next });
+  },
+
+  reorderPresets: (orderedIds) => {
+    const { presets } = get();
+    const byId = new Map(presets.map(p => [p.id, p]));
+    const reordered: Preset[] = [];
+    orderedIds.forEach(id => { const p = byId.get(id); if (p) { reordered.push(p); byId.delete(id); } });
+    // orderedIds에 빠진 그룹은 끝에 보존 (race condition 대비)
+    byId.forEach(p => reordered.push(p));
+    savePresets(reordered);
+    set({ presets: reordered });
   },
 
   addSymbol: (symbol) => {
@@ -204,6 +231,71 @@ export const useStore = create<AppState>((set, get) => ({
         return { ...p, symbols: p.symbols.filter(s => s.code !== code) };
       }
       return p;
+    });
+    savePresets(next);
+    set({ presets: next });
+  },
+
+  moveSymbolToGroup: (code, targetGroupId) => {
+    const { presets, activeId } = get();
+    const sym = presets.find(p => p.id === activeId)?.symbols.find(s => s.code === code);
+    if (!sym) return;
+    const next = presets.map(p => {
+      if (p.id === activeId) return { ...p, symbols: p.symbols.filter(s => s.code !== code) };
+      if (p.id === targetGroupId && !p.symbols.find(s => s.code === code)) {
+        return { ...p, symbols: [...p.symbols, sym] };
+      }
+      return p;
+    });
+    savePresets(next);
+    set({ presets: next });
+  },
+
+  removeSymbolsBatch: (codes, fromPresetId) => {
+    if (codes.length === 0) return;
+    const { presets, activeId } = get();
+    const fromId = fromPresetId ?? activeId;
+    const codeSet = new Set(codes);
+    const next = presets.map(p =>
+      p.id === fromId ? { ...p, symbols: p.symbols.filter(s => !codeSet.has(s.code)) } : p
+    );
+    savePresets(next);
+    set({ presets: next });
+  },
+
+  moveSymbolsBatch: (codes, targetGroupId, fromPresetId) => {
+    if (codes.length === 0 || targetGroupId === fromPresetId) return;
+    const { presets, activeId } = get();
+    const fromId = fromPresetId ?? activeId;
+    const codeSet = new Set(codes);
+    const fromGroup = presets.find(p => p.id === fromId);
+    if (!fromGroup) return;
+    // 이동할 실 종목들 (원래 순서 유지)
+    const moving = fromGroup.symbols.filter(s => codeSet.has(s.code));
+    const next = presets.map(p => {
+      if (p.id === fromId) return { ...p, symbols: p.symbols.filter(s => !codeSet.has(s.code)) };
+      if (p.id === targetGroupId) {
+        const existing = new Set(p.symbols.map(s => s.code));
+        const additions = moving.filter(s => !existing.has(s.code));
+        return { ...p, symbols: [...p.symbols, ...additions] };
+      }
+      return p;
+    });
+    savePresets(next);
+    set({ presets: next });
+  },
+
+  reorderSymbolsByCodes: (presetId, orderedCodes) => {
+    const { presets } = get();
+    const next = presets.map(p => {
+      if (p.id !== presetId) return p;
+      // 코드 → 심볼 맵 + 누락(잠재적 외부 추가) 보존
+      const byCode = new Map(p.symbols.map(s => [s.code, s]));
+      const reordered: StockSymbol[] = [];
+      orderedCodes.forEach(c => { const s = byCode.get(c); if (s) { reordered.push(s); byCode.delete(c); } });
+      // orderedCodes에 빠진 종목은 뒤에 보존 (race condition 대비)
+      byCode.forEach(s => reordered.push(s));
+      return { ...p, symbols: reordered };
     });
     savePresets(next);
     set({ presets: next });

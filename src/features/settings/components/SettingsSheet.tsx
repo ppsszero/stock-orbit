@@ -5,7 +5,7 @@ import { FiRotateCcw, FiTerminal, FiBell, FiCopy, FiFolder } from 'react-icons/f
 import { AppSettings } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/app/store';
 import { spacing, fontSize, fontWeight, radius, height, transition } from '@/shared/styles/tokens';
-import { sectionTitleStyle } from '@/shared/styles/sharedStyles';
+import { ListHeader } from '@/shared/ui';
 import { useConfirm } from '@/shared/ui/ConfirmDialog';
 import { useToast } from '@/shared/ui/Toast';
 import { useSettingsActions } from '../hooks/useSettingsActions';
@@ -135,7 +135,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
   return (
     <SheetLayout open={open} title="설정" zIndex={500} onClose={onClose} noNavBorder>
       <div css={s.content}>
-        <div css={s.secT}>일반</div>
+        <Section>일반</Section>
         <SettingRow label="윈도우 시작 시 자동실행">
           <Toggle checked={settings.autoLaunch} onChange={v => onUpdate({ autoLaunch: v })} />
         </SettingRow>
@@ -162,7 +162,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
           </select>
         </SettingRow>
 
-        <div css={s.secT}>디스플레이</div>
+        <Section>디스플레이</Section>
         <SettingRow label="해상도">
           <div css={s.pair}>
             <ResolutionInput value={settings.resolution.width} onCommit={commitResolutionWidth} styleClass={s.numIn} />
@@ -178,7 +178,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             onChange={v => onUpdate({ tickerSpeed: v })} />
         </SettingRow>
 
-        <div css={s.secT}>스크린샷</div>
+        <Section>스크린샷</Section>
         <SettingRow label="단축키">
           <input
             css={s.shortcutInput(capturing)}
@@ -208,7 +208,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
           </SettingRow>
         )}
 
-        <div css={s.secT}>시스템</div>
+        <Section>시스템</Section>
         <SettingRow label="오래된 시스템 로그 자동 삭제">
           <Toggle checked={settings.autoCleanLogs} onChange={v => onUpdate({ autoCleanLogs: v })} />
         </SettingRow>
@@ -216,7 +216,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
           <button css={s.logBtn} onClick={() => setLogOpen(true)}><FiTerminal size={12} /> 더보기</button>
         </SettingRow>
 
-        <div css={s.secT}>앱 정보</div>
+        <Section>앱 정보</Section>
         <SettingRow label="앱 버전">
           <span css={s.infoText}>v{appVersion || '...'}</span>
         </SettingRow>
@@ -233,7 +233,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
           </button>
         </SettingRow>
 
-        <div css={s.secT}>위험 영역</div>
+        <Section>위험 영역</Section>
         <div css={s.resetRow}>
           <button css={s.resetBtn} onClick={handleReset}>
             <FiRotateCcw size={14} /><span>전체 초기화</span>
@@ -255,21 +255,27 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
  * 설정 Row 레이아웃 컴포넌트.
  * 이름을 Row → SettingRow로 변경하여 역할을 명확히 함.
  */
-const SettingRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div css={s.row}>
-    <span>{label}</span>
-    {children}
+/** 섹션 캡션 헤더 — ListHeader 공통 캡션 프리셋 + 상단 마진(첫 섹션 제외)으로 그룹 간격 확보. */
+const Section = ({ children }: { children: React.ReactNode }) => (
+  <div css={sectionMargin}>
+    <ListHeader caps title={<ListHeader.Title size="sm" color={sem.text.tertiary}>{children}</ListHeader.Title>} />
   </div>
+);
+const sectionMargin = css`
+  margin-top: ${spacing.lg}px;
+  &:first-child { margin-top: 0; }
+`;
+
+/** 라벨 + 컨트롤 행 — ListHeader (title + right) 패턴을 그대로 차용 */
+const SettingRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <ListHeader
+    title={<ListHeader.Title size="lg" weight="regular" color={sem.text.primary}>{label}</ListHeader.Title>}
+    right={children}
+  />
 );
 
 const s = {
   content: css`flex: 1; overflow-y: auto; padding: ${spacing.sm}px 0;`,
-  secT: sectionTitleStyle,
-  row: css`
-    display: flex; align-items: center; height: ${height.row}px;
-    padding: 0 ${spacing.xl}px; font-size: ${fontSize.lg}px; color: ${sem.text.primary}; gap: ${spacing.lg}px;
-    & > span:first-of-type { flex: 1; white-space: nowrap; }
-  `,
   ctrl: css`
     height: ${height.control}px; padding: 0 ${spacing.md + 2}px;
     border: 1px solid ${sem.border.default}; border-radius: ${radius.lg}px;

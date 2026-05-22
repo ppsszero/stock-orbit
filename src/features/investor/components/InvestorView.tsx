@@ -2,16 +2,16 @@
 import { css } from '@emotion/react';
 import { memo } from 'react';
 import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
-import { sectionTitleStyle } from '@/shared/styles/sharedStyles';
 import type { InvestorData, SignedValue } from '@/shared/naver';
 import { sem } from '@/shared/styles/semantic';
+import { ListHeader } from '@/shared/ui';
 import { getDirColor } from '@/shared/utils/format';
 
 /* --- Section wrapper --- */
 
 const Section = memo(({ label, children }: { label: string; children: React.ReactNode }) => (
   <div css={st.section}>
-    <div css={st.secT}>{label}</div>
+    <ListHeader caps title={<ListHeader.Title size="sm" color={sem.text.tertiary}>{label}</ListHeader.Title>} />
     {children}
   </div>
 ));
@@ -95,9 +95,9 @@ export const InvestorView = ({ data }: InvestorViewProps) => {
       <Section label="등락종목">
         <UpDownBar rise={d.upDown.rise + d.upDown.upper} steady={d.upDown.steady} fall={d.upDown.fall + d.upDown.lower} />
         <StatRow items={[
-          { label: '상승', value: `${d.upDown.rise.toLocaleString()}${d.upDown.upper > 0 ? `(${d.upDown.upper})` : ''}`, color: sem.feedback.up },
-          { label: '보합', value: `${d.upDown.steady}`, color: sem.feedback.flat },
-          { label: '하락', value: `${d.upDown.fall.toLocaleString()}${d.upDown.lower > 0 ? `(${d.upDown.lower})` : ''}`, color: sem.feedback.down },
+          { label: '상승', value: `${d.upDown.rise.toLocaleString()}${d.upDown.upper > 0 ? `(${d.upDown.upper.toLocaleString()})` : ''}`, color: sem.feedback.up },
+          { label: '보합', value: d.upDown.steady.toLocaleString(), color: sem.feedback.flat },
+          { label: '하락', value: `${d.upDown.fall.toLocaleString()}${d.upDown.lower > 0 ? `(${d.upDown.lower.toLocaleString()})` : ''}`, color: sem.feedback.down },
         ]} />
       </Section>
     </>
@@ -108,7 +108,6 @@ export const InvestorView = ({ data }: InvestorViewProps) => {
 
 const st = {
   section: css`margin-bottom: ${spacing.lg}px;`,
-  secT: sectionTitleStyle,
   card: css`
     display: flex; align-items: stretch;
     background: ${sem.surface.card};

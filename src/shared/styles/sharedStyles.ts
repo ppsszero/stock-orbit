@@ -1,20 +1,6 @@
 import { css, keyframes } from '@emotion/react';
-import { v } from './vars';
 import { sem } from './semantic';
-import { spacing, fontSize, fontWeight, letterSpacing } from './tokens';
-
-/** 그룹 헤더 (국내주식/해외주식 등) — StockList, StockGrid, StockTile 공유 */
-export const groupHeaderStyle = css`
-  padding: ${spacing.md}px ${spacing.md}px 6px;
-  font-size: ${fontSize.sm}px;
-  font-weight: ${fontWeight.bold};
-  color: ${v.textTertiary};
-  letter-spacing: ${letterSpacing.wide}px;
-  position: sticky;
-  top: 0;
-  background: ${v.bg};
-  z-index: 2;
-`;
+import { spacing, fontSize, fontWeight, radius, transition } from './tokens';
 
 /**
  * 2단 탭 패턴의 서브탭(pill) 영역 padding — 메인 underline 아래에 위치.
@@ -44,18 +30,6 @@ export const listRowStyle = css`
   }
 `;
 
-/** 시트 내부 섹션 타이틀 — SettingsSheet, MarketSheet 등 공유 */
-export const sectionTitleStyle = css`
-  font-size: ${fontSize.sm}px;
-  font-weight: ${fontWeight.bold};
-  color: ${v.textTertiary};
-  padding: ${spacing.lg}px ${spacing.xl}px ${spacing.sm}px;
-  text-transform: uppercase;
-  letter-spacing: ${letterSpacing.wider}px;
-  margin-bottom: ${spacing.sm}px;
-  &:not(:first-of-type) { margin-top: ${spacing.xl}px; }
-`;
-
 /** 가격 갱신 배경 하이라이트 — 트레이딩 터미널 표준 패턴 */
 const highlightUp = keyframes`
   0% { background: color-mix(in srgb, ${sem.feedback.up} 25%, transparent); }
@@ -76,6 +50,41 @@ export const priceFlash = {
   down: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightDown} 0.8s ease-out;`,
   flat: css`border-radius: 2px; padding: 1px 2px; margin: -1px -2px; animation: ${highlightFlat} 0.8s ease-out;`,
 } as const;
+
+/**
+ * 시트 푸터/CTA 영역에 들어가는 라운드 버튼 스타일 팩토리.
+ * - primary: 액션 색 풀 (이동/확인/완료)
+ * - danger: 위험 액션 (삭제) — dangerTint 배경 + danger 글자
+ * - neutral: 보조 액션 (닫기/완료) — elevated 배경 + secondary 글자
+ *
+ * 사용처: EditSymbolsSheet footer, GroupPickerSheet cta, GroupEditSheet doneBtn 등.
+ * disabled prop을 가진 buttons 기준.
+ */
+export type SheetActionVariant = 'primary' | 'danger' | 'neutral';
+const ACTION_PALETTE: Record<SheetActionVariant, { bg: string; fg: string; hoverBg?: string }> = {
+  primary: { bg: sem.action.primary, fg: sem.text.inverse },
+  danger:  { bg: sem.action.dangerTint, fg: sem.action.danger },
+  // neutral hover는 filter:brightness 대신 명시적 hoverBg —
+  // 라이트모드에서 bg.elevated를 brighten하면 base(white)에 묻혀 버튼이 사라지는 사고 방지.
+  neutral: { bg: sem.bg.elevated, fg: sem.text.secondary, hoverBg: sem.action.primarySoft },
+};
+export const sheetActionBtnStyle = (variant: SheetActionVariant) => {
+  const { bg, fg, hoverBg } = ACTION_PALETTE[variant];
+  return css`
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: ${spacing.sm}px;
+    padding: ${spacing.lg}px;
+    border: none; border-radius: ${radius.lg}px;
+    background: ${bg}; color: ${fg};
+    font-size: ${fontSize.base}px; font-weight: ${fontWeight.bold};
+    font-family: inherit; cursor: pointer;
+    transition: filter ${transition.fast}, background ${transition.fast}, opacity ${transition.fast};
+    &:hover:not(:disabled) {
+      ${hoverBg ? `background: ${hoverBg};` : 'filter: brightness(1.08);'}
+    }
+    &:disabled { opacity: 0.4; cursor: default; }
+  `;
+};
 
 /**
  * 등락 방향별 텍스트 스타일 팩토리.

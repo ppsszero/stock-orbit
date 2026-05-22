@@ -7,5 +7,6 @@ release/
 .bkit/
 .claude/
 
-# 인간-Claude 협업용 내부 기술 문서 (공개 비공개)
+# 인간-Claude 협업용 내부 기술 문서
 docs/research.md
+CLAUDE.md

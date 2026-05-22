@@ -1,17 +1,18 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useMemo, memo, useCallback, useRef, useState, useEffect } from 'react';
-import { FiTrash2, FiInfo } from 'react-icons/fi';
-import { IconButton, LoadingCenter } from '@/shared/ui';
+import { FiInfo, FiEdit2 } from 'react-icons/fi';
+import { LoadingCenter, Menu, ListHeader } from '@/shared/ui';
+import { useStore } from '@/app/store';
+import { EditSymbolsSheet } from '@/features/preset';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
-import { groupHeaderStyle, priceFlash } from '@/shared/styles/sharedStyles';
+import { priceFlash } from '@/shared/styles/sharedStyles';
 import { usePriceFlash } from '../hooks/usePriceFlash';
 import { fmtNum, fmtPercent, getDisplayName } from '@/shared/utils/format';
 import { calcDisplayPrice } from '../utils/currency';
 import { useStockGroups, StockGroup } from '../hooks/useStockGroups';
-import { useSymbolRemove } from '../hooks/useSymbolRemove';
 import { EmptyState } from './EmptyState';
 import { Tooltip } from '@/shared/ui/Tooltip';
 
@@ -98,12 +99,29 @@ const Tile = memo(({
   const { ref: nameRef, truncated } = useIsTruncated(displayName);
   const flash = usePriceFlash(p, dir);
 
-  const handleRemove = useSymbolRemove(sym, displayName, onRemove, { withTransition: true });
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const presets = useStore(s => s.presets);
+  const activeId = useStore(s => s.activeId);
 
-  const handleDetail = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDetail = useCallback(() => {
     if (p) onDetail(sym, p);
+    setCtxPos(null);
   }, [onDetail, sym, p]);
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setCtxPos({ x: e.clientX, y: e.clientY });
+  }, []);
+  const closeCtx = useCallback(() => setCtxPos(null), []);
+  const openEdit = useCallback(() => {
+    setCtxPos(null);
+    setEditOpen(true);
+  }, []);
+  const closeEdit = useCallback(() => setEditOpen(false), []);
+  // 우클릭한 타일의 종목이 실제로 속한 그룹 우선 (전체 탭에서 activeId='__all__' 매칭 실패 사고 방지)
+  const editPreset = presets.find(p => p.symbols.some(s => s.code === sym.code))
+    ?? presets.find(p => p.id === activeId)
+    ?? presets[0];
 
   const tile = (
     <div
@@ -113,17 +131,8 @@ const Tile = memo(({
         viewTransitionName: `tile-${sym.nation}-${sym.code.replace(/[^\w]/g, '_')}`,
       }}
       onClick={() => onClick(sym)}
+      onContextMenu={handleContextMenu}
     >
-      {/* 호버 시 우하단 액션 버튼 */}
-      <div css={s.actions} className="tile-actions">
-        {p && (
-          <IconButton icon={<FiInfo size={11} />} size={22} onClick={handleDetail} ariaLabel="상세 보기" />
-        )}
-        {onRemove && (
-          <IconButton icon={<FiTrash2 size={11} />} size={22} variant="danger" onClick={handleRemove} ariaLabel="종목 삭제" />
-        )}
-      </div>
-
       <span ref={nameRef} css={[s.name[sizeKey], isFlat && s.flatHeadingText]}>{displayName}</span>
       {display ? (
         <>
@@ -137,15 +146,38 @@ const Tile = memo(({
   );
 
   return (
-    <Tooltip content={truncated ? displayName : ''} position="top" delay={300}>
-      {tile}
-    </Tooltip>
+    <>
+      <Tooltip content={truncated ? displayName : ''} position="top" delay={300}>
+        {tile}
+      </Tooltip>
+      <Menu open={!!ctxPos}
+        anchorPoint={ctxPos ?? { x: 0, y: 0 }}
+        onClose={closeCtx}>
+        {p && (
+          <Menu.Item icon={<FiInfo size={13} />} onClick={handleDetail}>
+            상세 정보 보기
+          </Menu.Item>
+        )}
+        <Menu.Item icon={<FiEdit2 size={13} />} onClick={openEdit}>
+          편집
+        </Menu.Item>
+      </Menu>
+
+      {editPreset && (
+        <EditSymbolsSheet
+          open={editOpen}
+          preset={editPreset}
+          presets={presets}
+          onClose={closeEdit}
+        />
+      )}
+    </>
   );
 });
 
 export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGroups, onClick, onRemove, onDetail }: Props) => {
   // 타일뷰는 시총 크기 기반 배치이므로 드롭다운 정렬을 따르지 않음
-  const { groups } = useStockGroups(symbols, prices, customGroups);
+  const { groups } = useStockGroups(symbols, prices, customGroups, { sortByMarketOpen: true });
 
   const tilesPerGroup = useMemo(() => {
     return groups.map(g => {
@@ -176,7 +208,7 @@ export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGr
     <div css={s.wrap}>
       {tilesPerGroup.map(group => (
         <div key={group.label}>
-          <div css={s.groupHeader}>{group.label}</div>
+          <ListHeader sticky caps title={<ListHeader.Title size="sm" color={sem.text.tertiary}>{group.label}</ListHeader.Title>} />
           <div css={s.grid}>
             {group.tiles.map(({ sym, price: p }) => {
               const cap = p?.marketCapRaw || 0;
@@ -203,11 +235,10 @@ export const StockTile = memo(({ symbols, prices, currencyMode, usdkrw, customGr
 // ── Styles ──────────────────────────────────────────
 const s = {
   wrap: css`flex: 1; overflow-y: auto; overflow-x: hidden;`,
-  groupHeader: groupHeaderStyle,
   grid: css`
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-    gap: ${spacing.sm}px; padding: 0 ${spacing.md}px ${spacing.md}px;
+    gap: ${spacing.sm}px; padding: 0 ${spacing.xl}px ${spacing.md}px;
   `,
   tile: (() => {
     const base = `
@@ -218,7 +249,6 @@ const s = {
       justify-content: center; align-items: center;
       transition: filter ${transition.fast};
       &:hover { filter: brightness(1.15); }
-      &:hover .tile-actions { opacity: 1; }
     `;
     return {
       1: css`${base} grid-column: span 1; grid-row: span 1; gap: ${spacing.xs}px; min-height: ${TILE_SIZE.sm};`,
@@ -243,10 +273,4 @@ const s = {
   // flat 타일 전용 텍스트 — bg.elevated 위에서 가독성 확보 (라이트: 다크 텍스트, 다크: 라이트 텍스트)
   flatHeadingText: css`color: ${sem.text.primary}; text-shadow: none;`,
   flatPriceText: css`color: ${sem.text.secondary}; text-shadow: none;`,
-  /** 호버 시 우하단 액션 버튼 */
-  actions: css`
-    position: absolute; bottom: 4px; right: 4px; z-index: 3;
-    display: flex; gap: 3px;
-    opacity: 0; transition: opacity ${transition.fast};
-  `,
 };

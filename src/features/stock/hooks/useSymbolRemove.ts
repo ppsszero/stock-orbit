@@ -24,8 +24,8 @@ export const useSymbolRemove = (
   const toast = useToast();
   const { withTransition } = options;
 
-  return useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  return useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!onRemove) return;
     const ok = await confirm({
       title: `"${displayName}" 삭제`,

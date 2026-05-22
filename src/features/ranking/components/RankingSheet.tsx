@@ -95,7 +95,8 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
 
       <div css={st.footer}>
         <PresetTabs presets={presets} activeId={activeGroupId} onSelect={onGroupSelect}
-          onAddPreset={onAddPreset} onRename={onRenamePreset} onRemove={onRemovePreset} compact />
+          onAddPreset={onAddPreset} onRename={onRenamePreset} onRemove={onRemovePreset} compact
+          hint={'선택한 그룹에 종목이 추가돼요\n우클릭으로 이름 변경/삭제 가능'} />
       </div>
 
       <WebViewPanel url={view?.url ?? null} onClose={closeView} />

@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useCallback, useEffect } from 'react';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { MarqueeItem } from '@/shared/types';
-import { SheetLayout, Tabs, WebViewPanel } from '@/shared/ui';
+import { SheetLayout, Tabs, WebViewPanel, ListHeader } from '@/shared/ui';
 import { subTabPadStyle } from '@/shared/styles/sharedStyles';
 import { useToast } from '@/shared/ui/Toast';
 import { useWebViewState } from '@/shared/hooks/useWebViewState';
@@ -38,11 +38,13 @@ const IndexBanner = ({ items, market }: { items: MarqueeItem[]; market: Market }
 
   return (
     <div css={st.indexBanner}>
-      <span css={st.indexLabel}>지수</span>
-      <span css={st.indexValue}>{formatMarqueeValue(item)}</span>
-      <span css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums;`}>
-        {dirArrow(item.changeDirection)} {formatMarqueeChange(item)} ({fmtPercentAbs(item.changePercent)})
-      </span>
+      <ListHeader caps title={<ListHeader.Title size="sm" color={sem.text.tertiary}>지수</ListHeader.Title>} />
+      <div css={st.indexBody}>
+        <span css={st.indexValue}>{formatMarqueeValue(item)}</span>
+        <span css={css`color: ${dirColor}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold}; font-variant-numeric: tabular-nums;`}>
+          {dirArrow(item.changeDirection)} {formatMarqueeChange(item)} ({fmtPercentAbs(item.changePercent)})
+        </span>
+      </div>
     </div>
   );
 };
@@ -121,13 +123,13 @@ const st = {
   calendarPanel: css`flex: 1; display: flex; flex-direction: column; min-height: 0;`,
   sectorsPanel: css`flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative;`,
   indexBanner: css`
-    display: flex; flex-direction: column; gap: ${spacing.sm}px;
-    padding: ${spacing.md}px ${spacing.xl}px ${spacing.md}px;
+    display: flex; flex-direction: column;
     flex-shrink: 0;
   `,
-  indexLabel: css`
-    font-size: ${fontSize.sm}px; font-weight: ${fontWeight.bold};
-    color: ${sem.text.tertiary}; margin-bottom: ${spacing.xs}px;
+  /* ListHeader 아래에 가격/변동 — 좌측 패딩 xl로 ListHeader와 정렬 */
+  indexBody: css`
+    display: flex; flex-direction: column; gap: ${spacing.sm}px;
+    padding: 0 ${spacing.xl}px ${spacing.md}px;
   `,
   indexValue: css`font-size: ${fontSize['3xl']}px; font-weight: ${fontWeight.extrabold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
 };

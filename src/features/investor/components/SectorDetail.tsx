@@ -69,11 +69,11 @@ export const SectorDetail = ({ sector, nation, onClose, onStockClick }: Props) =
 
   const description = (
     <BottomSheet.HeaderDescription>
-      <span css={css`color:${sem.feedback.up};font-weight:${fontWeight.bold};`}>상승 {sector.risingCount}</span>
+      <span css={css`color:${sem.feedback.up};font-weight:${fontWeight.bold};`}>상승 {sector.risingCount.toLocaleString()}</span>
       <span css={s.dot}> · </span>
-      <span css={s.flat}>보합 {sector.unchangedCount}</span>
+      <span css={s.flat}>보합 {sector.unchangedCount.toLocaleString()}</span>
       <span css={s.dot}> · </span>
-      <span css={css`color:${sem.feedback.down};font-weight:${fontWeight.bold};`}>하락 {sector.fallingCount}</span>
+      <span css={css`color:${sem.feedback.down};font-weight:${fontWeight.bold};`}>하락 {sector.fallingCount.toLocaleString()}</span>
     </BottomSheet.HeaderDescription>
   );
 

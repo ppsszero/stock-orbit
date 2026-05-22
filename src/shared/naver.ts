@@ -292,11 +292,10 @@ const parsePollingData = (d: NaverPollingData, code: string, category: PollingCa
     && !!over.overPrice;
 
   // overMarketPriceInfo가 활성이면 해당 가격 사용, 아니면 최상위 필드 폴백
-  const price = useOver
-    ? num(over!.overPrice!) : parseFloat(d.closePriceRaw || '0') || 0;
+  const price = useOver ? num(over!.overPrice!) : num(d.closePriceRaw);
   const changeRaw = useOver
     ? over!.compareToPreviousClosePrice || '0' : d.compareToPreviousClosePriceRaw || '0';
-  const change = parseFloat(changeRaw.replace(/,/g, '')) || 0;
+  const change = num(changeRaw);
   const pctRaw = useOver
     ? over!.fluctuationsRatio || '0' : d.fluctuationsRatioRaw || '0';
   const pct = parseFloat(pctRaw) || 0;
@@ -341,9 +340,9 @@ const parsePollingData = (d: NaverPollingData, code: string, category: PollingCa
     : d.marketStatus === 'OPEN';
 
   // 시가/고가/저가: over 활성 시 해당 세션 값 우선
-  const openPrice = useOver ? num(over!.openPrice || '0') : parseFloat(d.openPriceRaw || '0') || undefined;
-  const highPrice = useOver ? num(over!.highPrice || '0') : parseFloat(d.highPriceRaw || '0') || undefined;
-  const lowPrice = useOver ? num(over!.lowPrice || '0') : parseFloat(d.lowPriceRaw || '0') || undefined;
+  const openPrice = useOver ? num(over!.openPrice) : num(d.openPriceRaw) || undefined;
+  const highPrice = useOver ? num(over!.highPrice) : num(d.highPriceRaw) || undefined;
+  const lowPrice = useOver ? num(over!.lowPrice) : num(d.lowPriceRaw) || undefined;
 
   return {
     code: d.itemCode || d.symbolCode || code,
@@ -427,11 +426,11 @@ export const fetchDomesticIndices = async (): Promise<MarqueeItem[]> => {
     const data = await fetchJSON<NaverIndexPollingRaw>(`${BASE}/polling/domestic/index?itemCodes=KOSPI%2CKOSDAQ%2CKPI200`);
     return (data.datas || []).map(d => {
       const dir = d.compareToPreviousPrice?.code === '2' ? 1 : d.compareToPreviousPrice?.code === '5' ? -1 : 0;
-      const c = parseFloat(d.compareToPreviousClosePriceRaw || '0');
-      const p = parseFloat(d.fluctuationsRatioRaw || '0');
+      const c = num(d.compareToPreviousClosePriceRaw);
+      const p = num(d.fluctuationsRatioRaw);
       return {
         code: d.itemCode ?? '', name: d.stockName || d.itemCode || '',
-        currentValue: parseFloat(d.closePriceRaw || '0'),
+        currentValue: num(d.closePriceRaw),
         change: dir >= 0 ? c : -c, changePercent: dir >= 0 ? p : -p,
         changeDirection: parseDir(dir), type: 'index' as const,
       };
@@ -444,11 +443,11 @@ export const fetchWorldIndices = async (): Promise<MarqueeItem[]> => {
     const data = await fetchJSON<NaverIndexPollingRaw>(`${BASE}/polling/worldstock/index?reutersCodes=.DJI%2C.INX%2C.IXIC%2C.N225%2C.HSI%2C.FTSE%2C.GDAXI`);
     return (data.datas || []).map(d => {
       const dir = d.compareToPreviousPrice?.code === '2' ? 1 : d.compareToPreviousPrice?.code === '5' ? -1 : 0;
-      const c = parseFloat(d.compareToPreviousClosePriceRaw || '0');
-      const p = parseFloat(d.fluctuationsRatioRaw || '0');
+      const c = num(d.compareToPreviousClosePriceRaw);
+      const p = num(d.fluctuationsRatioRaw);
       return {
         code: d.reutersCode || d.symbolCode || '', name: d.indexName || d.reutersCode || '',
-        currentValue: parseFloat(d.closePriceRaw || '0'),
+        currentValue: num(d.closePriceRaw),
         change: dir >= 0 ? c : -c, changePercent: dir >= 0 ? p : -p,
         changeDirection: parseDir(dir), type: 'index' as const,
       };
@@ -461,14 +460,15 @@ type CommodityCategory = 'energy' | 'metals' | 'agricultural' | 'transport';
 const COMMODITY_CATEGORIES: CommodityCategory[] = ['energy', 'metals', 'agricultural', 'transport'];
 
 const parseCommodityItem = (d: NaverCommodityItemRaw, type: MarqueeItem['type']): MarqueeItem => {
-  const c = parseFloat(d.fluctuations || '0');
+  const c = num(d.fluctuations);
+  const p = num(d.fluctuationsRatio);
   const dir = d.fluctuationsType?.code === '2' ? 1 : d.fluctuationsType?.code === '5' ? -1 : 0;
   return {
     code: d.reutersCode || d.symbolCode || '',
     name: d.name || d.symbolCode || '',
-    currentValue: num(d.closePrice || '0'),
+    currentValue: num(d.closePrice),
     change: dir >= 0 ? c : -c,
-    changePercent: dir >= 0 ? parseFloat(d.fluctuationsRatio || '0') : -parseFloat(d.fluctuationsRatio || '0'),
+    changePercent: dir >= 0 ? p : -p,
     changeDirection: parseDir(dir),
     type,
   };
@@ -505,13 +505,14 @@ export const fetchFXRates = async (): Promise<MarqueeItem[]> => {
     try {
       const d = await fetchJSON<NaverFXRaw>(`${FX_API}/${code}`);
       const info = d.exchangeInfo || d;
-      const c = parseFloat(info.fluctuations || '0');
+      const c = num(info.fluctuations);
+      const p = num(info.fluctuationsRatio);
       const dir = info.fluctuationsType?.code === '2' ? 1 : info.fluctuationsType?.code === '5' ? -1 : 0;
       results.push({
         code, name: FX_NAMES[code] || info.name || code,
-        currentValue: parseFloat(info.calcPrice || num(info.closePrice || '0').toString()),
+        currentValue: num(info.calcPrice) || num(info.closePrice),
         change: dir >= 0 ? c : -c,
-        changePercent: dir >= 0 ? parseFloat(info.fluctuationsRatio || '0') : -parseFloat(info.fluctuationsRatio || '0'),
+        changePercent: dir >= 0 ? p : -p,
         changeDirection: parseDir(dir), type: 'fx',
       });
     } catch (e) { logger.warn(`환율 ${code}`, (e as Error).message); }
@@ -555,11 +556,12 @@ export const fetchInvestorData = async (market: 'KOSPI' | 'KOSDAQ'): Promise<Inv
         total: toSigned(prog.indexTotalReal),
       },
       upDown: {
-        rise: parseInt(ud.riseCount || '0'),
-        steady: parseInt(ud.steadyCount || '0'),
-        fall: parseInt(ud.fallCount || '0'),
-        upper: parseInt(ud.upperCount || '0'),
-        lower: parseInt(ud.lowerCount || '0'),
+        // 네이버 응답이 "1,402" 형태로 콤마 포함 — parseInt는 콤마에서 멈춰버리므로 num() 헬퍼로 안전하게
+        rise: num(ud.riseCount),
+        steady: num(ud.steadyCount),
+        fall: num(ud.fallCount),
+        upper: num(ud.upperCount),
+        lower: num(ud.lowerCount),
       },
     };
   } catch (e) {
@@ -948,7 +950,7 @@ export const fetchSectors = async (nation: SectorNation): Promise<SectorOverview
         fallingCount: s.fallingCount ?? 0,
         topStocks: (s.items || []).map(it => {
           const dir = dirFromFluctuationsType(it.fluctuationsType);
-          const pct = parseFloat(it.fluctuationsRatio || '0');
+          const pct = num(it.fluctuationsRatio);
           return {
             name: it.name ?? '',
             code: it.itemCode || it.id || '',
@@ -993,20 +995,21 @@ export const getNaverStockUrl = (symbol: Pick<StockSymbol, 'code' | 'nation' | '
 
   // 지수/선물: fetchOne과 동일한 code-pattern 기반 라우팅.
   // nation 기반 라우팅을 쓰면 자동완성 API가 KPI100에 'INT' 같은 값을 주는 경우 깨짐.
+  // NOTE: 지수는 시장지표(MarketSheet)와 동일한 URL로 통일 — /price 서픽스 빼면 종합 페이지로 진입.
   if (cat === 'index' || cat === 'futures') {
     const c = (symbol.code || '').toUpperCase();
     const rc = (symbol.reutersCode || '').toUpperCase();
     const ref = symbol.reutersCode || symbol.code;
     // 해외 지수: . 접두사 (.IXIC, .NDX, .DJI 등)
     if (c.startsWith('.') || rc.startsWith('.')) {
-      return `https://m.stock.naver.com/worldstock/index/${ref}/price`;
+      return `https://m.stock.naver.com/worldstock/index/${ref}`;
     }
     // 해외 선물: CV{숫자} 패턴 (NQcv1, ESv1 등) — 경로가 /futures/ 임에 주의
     if (/CV\d+$/i.test(c) || /CV\d+$/i.test(rc)) {
       return `https://m.stock.naver.com/worldstock/futures/${ref}/price`;
     }
     // 그 외 = 국내 지수/선물 (KPI100, KPI200, KOSPI, KOSDAQ, FUT 등)
-    return `https://m.stock.naver.com/domestic/index/${symbol.code}/price`;
+    return `https://m.stock.naver.com/domestic/index/${symbol.code}`;
   }
 
   // 일반 주식 — 모바일 도메인

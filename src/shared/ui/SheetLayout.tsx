@@ -57,8 +57,17 @@ export const SheetLayout = ({
 
   if (!open) return null;
 
+  // 시트는 portal을 쓰지 않으므로 React 트리상 부모(예: StockRow)로 이벤트가 버블링됨.
+  // 부모의 onClick / onContextMenu(예: 종목 행 클릭 → 웹뷰) 발화를 막기 위해 root에서 차단.
+  // NOTE: onMouseDown/onPointerDown은 차단하지 않음 — React stopPropagation은 native까지 막아서
+  // document에 등록된 mousedown 리스너(예: useOutsideClick)가 트리거되지 않게 됨.
+  // 메뉴 외부 클릭 닫힘이 깨지므로 click/contextmenu만 막아 균형을 맞춤.
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+
   return (
-    <div css={s.overlay(zIndex)}>
+    <div css={s.overlay(zIndex)}
+      onClick={stop}
+      onContextMenu={stop}>
       <div css={s.sheet}>
         <div css={s.nav(!!noNavBorder)}>
           <button css={[s.navBtn, s.back]} onClick={onClose}>

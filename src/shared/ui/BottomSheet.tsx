@@ -43,25 +43,35 @@ interface BottomSheetComponent extends React.FC<BottomSheetProps> {
   CTA: React.FC<{ onClick: () => void; children: ReactNode }>;
 }
 
+// transition.normal '0.2s ease' 와 동일 — 닫힘 애니메이션 후 실제 unmount 까지 대기 시간
+const EXIT_MS = 200;
+
 const BottomSheetBase: React.FC<BottomSheetProps> = ({
   open, onClose, header, headerDescription, cta, children, maxHeightVH = 75,
 }) => {
   const [drag, setDrag] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // rendered: 실제 DOM에 존재 여부. open=false 후에도 EXIT_MS 동안 유지해서 슬라이드 다운 애니메이션 보여줌.
+  const [rendered, setRendered] = useState(open);
   // 진행 중인 drag 리스너 cleanup용 — unmount/close 시 강제 해제
   const dragCleanupRef = useRef<(() => void) | null>(null);
 
   useBackAction(open, onClose);
 
-  // mount 후 한 프레임 뒤 슬라이드 인 (transform 0 → translateY(0))
+  // open ↔ rendered/mounted 상태 머신.
+  // open=true:  rendered=true 즉시 → RAF로 mounted=true → 슬라이드 인
+  // open=false: mounted=false 즉시 → EXIT_MS 후 rendered=false → 실제 unmount
   useEffect(() => {
     if (open) {
       setDrag(0);
-      const id = requestAnimationFrame(() => setMounted(true));
-      return () => cancelAnimationFrame(id);
+      setRendered(true);
+      const rafId = requestAnimationFrame(() => setMounted(true));
+      return () => cancelAnimationFrame(rafId);
     }
     setMounted(false);
+    const timerId = setTimeout(() => setRendered(false), EXIT_MS);
+    return () => clearTimeout(timerId);
   }, [open]);
 
   // 닫힐 때 + unmount 시 — 진행 중인 drag 리스너 강제 정리 (window 리스너 누수 방지)
@@ -94,13 +104,23 @@ const BottomSheetBase: React.FC<BottomSheetProps> = ({
     window.addEventListener('pointerup', onUp);
   }, [onClose]);
 
-  if (!open) return null;
+  if (!rendered) return null;
 
-  // 슬라이드 인: mounted 전엔 translateY(100%), 후엔 translateY(drag).
+  // 슬라이드 인/아웃: mounted=true → translateY(drag), false → translateY(100%) (들어올 때 & 나갈 때 둘 다)
   const translateY = mounted ? `${drag}px` : '100%';
 
+  // portal로 body에 렌더되지만 React 이벤트는 트리 기준 bubbling → 부모 onClick 차단 필요
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
+
   return ReactDOM.createPortal(
-    <div css={s.overlay} onClick={onClose}>
+    <div
+      css={s.overlay}
+      data-mounted={mounted}
+      onClick={handleOverlayClick}
+      onContextMenu={e => e.stopPropagation()}>
       <div
         css={s.sheet}
         style={{
@@ -153,6 +173,9 @@ const s = {
     z-index: ${zIndex.modal};
     background: ${sem.overlay.dim};
     display: flex; align-items: flex-end;
+    opacity: 0;
+    transition: opacity ${transition.normal};
+    &[data-mounted="true"] { opacity: 1; }
   `,
   sheet: css`
     width: 100%;
@@ -165,14 +188,14 @@ const s = {
   `,
   handleWrap: css`
     display: flex; justify-content: center;
-    padding: ${spacing.md}px 0 ${spacing.sm}px;
+    padding: ${spacing.lg}px 0 ${spacing.sm}px;
     cursor: grab;
     touch-action: none;
     flex-shrink: 0;
     &:active { cursor: grabbing; }
   `,
   handle: css`
-    width: 36px; height: 4px;
+    width: 48px; height: 4px;
     border-radius: 2px;
     background: ${sem.border.strong};
   `,
@@ -196,11 +219,13 @@ const s = {
   body: css`
     flex: 1;
     overflow-y: auto;
+    /* 자식이 negative margin으로 좌우 패딩을 풀-블리드 hover로 확장할 때 가로 스크롤바 방지 */
+    overflow-x: hidden;
     padding: 0 ${spacing.xl}px;
   `,
   ctaWrap: css`
     flex-shrink: 0;
-    padding: ${spacing.lg}px ${spacing.xl}px ${spacing.xl}px;
+    padding: ${spacing.xl}px;
   `,
   cta: css`
     width: 100%;

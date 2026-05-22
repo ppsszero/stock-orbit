@@ -20,7 +20,8 @@ interface Props {
 const RelatedChips = ({ items, onLinkClick }: { items: NewsRelatedItem[]; onLinkClick: (url: string) => void }) => (
   <div css={s.related}>
     {items.map(it => {
-      const pct = parseFloat(it.fluctuationsRatio || '0');
+      // 콤마 안전 처리
+      const pct = parseFloat((it.fluctuationsRatio || '0').replace(/,/g, '')) || 0;
       const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
       const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '';
       return (

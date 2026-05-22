@@ -82,7 +82,7 @@ export const TitleBar = memo(({
 const s = {
   bar: (popOpen: boolean) => css`
     display: flex; align-items: center; justify-content: space-between;
-    height: 42px; padding: 0 ${spacing.md}px;
+    height: 42px; padding: 0 ${spacing.xl}px;
     background: ${sem.surface.titleBar};
     -webkit-app-region: ${popOpen ? 'no-drag' : 'drag'};
     border-radius: ${radius['2xl']}px ${radius['2xl']}px 0 0; flex-shrink: 0;

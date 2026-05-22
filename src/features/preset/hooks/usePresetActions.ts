@@ -56,7 +56,7 @@ export function usePresetActions({ presets, onRename, onRemove }: UsePresetActio
     });
     if (ok) {
       onRemove(ctx.id);
-      toast.show(`"${name}"을 삭제했어요.`, 'delete');
+      toast.show(`"${name}" 그룹을 삭제했어요.`, 'delete');
     }
   }, [ctx, presets, confirm, onRemove, toast]);
 
@@ -65,6 +65,7 @@ export function usePresetActions({ presets, onRename, onRemove }: UsePresetActio
     renameTarget,
     menuRef,
     openCtx,
+    closeCtx,
     startRename,
     commitRename,
     cancelRename,

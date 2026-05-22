@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { spacing, fontSize, fontWeight, radius, transition, sp } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 import { Modal } from '@/shared/ui';
@@ -9,13 +9,15 @@ interface Props {
   open: boolean;
   mode?: 'add' | 'rename';
   initialName?: string;
+  /** 중복 검사용 — 기존 그룹 이름 목록 (rename 모드에선 자기 자신은 통과) */
+  existingNames?: string[];
   onConfirm: (name: string) => void;
   onCancel: () => void;
 }
 
 const SUGGESTIONS = ['국내', '해외', '배당주', '성장주', '장기', '단기', 'ETF', '기술주', '가치주', '테마주'];
 
-export const NewGroupModal = ({ open, mode = 'add', initialName = '', onConfirm, onCancel }: Props) => {
+export const NewGroupModal = ({ open, mode = 'add', initialName = '', existingNames, onConfirm, onCancel }: Props) => {
   const [name, setName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const isRename = mode === 'rename';
@@ -28,9 +30,20 @@ export const NewGroupModal = ({ open, mode = 'add', initialName = '', onConfirm,
     return () => clearTimeout(t);
   }, [open, isRename, initialName]);
 
-  const handleSubmit = () => {
+  // 중복 검사 — 대소문자 무시 + trim. rename에선 본인 이름은 허용.
+  const isDuplicate = useMemo(() => {
     const trimmed = name.trim();
-    if (trimmed) onConfirm(trimmed);
+    if (!trimmed || !existingNames) return false;
+    const lower = trimmed.toLowerCase();
+    if (isRename && lower === initialName.trim().toLowerCase()) return false;
+    return existingNames.some(n => n.trim().toLowerCase() === lower);
+  }, [name, existingNames, isRename, initialName]);
+
+  const canSubmit = !!name.trim() && !isDuplicate;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    onConfirm(name.trim());
   };
 
   return (
@@ -38,10 +51,10 @@ export const NewGroupModal = ({ open, mode = 'add', initialName = '', onConfirm,
       <Modal.Overlay />
       <Modal.Content style={{ maxWidth: 300 }}>
         <div css={s.body}>
-          <div css={s.title}>{isRename ? '그룹 이름 변경' : '어떤 주제의 그룹을 만들까요?'}</div>
+          <div css={s.title}>{isRename ? '어떤 이름으로 바꿀까요?' : '어떤 주제의 그룹을 만들까요?'}</div>
           <input
             ref={inputRef}
-            css={s.input}
+            css={s.input(isDuplicate)}
             placeholder="그룹명을 입력하세요"
             value={name}
             onChange={e => setName(e.target.value)}
@@ -51,18 +64,19 @@ export const NewGroupModal = ({ open, mode = 'add', initialName = '', onConfirm,
             }}
             maxLength={20}
           />
-          {!isRename && (
-            <div css={s.badges}>
-              {SUGGESTIONS.map(tag => (
-                <button key={tag} type="button" css={s.badge} onClick={() => setName(tag)}>
-                  {tag}
-                </button>
-              ))}
-            </div>
+          {isDuplicate && (
+            <div css={s.errorMsg}>이미 있는 그룹 이름이에요</div>
           )}
+          <div css={s.badges}>
+            {SUGGESTIONS.map(tag => (
+              <button key={tag} type="button" css={s.badge} onClick={() => setName(tag)}>
+                {tag}
+              </button>
+            ))}
+          </div>
           <Modal.Actions>
             <Modal.CTA variant="secondary" onClick={onCancel}>취소</Modal.CTA>
-            <Modal.CTA onClick={handleSubmit} disabled={!name.trim()}>
+            <Modal.CTA onClick={handleSubmit} disabled={!canSubmit}>
               {isRename ? '변경' : '그룹 추가'}
             </Modal.CTA>
           </Modal.Actions>
@@ -81,16 +95,21 @@ const s = {
     font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary};
     text-align: center; margin-bottom: ${spacing.xl}px;
   `,
-  input: css`
+  input: (error: boolean) => css`
     width: 100%;
     padding: ${sp('md', 'xs')} ${spacing.lg}px;
-    border: 1px solid ${sem.border.default};
+    border: 1px solid ${error ? sem.action.danger : sem.border.default};
     border-radius: ${radius.xl}px;
     background: ${sem.bg.surface}; color: ${sem.text.primary};
     font-size: ${fontSize.lg}px; outline: none; box-sizing: border-box;
     font-family: inherit;
     &::placeholder { color: ${sem.text.tertiary}; }
-    &:focus { border-color: ${sem.action.primary}; }
+    &:focus { border-color: ${error ? sem.action.danger : sem.action.primary}; }
+  `,
+  errorMsg: css`
+    margin-top: ${spacing.sm}px;
+    font-size: ${fontSize.sm}px;
+    color: ${sem.action.danger};
   `,
   badges: css`
     display: flex; flex-wrap: wrap; gap: ${spacing.md}px;

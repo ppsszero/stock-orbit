@@ -68,11 +68,11 @@ export const SectorTreemap = memo(({ sectors, onSelect }: Props) => {
               <span style={{ color: rateColor }}>{fmtChange(rate)}</span>
             </div>
             <div css={s.tipCounts}>
-              <span style={{ color: sem.feedback.up }}>상승 {t.data.risingCount}</span>
+              <span style={{ color: sem.feedback.up }}>상승 {t.data.risingCount.toLocaleString()}</span>
               <span css={s.tipDot}> · </span>
-              <span style={{ color: sem.feedback.flat }}>보합 {t.data.unchangedCount}</span>
+              <span style={{ color: sem.feedback.flat }}>보합 {t.data.unchangedCount.toLocaleString()}</span>
               <span css={s.tipDot}> · </span>
-              <span style={{ color: sem.feedback.down }}>하락 {t.data.fallingCount}</span>
+              <span style={{ color: sem.feedback.down }}>하락 {t.data.fallingCount.toLocaleString()}</span>
             </div>
           </>
         );

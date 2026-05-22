@@ -83,6 +83,7 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
         onRenamePreset={renamePreset} onRemovePreset={removePreset} />
       <NewsSheet open={openSheet === 'news'} onClose={closeSheet} />
       <NewGroupModal open={openSheet === 'newGroup'}
+        existingNames={presets.map(p => p.name)}
         onConfirm={handleAddPreset}
         onCancel={closeSheet} />
     </QueryErrorBoundary>
