@@ -1,11 +1,14 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { FiArrowLeft, FiRefreshCw, FiLoader } from 'react-icons/fi';
 import { spacing, fontSize, fontWeight, radius, height, transition } from '@/shared/styles/tokens';
 import { useBackAction } from '@/shared/hooks/useBackAction';
+import { fmtRelativeTime } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
 import { spinCss } from './LoadingCenter';
+import { Tooltip } from './Tooltip';
+import { useToast } from './Toast';
 
 interface Props {
   open: boolean;
@@ -14,17 +17,43 @@ interface Props {
   onClose: () => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  /** 마지막 갱신 시각 — 새로고침 버튼 hover 시 "5분 전" 식 툴팁 표시 */
+  lastUpdatedAt?: Date | null;
   navRight?: ReactNode;
   /** 시트 본문 시작이 Tabs 등 자체 border를 가진 컴포넌트일 때 nav 아래 라인 중복 방지 */
   noNavBorder?: boolean;
   children: ReactNode;
 }
 
+const REFRESH_COOLDOWN_MS = 30_000;
+
 export const SheetLayout = ({
   open, title, zIndex = 550,
-  onClose, onRefresh, refreshing, navRight, noNavBorder, children,
+  onClose, onRefresh, refreshing, lastUpdatedAt, navRight, noNavBorder, children,
 }: Props) => {
   useBackAction(open, onClose);
+  const toast = useToast();
+
+  // 새로고침 cooldown — 마지막 갱신 후 30초 안에는 재요청 차단
+  const [tick, setTick] = useState(0);
+  const elapsed = lastUpdatedAt ? Date.now() - lastUpdatedAt.getTime() : Infinity;
+  const cooldown = elapsed < REFRESH_COOLDOWN_MS;
+  const cooldownRemainSec = cooldown ? Math.ceil((REFRESH_COOLDOWN_MS - elapsed) / 1000) : 0;
+  useEffect(() => {
+    if (!cooldown) return;
+    const id = setTimeout(() => setTick(t => t + 1), REFRESH_COOLDOWN_MS - elapsed);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUpdatedAt, tick]);
+
+  const handleRefreshClick = () => {
+    if (refreshing) return;
+    if (cooldown) {
+      toast.show(`${cooldownRemainSec}초 뒤에 다시 시도해주세요`, 'error');
+      return;
+    }
+    onRefresh?.();
+  };
 
   if (!open) return null;
 
@@ -37,9 +66,13 @@ export const SheetLayout = ({
           </button>
           <span css={s.title}>{title}</span>
           {onRefresh && (
-            <button css={[s.navBtn, s.refreshBtn]} onClick={onRefresh}>
-              <FiRefreshCw size={14} css={refreshing && s.spinning} />
-            </button>
+            <Tooltip
+              content={lastUpdatedAt ? `${fmtRelativeTime(lastUpdatedAt)} 갱신` : '새로고침'}
+              position="bottom" display="inline-flex">
+              <button css={[s.navBtn, s.refreshBtn(cooldown || !!refreshing)]} onClick={handleRefreshClick}>
+                <FiRefreshCw size={14} css={refreshing && s.spinning} />
+              </button>
+            </Tooltip>
           )}
           {navRight}
         </div>
@@ -106,9 +139,10 @@ const s = {
     display: flex;
     align-items: center;
   `,
-  refreshBtn: css`
+  // 비활성 시각 처리 — disabled attribute는 쓰지 않음 (클릭 토스트 띄우려면 onClick이 발화해야 함)
+  refreshBtn: (muted: boolean) => css`
     color: ${sem.text.secondary};
-    &:hover { color: ${sem.action.primary}; }
+    ${muted ? `opacity: 0.4;` : `&:hover { color: ${sem.action.primary}; }`}
   `,
   spinning: spinCss,
 };

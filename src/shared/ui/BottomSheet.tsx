@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { spacing, fontSize, fontWeight, radius, transition, zIndex } from '@/shared/styles/tokens';
 import { useBackAction } from '@/shared/hooks/useBackAction';
@@ -49,6 +49,8 @@ const BottomSheetBase: React.FC<BottomSheetProps> = ({
   const [drag, setDrag] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // 진행 중인 drag 리스너 cleanup용 — unmount/close 시 강제 해제
+  const dragCleanupRef = useRef<(() => void) | null>(null);
 
   useBackAction(open, onClose);
 
@@ -62,24 +64,35 @@ const BottomSheetBase: React.FC<BottomSheetProps> = ({
     setMounted(false);
   }, [open]);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
+  // 닫힐 때 + unmount 시 — 진행 중인 drag 리스너 강제 정리 (window 리스너 누수 방지)
+  useEffect(() => {
+    if (!open) dragCleanupRef.current?.();
+    return () => { dragCleanupRef.current?.(); };
+  }, [open]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const startY = e.clientY;
     setDragging(true);
     const onMove = (mv: PointerEvent) => {
       const dy = mv.clientY - startY;
       setDrag(Math.max(0, dy));
     };
-    const onUp = (up: PointerEvent) => {
+    const cleanup = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      dragCleanupRef.current = null;
+    };
+    const onUp = (up: PointerEvent) => {
+      cleanup();
       setDragging(false);
       const dy = up.clientY - startY;
       if (dy > DISMISS_THRESHOLD) onClose();
       else setDrag(0);
     };
+    dragCleanupRef.current = cleanup;
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-  };
+  }, [onClose]);
 
   if (!open) return null;
 

@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { spacing, fontSize, fontWeight, radius, transition, opacity, height } from '@/shared/styles/tokens';
 import { useEconomicCalendar } from '@/features/investor/hooks/useEconomicCalendar';
@@ -8,15 +8,25 @@ import { DatePicker } from '@/features/investor/components/DatePicker';
 import { TimelineItem } from '@/features/investor/components/TimelineItem';
 import { sem } from '@/shared/styles/semantic';
 
-export const EconomicCalendar = () => {
+interface Props {
+  /** 시트 단위 새로고침 trigger — 값이 바뀔 때마다 현재 날짜 force fetch */
+  refreshSignal?: number;
+}
+
+export const EconomicCalendar = ({ refreshSignal }: Props = {}) => {
   const {
     dateStr, displayDate, items, loading,
     isToday, canPrev, canNext,
     minDate, maxDate,
     goPrev, goNext, goToday, goTo,
+    refresh,
   } = useEconomicCalendar();
 
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (refreshSignal && refreshSignal > 0) refresh();
+  }, [refreshSignal, refresh]);
 
   const handleDateSelect = useCallback((d: string) => {
     goTo(d);

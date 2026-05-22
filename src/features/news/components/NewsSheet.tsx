@@ -63,15 +63,15 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   const [mainTab, setMainTab] = useState<MainTab>('briefing');
   const [newsSub, setNewsSub] = useState<NewsCategory>('flashnews');
   const [researchSub, setResearchSub] = useState<ResearchCategory>('daily');
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
   const {
     briefing, stories, newsByCat, researchByCat,
     loading,
     ensureNews, ensureResearch,
-    refreshBriefing, refreshStories, refreshNews, refreshResearch,
+    refresh,
   } = useNewsData(open);
-  const [refreshing, setRefreshing] = useState(false);
 
   // 활성 서브탭 데이터 보장 (초기 fetch에 포함 안 된 카테고리는 lazy load)
   useEffect(() => {
@@ -84,28 +84,17 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   const newsSubLabel = NEWS_SUBS.find(t => t.key === newsSub)?.label || '';
   const researchSubLabel = RESEARCH_SUBS.find(t => t.key === researchSub)?.label || '';
 
-  // 새로고침은 활성 탭만 갱신 — 보고 있지 않은 다른 카테고리까지 fetch하지 않음
+  // 시트 단위 통합 새로고침 — 모든 탭 데이터 일괄 갱신
   const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    let ok = false;
-    let label = '';
-    if (mainTab === 'briefing') {
-      ok = await refreshBriefing();
-      label = 'AI 브리핑';
-    } else if (mainTab === 'news') {
-      ok = await refreshNews(newsSub);
-      label = newsSubLabel;
-    } else if (mainTab === 'research') {
-      ok = await refreshResearch(researchSub);
-      label = `${researchSubLabel} 리서치`;
-    } else if (mainTab === 'story') {
-      ok = await refreshStories();
-      label = '머니스토리';
-    }
-    toast.refreshResult(ok, label);
-    setRefreshing(false);
-  }, [mainTab, newsSub, researchSub, newsSubLabel, researchSubLabel,
-      refreshBriefing, refreshNews, refreshResearch, refreshStories, toast]);
+    const ok = await refresh();
+    if (ok) setLastUpdatedAt(new Date());
+    toast.refreshResult(ok, '뉴스');
+  }, [refresh, toast]);
+
+  // 시트 첫 진입 시 timestamp 기록 (loadInitial 완료 시점)
+  useEffect(() => {
+    if (open && !loading && !lastUpdatedAt) setLastUpdatedAt(new Date());
+  }, [open, loading, lastUpdatedAt]);
 
   if (!open) return null;
 
@@ -113,7 +102,7 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   const researchItems = researchByCat[researchSub];
 
   return (
-    <SheetLayout open={open} title="뉴스" onClose={onClose} onRefresh={handleRefresh} refreshing={loading || refreshing} noNavBorder>
+    <SheetLayout open={open} title="뉴스" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} lastUpdatedAt={lastUpdatedAt} noNavBorder>
       <Tabs id="news" items={MAIN_TABS} value={mainTab} onChange={setMainTab} variant="underline" itemAlign="center" />
 
       {loading ? (

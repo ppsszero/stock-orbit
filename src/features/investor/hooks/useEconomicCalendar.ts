@@ -79,6 +79,15 @@ export const useEconomicCalendar = () => {
     return () => { cancelled = true; };
   }, [dateStr]);
 
+  // 외부 trigger용 강제 새로고침 — cached 무시
+  const refresh = useCallback(async (): Promise<boolean> => {
+    setLoading(true);
+    const data = await cached(`calendar-${dateStr}`, () => fetchEconomicCalendar(dateStr), 10 * 60_000, true);
+    setItems(data);
+    setLoading(false);
+    return data.length > 0;
+  }, [dateStr]);
+
   // 시간순 정렬 (이미 발표된 항목 먼저, 그 안에서 시간순)
   const sorted = useMemo(() =>
     [...items].sort((a, b) => {
@@ -103,5 +112,6 @@ export const useEconomicCalendar = () => {
     goNext,
     goToday,
     goTo,
+    refresh,
   };
 };

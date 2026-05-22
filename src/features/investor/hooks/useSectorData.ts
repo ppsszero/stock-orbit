@@ -28,10 +28,22 @@ export const useSectorData = (active: boolean) => {
     if (active) load(nation);
   }, [active, nation, load]);
 
+  // 통합 새로고침 — 양쪽 nation 모두 force fetch (시트 단위 새로고침에서 호출)
+  const refreshAll = useCallback(async (): Promise<boolean> => {
+    setLoading(true);
+    const [dom, usa] = await Promise.all([fetchSectors('domestic'), fetchSectors('USA')]);
+    const now = Date.now();
+    fetchedAtRef.current = { domestic: now, USA: now };
+    setByNation({ domestic: dom, USA: usa });
+    setLoading(false);
+    return !!((dom && dom.sectors.length > 0) || (usa && usa.sectors.length > 0));
+  }, []);
+
   return {
     nation, setNation,
     overview: byNation[nation] ?? null,
     loading,
     refresh: () => load(nation, true),
+    refreshAll,
   };
 };

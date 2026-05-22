@@ -30,6 +30,9 @@ export const useNewsData = (open: boolean) => {
   const researchByCatRef = useRef(researchByCat);
   newsByCatRef.current = newsByCat;
   researchByCatRef.current = researchByCat;
+  // 시트가 열려있는지 — fetch 응답 도착 시 닫혀있으면 setState 스킵 (unmount/stale 방지)
+  const activeRef = useRef(open);
+  activeRef.current = open;
 
   const loadInitial = useCallback(async (forceRefresh = false): Promise<boolean> => {
     setLoading(true);
@@ -40,6 +43,7 @@ export const useNewsData = (open: boolean) => {
       cached('research-cat-daily', () => fetchResearchByCategory('daily', PAGE_SIZE), CACHE_TTL, forceRefresh),
     ]);
     const [b, s, flash, daily] = forceRefresh ? await withMinSpin(fetchAll) : await fetchAll();
+    if (!activeRef.current) { setLoading(false); return false; }
     setBriefing(b);
     setStories(s);
     setNewsByCat({ flashnews: flash });
@@ -53,6 +57,7 @@ export const useNewsData = (open: boolean) => {
     const existing = newsByCatRef.current[cat];
     if (existing && existing.length > 0) return;
     const data = await fetchNewsByCategory(cat, PAGE_SIZE);
+    if (!activeRef.current) return; // 응답 도착 시 시트 닫혀있으면 stale, 스킵
     setNewsByCat(prev => ({ ...prev, [cat]: data }));
   }, []);
 
@@ -60,30 +65,18 @@ export const useNewsData = (open: boolean) => {
     const existing = researchByCatRef.current[cat];
     if (existing && existing.length > 0) return;
     const data = await fetchResearchByCategory(cat, PAGE_SIZE);
+    if (!activeRef.current) return;
     setResearchByCat(prev => ({ ...prev, [cat]: data }));
   }, []);
 
-  // 활성 탭 단위 강제 새로고침 — 새로고침 버튼은 사용자가 *보고 있는* 데이터만 갱신
-  const refreshBriefing = useCallback(async () => {
-    const b = await fetchMarketBriefing();
-    setBriefing(b);
-    return !!b;
-  }, []);
-  const refreshStories = useCallback(async () => {
-    const s = await fetchMoneyStory(PAGE_SIZE);
-    setStories(s);
-    return s.length > 0;
-  }, []);
-  const refreshNews = useCallback(async (cat: NewsCategory) => {
-    const data = await fetchNewsByCategory(cat, PAGE_SIZE);
-    setNewsByCat(prev => ({ ...prev, [cat]: data }));
-    return data.length > 0;
-  }, []);
-  const refreshResearch = useCallback(async (cat: ResearchCategory) => {
-    const data = await fetchResearchByCategory(cat, PAGE_SIZE);
-    setResearchByCat(prev => ({ ...prev, [cat]: data }));
-    return data.length > 0;
-  }, []);
+  // 시트 단위 통합 새로고침 — briefing/stories/첫 서브탭 force fetch + 나머지 카테고리 캐시 invalidate
+  // → 사용자가 다른 탭 들어가면 자동으로 fresh fetch
+  const refreshAll = useCallback(async (): Promise<boolean> => {
+    // 다른 카테고리 비우기 — ensureXXX 가드가 length>0만 검사하므로 빈 객체면 재진입 시 다시 fetch
+    setNewsByCat({});
+    setResearchByCat({});
+    return await loadInitial(true);
+  }, [loadInitial]);
 
   useEffect(() => {
     if (open) loadInitial();
@@ -93,6 +86,6 @@ export const useNewsData = (open: boolean) => {
     briefing, stories, newsByCat, researchByCat,
     loading,
     ensureNews, ensureResearch,
-    refreshBriefing, refreshStories, refreshNews, refreshResearch,
+    refresh: refreshAll,
   };
 };

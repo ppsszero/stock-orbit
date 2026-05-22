@@ -76,12 +76,14 @@ const ModalBase: React.FC<ModalProps> = ({ open, onClose, children }) => {
     document.body
   );
 };
+ModalBase.displayName = 'Modal';
 
 const Overlay: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
   const ctx = useContext(ModalContext);
   const handle = () => (onClick ? onClick() : ctx?.onClose());
   return <div css={s.overlay} onClick={handle} role="button" aria-hidden="true" />;
 };
+Overlay.displayName = 'Modal.Overlay';
 
 const Content: React.FC<{ children: ReactNode; style?: CSSProperties; className?: string }> = ({ children, style, className }) => (
   <div css={s.content} style={style} className={className}
@@ -90,6 +92,7 @@ const Content: React.FC<{ children: ReactNode; style?: CSSProperties; className?
     {children}
   </div>
 );
+Content.displayName = 'Modal.Content';
 
 const CTA = forwardRef<HTMLButtonElement, CTAProps>(
   ({ onClick, children, variant = 'primary', disabled = false }, ref) => (
@@ -103,6 +106,7 @@ CTA.displayName = 'Modal.CTA';
 const Actions: React.FC<{ children: ReactNode }> = ({ children }) => (
   <div css={s.actions}>{children}</div>
 );
+Actions.displayName = 'Modal.Actions';
 
 export const Modal = ModalBase as ModalComponent;
 Modal.Overlay = Overlay;

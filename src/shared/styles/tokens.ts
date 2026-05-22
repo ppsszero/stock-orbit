@@ -60,6 +60,14 @@ export const height = {
   button: 32,
 } as const;
 
+/** 인터랙션 상수 — drag/scroll 임계값 등 공용 */
+export const interaction = {
+  /** drag-to-scroll 임계값(px) — 클릭과 drag 구분 */
+  dragThreshold: 5,
+  /** smooth scroll 후 상태 갱신 지연(ms) — webkit smooth scroll 평균 시간 */
+  smoothScrollMs: 350,
+} as const;
+
 /** 자간 */
 export const letterSpacing = {
   tight: -0.3,

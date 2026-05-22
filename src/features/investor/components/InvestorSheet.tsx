@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { MarqueeItem } from '@/shared/types';
 import { SheetLayout, Tabs, WebViewPanel } from '@/shared/ui';
@@ -56,19 +56,29 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
   const { data, loading, refresh } = useInvestorData(open, !isMarketTab);
   const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
+  // 시트 단위 새로고침 — 자식(SectorView, EconomicCalendar)에게 signal 전파
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const handleRefresh = useCallback(async () => {
     const ok = await refresh();
+    setRefreshSignal(s => s + 1);
+    setLastUpdatedAt(new Date());
     toast.refreshResult(ok, '투자정보');
   }, [refresh, toast]);
+
+  useEffect(() => {
+    if (open && !loading && !lastUpdatedAt) setLastUpdatedAt(new Date());
+  }, [open, loading, lastUpdatedAt]);
 
   return (
     <SheetLayout
       open={open}
       title="투자정보"
       onClose={onClose}
-      onRefresh={isMarketTab ? handleRefresh : undefined}
+      onRefresh={handleRefresh}
       refreshing={loading}
+      lastUpdatedAt={lastUpdatedAt}
       noNavBorder
     >
       <Tabs id="investor" items={TABS} value={tab} onChange={setTab} variant="underline" itemAlign="center" />
@@ -90,13 +100,13 @@ export const InvestorSheet = ({ open, onClose, marqueeItems = [] }: Props) => {
 
       {isCalendarTab && (
         <div role="tabpanel" id="investor-panel-calendar" aria-labelledby="investor-tab-calendar" css={st.calendarPanel}>
-          <EconomicCalendar />
+          <EconomicCalendar refreshSignal={refreshSignal} />
         </div>
       )}
 
       {isSectorsTab && (
         <div role="tabpanel" id="investor-panel-sectors" aria-labelledby="investor-tab-sectors" css={st.sectorsPanel}>
-          <SectorView active={open && isSectorsTab} onStockClick={openView} />
+          <SectorView active={open && isSectorsTab} onStockClick={openView} refreshSignal={refreshSignal} />
         </div>
       )}
 

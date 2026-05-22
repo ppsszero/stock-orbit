@@ -2,7 +2,7 @@
 import { css } from '@emotion/react';
 import { useRef, useLayoutEffect, useEffect } from 'react';
 import gsap from 'gsap';
-import { fontSize, fontWeight, radius, spacing, transition } from '@/shared/styles/tokens';
+import { fontSize, fontWeight, radius, spacing, transition, interaction } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
 
 interface Item<T extends string> {
@@ -134,7 +134,6 @@ export const Tabs = <T extends string>({
     const wrap = wrapRef.current;
     if (!wrap) return;
 
-    const DRAG_THRESHOLD = 5;
     let isDown = false, startX = 0, baseScrollLeft = 0, dragged = false;
 
     const onWheel = (e: WheelEvent) => {
@@ -153,7 +152,7 @@ export const Tabs = <T extends string>({
     const onMove = (e: MouseEvent) => {
       if (!isDown) return;
       const dx = e.pageX - startX;
-      if (!dragged && Math.abs(dx) > DRAG_THRESHOLD) {
+      if (!dragged && Math.abs(dx) > interaction.dragThreshold) {
         dragged = true;
         wrap.style.cursor = 'grabbing';
       }

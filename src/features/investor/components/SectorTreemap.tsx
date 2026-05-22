@@ -53,7 +53,8 @@ export const SectorTreemap = memo(({ sectors, onSelect }: Props) => {
     <div ref={wrapRef} css={s.wrap}>
       {tiles.map(t => {
         const bg = colorByChange(t.data.changeRate);
-        // 타일 면적에 따라 폰트 사이즈 단계 — 큰 섹터는 시원하게, 작은 타일은 잘리지 않게
+        // 폰트 단계 — 가로 또는 세로 중 하나만 충분히 크면 한 단계 위로.
+        // (양쪽 다 작아야 작은 단계 — 길쭉한 타일도 시원하게 보이게 의도된 OR 비교)
         const sz: SizeStep = (t.w >= 220 || t.h >= 180) ? 'lg'
                             : (t.w >= 140 || t.h >= 110) ? 'md'
                             : (t.w >= 80 || t.h >= 60)  ? 'sm'

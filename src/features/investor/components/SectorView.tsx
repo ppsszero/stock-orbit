@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { Sector, SectorNation } from '@/shared/naver';
 import { Tabs, LoadingCenter } from '@/shared/ui';
@@ -14,6 +14,8 @@ interface Props {
   active: boolean;
   /** 종목 클릭 시 시트 전체를 덮는 WebViewPanel 트리거 (상위 시트에서 관리) */
   onStockClick: (url: string) => void;
+  /** 시트 단위 새로고침 trigger — 값이 바뀔 때마다 모든 nation force fetch */
+  refreshSignal?: number;
 }
 
 const NATIONS: { key: SectorNation; label: string }[] = [
@@ -21,9 +23,14 @@ const NATIONS: { key: SectorNation; label: string }[] = [
   { key: 'USA',      label: '미국' },
 ];
 
-export const SectorView = ({ active, onStockClick }: Props) => {
-  const { nation, setNation, overview, loading } = useSectorData(active);
+export const SectorView = ({ active, onStockClick, refreshSignal }: Props) => {
+  const { nation, setNation, overview, loading, refreshAll } = useSectorData(active);
   const [selected, setSelected] = useState<Sector | null>(null);
+
+  // 외부 시그널로 양쪽 nation 모두 force fetch
+  useEffect(() => {
+    if (refreshSignal && refreshSignal > 0) refreshAll();
+  }, [refreshSignal, refreshAll]);
 
   return (
     <>

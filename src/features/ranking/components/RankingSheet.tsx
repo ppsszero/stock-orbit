@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { spacing, fontSize } from '@/shared/styles/tokens';
 import { Preset, StockSymbol } from '@/shared/types';
@@ -33,14 +33,20 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
   const toast = useToast();
   const { nation, setNation, rankType, setRankType, items, loading, load } = useRankingData(open);
   const { view, open: openView, close: closeView } = useWebViewState(open);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const activePreset = presets.find(p => p.id === activeGroupId) || presets[0];
   const existingCodes = activePreset?.symbols.map(s => s.code) || [];
 
   const handleRefresh = useCallback(async () => {
     const ok = await load();
+    if (ok) setLastUpdatedAt(new Date());
     toast.refreshResult(ok, '랭킹');
   }, [load, toast]);
+
+  useEffect(() => {
+    if (open && !loading && !lastUpdatedAt) setLastUpdatedAt(new Date());
+  }, [open, loading, lastUpdatedAt]);
 
   const handleToggle = (item: typeof items[number]) => {
     const added = existingCodes.includes(item.code);
@@ -62,7 +68,7 @@ export const RankingSheet = ({ open, presets, activeGroupId, onClose, onAdd, onR
   };
 
   return (
-    <SheetLayout open={open} title="글로벌 실시간 랭킹" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} noNavBorder>
+    <SheetLayout open={open} title="글로벌 실시간 랭킹" onClose={onClose} onRefresh={handleRefresh} refreshing={loading} lastUpdatedAt={lastUpdatedAt} noNavBorder>
       <Tabs id="ranking-type" items={RANK_TYPES} value={rankType} onChange={setRankType} variant="underline" itemAlign="center" />
       {!isDomesticOnlyRank(rankType) && (
         <div css={subTabPadStyle}>

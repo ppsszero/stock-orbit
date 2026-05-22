@@ -80,6 +80,7 @@ export const MarketSheet = ({ open, items, onClose }: Props) => {
   const [bondSub, setBondSub] = useState<BondSub>('bond');
   const { view, open: openView, close: closeView } = useWebViewState(open);
   const [bondRefreshKey, setBondRefreshKey] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const wasOpenRef = useRef(false);
   // tab reset에서 최신 availableTabs 참조 — effect deps에 넣지 않고 polling 갱신 시 effect 재실행 회피
   const availRef = useRef(availableTabs);
@@ -101,12 +102,19 @@ export const MarketSheet = ({ open, items, onClose }: Props) => {
     : (COMMODITY_SUBS.find(s => g[s.key].length > 0)?.key ?? 'energy');
 
   const handleBondLoadResult = useCallback((ok: boolean) => {
-    toast.refreshResult(ok, '채권·금리');
+    toast.refreshResult(ok, '시장지표');
   }, [toast]);
 
+  // 시트 단위 새로고침 — 채권은 즉시 force, 마퀴 데이터는 자동 polling 신뢰
   const handleRefresh = useCallback(async () => {
     setBondRefreshKey(k => k + 1);
+    setLastUpdatedAt(new Date());
   }, []);
+
+  // 시트 첫 진입 시 timestamp 기록
+  useEffect(() => {
+    if (open && !lastUpdatedAt) setLastUpdatedAt(new Date());
+  }, [open, lastUpdatedAt]);
 
   if (!open) return null;
 
@@ -133,7 +141,8 @@ export const MarketSheet = ({ open, items, onClose }: Props) => {
 
   return (
     <SheetLayout open={open} title="시장지표" onClose={onClose}
-      onRefresh={safeTab === 'bond' ? handleRefresh : undefined}
+      onRefresh={handleRefresh}
+      lastUpdatedAt={lastUpdatedAt}
       noNavBorder>
       {availableTabs.length > 1 && (
         <Tabs id="market" items={availableTabs} value={safeTab} onChange={setTab} variant="underline" itemAlign="center" />

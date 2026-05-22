@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { interaction } from '@/shared/styles/tokens';
 
 /**
  * 수평 스크롤 가능 영역의 좌우 화살표 상태를 관리하는 hook.
@@ -36,7 +37,6 @@ export const useHorizontalScroll = (deps: React.DependencyList = []) => {
       }
     };
 
-    const DRAG_THRESHOLD = 5;
     let isDown = false, startX = 0, baseScrollLeft = 0, dragged = false;
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -47,7 +47,7 @@ export const useHorizontalScroll = (deps: React.DependencyList = []) => {
     const onMove = (e: MouseEvent) => {
       if (!isDown) return;
       const dx = e.pageX - startX;
-      if (!dragged && Math.abs(dx) > DRAG_THRESHOLD) {
+      if (!dragged && Math.abs(dx) > interaction.dragThreshold) {
         dragged = true;
         el.style.cursor = 'grabbing';
       }
@@ -96,7 +96,7 @@ export const useHorizontalScroll = (deps: React.DependencyList = []) => {
     if (!el) return;
     // 보이는 영역의 80%만큼 이동 — 맥락 유지를 위해 20% 겹침
     el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
-    setTimeout(checkScroll, 350);
+    setTimeout(checkScroll, interaction.smoothScrollMs);
   }, [checkScroll]);
 
   return { scrollRef, canScrollL, canScrollR, scroll };

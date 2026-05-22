@@ -13,6 +13,19 @@ export const fmtNum = (n: number, currency: string): string =>
 export const fmtTime = (d: Date | null): string =>
   d ? d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '--';
 
+/** 'YYYY-MM-DD HH:MM:SS' 등 Date → 상대 시간 ("방금 전", "5분 전", "2시간 전", "어제") */
+export const fmtRelativeTime = (d: Date | null): string => {
+  if (!d) return '갱신 전';
+  const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (sec < 30) return '방금 전';
+  if (sec < 60) return `${sec}초 전`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}분 전`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour}시간 전`;
+  return `${Math.floor(hour / 24)}일 전`;
+};
+
 // === 국가 뱃지 색상 ===
 // KR은 다크/라이트 accent 색이 달라서 hex 고정하면 다크 모드에서 본문 accent와 불일치.
 // → accent 토큰(sem.action.primary/primaryTint)으로 매핑해 모드별 자동 분기.
