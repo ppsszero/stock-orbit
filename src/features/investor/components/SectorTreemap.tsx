@@ -60,6 +60,9 @@ export const SectorTreemap = memo(({ sectors, onSelect }: Props) => {
                             : (t.w >= 80 || t.h >= 60)  ? 'sm'
                             : 'xs';
         const rate = t.data.changeRate;
+        // flat 타일은 bg.elevated(라이트모드에선 거의 흰색) 위라 heatmap.text(흰) 묻힘.
+        // StockTile flatHeadingText 패턴과 동일하게 dark text로 override.
+        const isFlat = Math.abs(rate) < 0.01;
         const rateColor = rate > 0 ? sem.feedback.up : rate < 0 ? sem.feedback.down : sem.feedback.flat;
         const tipContent = (
           <>
@@ -86,8 +89,8 @@ export const SectorTreemap = memo(({ sectors, onSelect }: Props) => {
                 width: Math.max(0, t.w - PADDING * 2), height: Math.max(0, t.h - PADDING * 2),
                 background: bg,
               }}>
-              <span css={s.name(sz)}>{t.data.name}</span>
-              {sz !== 'xs' && <span css={s.rate(sz)}>{fmtChange(t.data.changeRate)}</span>}
+              <span css={[s.name(sz), isFlat && s.flatText]}>{t.data.name}</span>
+              {sz !== 'xs' && <span css={[s.rate(sz), isFlat && s.flatTextMuted]}>{fmtChange(t.data.changeRate)}</span>}
             </button>
           </Tooltip>
         );
@@ -131,6 +134,9 @@ const s = {
     color: ${sem.heatmap.text};
     opacity: 0.95;
   `,
+  /* flat 타일(bg.elevated 위)에선 흰 heatmap.text가 묻혀서 안 보임 — dark text로 override */
+  flatText: css`color: ${sem.text.primary};`,
+  flatTextMuted: css`color: ${sem.text.secondary};`,
   tipTitle: css`
     font-weight: ${fontWeight.bold};
     font-variant-numeric: tabular-nums;
