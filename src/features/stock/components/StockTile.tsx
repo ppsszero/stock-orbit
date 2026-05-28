@@ -1,8 +1,8 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { useMemo, memo, useCallback, useRef, useState, useEffect } from 'react';
-import { FiInfo, FiEdit2 } from 'react-icons/fi';
-import { LoadingCenter, Menu, ListHeader } from '@/shared/ui';
+import { useMemo, memo, useCallback, useState } from 'react';
+import { FiInfo, FiTrash2 } from 'react-icons/fi';
+import { LoadingCenter, Menu, ListHeader, ReorderIcon } from '@/shared/ui';
 import { useStore } from '@/app/store';
 import { EditSymbolsSheet } from '@/features/preset';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
@@ -10,11 +10,13 @@ import { sem } from '@/shared/styles/semantic';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { priceFlash } from '@/shared/styles/sharedStyles';
 import { usePriceFlash } from '../hooks/usePriceFlash';
-import { fmtNum, fmtPercent, getDisplayName } from '@/shared/utils/format';
-import { calcDisplayPrice } from '../utils/currency';
+import { useSymbolRemove } from '../hooks/useSymbolRemove';
+import { fmtPercent } from '@/shared/utils/format';
+import { useStockViewModel } from '../hooks/useStockViewModel';
 import { useStockGroups, StockGroup } from '../hooks/useStockGroups';
 import { EmptyState } from './EmptyState';
 import { Tooltip } from '@/shared/ui/Tooltip';
+import { useIsTruncated } from '@/shared/hooks/useIsTruncated';
 
 interface Props {
   symbols: StockSymbol[];
@@ -58,26 +60,6 @@ const getTileColor = (dir: 'up' | 'down' | 'flat', pct: number): TileBg => {
   return scale[0];
 };
 
-/** 이름 텍스트가 ellipsis 상태인지 감지 — 크기 변경 + 텍스트 변경 모두 반응 */
-const useIsTruncated = (text: string) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [truncated, setTruncated] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // 1프레임 대기 — Emotion CSS 적용 후 측정
-    const raf = requestAnimationFrame(() => {
-      setTruncated(el.scrollWidth > el.clientWidth);
-    });
-    const ro = new ResizeObserver(() => {
-      setTruncated(el.scrollWidth > el.clientWidth);
-    });
-    ro.observe(el);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [text]);
-  return { ref, truncated };
-};
-
 /** 개별 타일 — 클릭 → 웹뷰, 호버 → 상세/삭제 버튼 */
 const Tile = memo(({
   sym, price: p, span, bg, currencyMode, usdkrw,
@@ -91,13 +73,11 @@ const Tile = memo(({
 }) => {
   const isLarge = span >= 3;
   const sizeKey = isLarge ? 'lg' : 'sm';
-  const displayName = p ? getDisplayName(p, sym) : sym.name;
-  const display = p ? calcDisplayPrice(p, currencyMode, usdkrw) : null;
-  const dir = p?.changeDirection || 'flat';
+  const vm = useStockViewModel(sym, p ?? undefined, currencyMode, usdkrw);
   const pct = p?.changePercent || 0;
-  const isFlat = dir === 'flat' || Math.abs(pct) < 0.01;
-  const { ref: nameRef, truncated } = useIsTruncated(displayName);
-  const flash = usePriceFlash(p, dir);
+  const isFlat = vm.direction === 'flat' || Math.abs(pct) < 0.01;
+  const { ref: nameRef, truncated } = useIsTruncated(vm.displayName);
+  const flash = usePriceFlash(p, vm.direction);
 
   const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -118,10 +98,24 @@ const Tile = memo(({
     setEditOpen(true);
   }, []);
   const closeEdit = useCallback(() => setEditOpen(false), []);
+
+  // 우클릭 메뉴 "삭제" — confirm dialog + toast + ViewTransition 자동 처리
+  const handleRemove = useSymbolRemove(sym, vm.displayName, onRemove, { withTransition: true });
+
   // 우클릭한 타일의 종목이 실제로 속한 그룹 우선 (전체 탭에서 activeId='__all__' 매칭 실패 사고 방지)
   const editPreset = presets.find(p => p.symbols.some(s => s.code === sym.code))
     ?? presets.find(p => p.id === activeId)
     ?? presets[0];
+
+  // 툴팁 — 종목명 + 등락 (리스트뷰와 동일 포맷, vm.changeLabel 재사용). 등락 라인은 방향별 컬러.
+  const tooltipContent: React.ReactNode = vm.hasPrice
+    ? (
+      <>
+        <div>{vm.displayName}</div>
+        <div css={s.tipChange[vm.direction]}>{vm.changeLabel}</div>
+      </>
+    )
+    : (truncated ? vm.displayName : '');
 
   const tile = (
     <div
@@ -133,11 +127,11 @@ const Tile = memo(({
       onClick={() => onClick(sym)}
       onContextMenu={handleContextMenu}
     >
-      <span ref={nameRef} css={[s.name[sizeKey], isFlat && s.flatHeadingText]}>{displayName}</span>
-      {display ? (
+      <span ref={nameRef} css={[s.name[sizeKey], isFlat && s.flatHeadingText]}>{vm.displayName}</span>
+      {vm.hasPrice ? (
         <>
-          <span css={[s.pct[sizeKey], isFlat && s.flatHeadingText, flash && priceFlash[flash]]}>{fmtPercent(dir, pct)}</span>
-          <span css={[s.price[sizeKey], isFlat && s.flatPriceText, flash && priceFlash[flash]]}>{display.prefix}{fmtNum(display.price, display.currency)}</span>
+          <span css={[s.pct[sizeKey], isFlat && s.flatHeadingText, flash && priceFlash[flash]]}>{fmtPercent(vm.direction, pct)}</span>
+          <span css={[s.price[sizeKey], isFlat && s.flatPriceText, flash && priceFlash[flash]]}>{vm.priceLabel}</span>
         </>
       ) : (
         <span css={s.dots}>···</span>
@@ -147,7 +141,7 @@ const Tile = memo(({
 
   return (
     <>
-      <Tooltip content={truncated ? displayName : ''} position="top" delay={300}>
+      <Tooltip content={tooltipContent} position="top" delay={300}>
         {tile}
       </Tooltip>
       <Menu open={!!ctxPos}
@@ -158,8 +152,12 @@ const Tile = memo(({
             상세 정보 보기
           </Menu.Item>
         )}
-        <Menu.Item icon={<FiEdit2 size={13} />} onClick={openEdit}>
+        <Menu.Item icon={<ReorderIcon size={13} />} onClick={openEdit}>
           편집
+        </Menu.Item>
+        <Menu.Item icon={<FiTrash2 size={13} />} variant="danger"
+          onClick={() => { handleRemove(); closeCtx(); }}>
+          삭제
         </Menu.Item>
       </Menu>
 
@@ -273,4 +271,10 @@ const s = {
   // flat 타일 전용 텍스트 — bg.elevated 위에서 가독성 확보 (라이트: 다크 텍스트, 다크: 라이트 텍스트)
   flatHeadingText: css`color: ${sem.text.primary}; text-shadow: none;`,
   flatPriceText: css`color: ${sem.text.secondary}; text-shadow: none;`,
+  // 툴팁 내 등락 라인 컬러 — 리스트/그리드의 등락 텍스트와 동일한 sem.feedback 토큰 (makeDirectionalChange와 일치)
+  tipChange: {
+    up:   css`color: ${sem.feedback.up};   font-variant-numeric: tabular-nums;`,
+    down: css`color: ${sem.feedback.down}; font-variant-numeric: tabular-nums;`,
+    flat: css`color: ${sem.feedback.flat}; font-variant-numeric: tabular-nums;`,
+  } as Record<'up' | 'down' | 'flat', ReturnType<typeof css>>,
 };

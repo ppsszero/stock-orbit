@@ -5,7 +5,7 @@ import {
   MarketBriefing, NewsArticle, MoneyStory,
   NewsCategory, ResearchCategory, ResearchItem,
 } from '@/shared/naver';
-import { cached } from '@/shared/utils/cache';
+import { cachedWithStatus } from '@/shared/utils/cache';
 import { withMinSpin } from '@/shared/utils/withMinSpin';
 
 const PAGE_SIZE = 50;
@@ -24,6 +24,9 @@ export const useNewsData = (open: boolean) => {
   const [newsByCat, setNewsByCat] = useState<Partial<Record<NewsCategory, NewsArticle[]>>>({});
   const [researchByCat, setResearchByCat] = useState<Partial<Record<ResearchCategory, ResearchItem[]>>>({});
   const [loading, setLoading] = useState(false);
+  // 실제로 fetch가 일어난 마지막 시각. cache 히트만 발생한 reopen에선 갱신 X →
+  // SheetLayout 새로고침 버튼 툴팁의 "X분 전 갱신" 표시를 자동 갱신과 동기화.
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   // lazy ensure 안에서 최신 값 참조 — useCallback deps 회피
   const newsByCatRef = useRef(newsByCat);
@@ -37,19 +40,22 @@ export const useNewsData = (open: boolean) => {
   const loadInitial = useCallback(async (forceRefresh = false): Promise<boolean> => {
     setLoading(true);
     const fetchAll = () => Promise.all([
-      cached('news-briefing', fetchMarketBriefing, CACHE_TTL, forceRefresh),
-      cached('news-story', () => fetchMoneyStory(PAGE_SIZE), CACHE_TTL, forceRefresh),
-      cached('news-cat-flashnews', () => fetchNewsByCategory('flashnews', PAGE_SIZE), CACHE_TTL, forceRefresh),
-      cached('research-cat-daily', () => fetchResearchByCategory('daily', PAGE_SIZE), CACHE_TTL, forceRefresh),
+      cachedWithStatus('news-briefing', fetchMarketBriefing, CACHE_TTL, forceRefresh),
+      cachedWithStatus('news-story', () => fetchMoneyStory(PAGE_SIZE), CACHE_TTL, forceRefresh),
+      cachedWithStatus('news-cat-flashnews', () => fetchNewsByCategory('flashnews', PAGE_SIZE), CACHE_TTL, forceRefresh),
+      cachedWithStatus('research-cat-daily', () => fetchResearchByCategory('daily', PAGE_SIZE), CACHE_TTL, forceRefresh),
     ]);
     const [b, s, flash, daily] = forceRefresh ? await withMinSpin(fetchAll) : await fetchAll();
     if (!activeRef.current) { setLoading(false); return false; }
-    setBriefing(b);
-    setStories(s);
-    setNewsByCat({ flashnews: flash });
-    setResearchByCat({ daily });
+    setBriefing(b.data);
+    setStories(s.data);
+    setNewsByCat({ flashnews: flash.data });
+    setResearchByCat({ daily: daily.data });
+    // 4개 중 하나라도 fresh fetch였으면 timestamp 갱신 (자동 새로고침과 툴팁 동기화)
+    const anyFresh = !b.fromCache || !s.fromCache || !flash.fromCache || !daily.fromCache;
+    if (anyFresh) setLastUpdatedAt(new Date());
     setLoading(false);
-    return !!(b || s.length > 0 || flash.length > 0 || daily.length > 0);
+    return !!(b.data || s.data.length > 0 || flash.data.length > 0 || daily.data.length > 0);
   }, []);
 
   // 빈 배열은 가드 통과하도록 — fetch 실패(timeout/network)로 빈 결과면 다음 탭 진입 시 재시도
@@ -87,5 +93,6 @@ export const useNewsData = (open: boolean) => {
     loading,
     ensureNews, ensureResearch,
     refresh: refreshAll,
+    lastUpdatedAt,
   };
 };

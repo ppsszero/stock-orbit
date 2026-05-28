@@ -1,13 +1,15 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useState, useCallback, memo } from 'react';
-import { FiInfo, FiEdit2 } from 'react-icons/fi';
+import { FiInfo, FiTrash2 } from 'react-icons/fi';
 import { useStore } from '@/app/store';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { spacing, fontSize, fontWeight, sp } from '@/shared/styles/tokens';
 import { useStockViewModel } from '../hooks/useStockViewModel';
 import { usePriceFlash } from '../hooks/usePriceFlash';
-import { Badge, StatusDot, StockLogo, Menu } from '@/shared/ui';
+import { useSymbolRemove } from '../hooks/useSymbolRemove';
+import { useIsTruncated } from '@/shared/hooks/useIsTruncated';
+import { Badge, StatusDot, StockLogo, Menu, ReorderIcon, Tooltip } from '@/shared/ui';
 import { EditSymbolsSheet } from '@/features/preset';
 import { CATEGORY_BADGE } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
@@ -25,7 +27,7 @@ interface Props {
 
 export const StockRow = memo(({
   sym, price: p, currencyMode, usdkrw,
-  onClick, onDetail,
+  onRemove, onClick, onDetail,
 }: Props) => {
   const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -56,6 +58,12 @@ export const StockRow = memo(({
   // 안정 참조 — inline 함수면 매 렌더마다 새 ref가 되어 useBackAction 스택이 reshuffle됨
   const closeEdit = useCallback(() => setEditOpen(false), []);
 
+  // 우클릭 메뉴 "삭제" — confirm dialog + toast 자동 처리
+  const handleRemove = useSymbolRemove(sym, vm.displayName, onRemove);
+
+  // 이름 ellipsis 시에만 Tooltip 표시
+  const { ref: nameRef, truncated } = useIsTruncated(vm.displayName);
+
   // 편집 시트는 우클릭한 종목이 실제로 속한 그룹을 편집.
   // 전체 탭에서 우클릭하면 activeId가 '__all__'이라 그룹 매칭이 안 돼 첫 그룹으로 가는 버그 방지.
   const editPreset = presets.find(p => p.symbols.some(s => s.code === sym.code))
@@ -80,7 +88,9 @@ export const StockRow = memo(({
 
       <div css={s.left}>
         <div css={s.nameRow}>
-          <span css={s.name}>{vm.displayName}</span>
+          <Tooltip content={truncated ? vm.displayName : ''} position="top" delay={300}>
+            <span ref={nameRef} css={s.name}>{vm.displayName}</span>
+          </Tooltip>
           <div css={s.badges}>
             {vm.nation !== 'INT' && <Badge bg={vm.badge.bg} fg={vm.badge.fg}>{vm.nation}</Badge>}
             {(() => {
@@ -121,8 +131,12 @@ export const StockRow = memo(({
             상세 정보 보기
           </Menu.Item>
         )}
-        <Menu.Item icon={<FiEdit2 size={13} />} onClick={openEdit}>
+        <Menu.Item icon={<ReorderIcon size={13} />} onClick={openEdit}>
           편집
+        </Menu.Item>
+        <Menu.Item icon={<FiTrash2 size={13} />} variant="danger"
+          onClick={() => { handleRemove(); closeCtx(); }}>
+          삭제
         </Menu.Item>
       </Menu>
 

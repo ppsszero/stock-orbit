@@ -146,5 +146,8 @@ const s = {
   app: css`
     height: 100vh; display: flex; flex-direction: column;
     background: ${sem.bg.base}; border-radius: ${radius['2xl']}px; overflow: hidden;
+    /* OfflineBanner가 portal-fixed로 최상단에 뜨므로 그 높이만큼 컨텐츠를 밀어내림.
+       online 상태면 변수가 0이라 영향 없음. */
+    padding-top: var(--offline-banner-h, 0);
   `,
 };

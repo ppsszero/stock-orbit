@@ -19,8 +19,8 @@ export const sem = {
     default: v.border,          // 일반 테두리 (input, card, 구분선)
     faint:   v.borderFaint,     // 15% — 가장 얇은 구분선 (StockRow)
     subtle:  v.borderSubtle,    // 20% — 일반 리스트 구분선
-    strong:  v.borderStrong,    // 30% — 강한 구분선 (GridCard border, divider)
-    muted:   v.borderMuted,    // 팝오버/드롭다운 내부 구분선
+    strong:  v.borderStrong,    // 30% — 강한 구분선 (divider)
+    muted:   v.borderMuted,    // 팝오버/드롭다운 내부 구분선, GridCard 외곽 테두리
     focus:   v.accent,          // 포커스 링
     accent:  v.accentBorder,    // accent 20% — 강조 카드 테두리
   },

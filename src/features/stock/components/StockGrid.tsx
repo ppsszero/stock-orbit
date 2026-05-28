@@ -60,7 +60,7 @@ export const StockGrid = memo(({
 const s = {
   wrap: css`flex: 1; overflow-y: auto; overflow-x: hidden;`,
   grid: css`
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: ${spacing.md}px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: ${spacing.sm}px;
     padding: 0 ${spacing.xl}px ${spacing.md}px;
   `,
 };

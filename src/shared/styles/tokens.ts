@@ -116,6 +116,7 @@ export const zIndex = {
   overlay: 500,
   sheet: 550,
   modal: 600,
+  banner: 650,    // 시스템 알림 배너 (오프라인 등) — sheet/modal 위, toast/tooltip 아래
   toast: 700,
   tooltip: 800,
 } as const;

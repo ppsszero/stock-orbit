@@ -25,3 +25,4 @@ export { TimelineRow } from './TimelineRow';
 export { SortButton } from './SortButton';
 export { ListHeader } from './ListHeader';
 export { CheckCircle } from './CheckCircle';
+export { ReorderIcon } from './ReorderIcon';

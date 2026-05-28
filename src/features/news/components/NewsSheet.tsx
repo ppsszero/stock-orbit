@@ -63,7 +63,6 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   const [mainTab, setMainTab] = useState<MainTab>('briefing');
   const [newsSub, setNewsSub] = useState<NewsCategory>('flashnews');
   const [researchSub, setResearchSub] = useState<ResearchCategory>('daily');
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
   const {
@@ -71,6 +70,7 @@ export const NewsSheet = ({ open, onClose }: Props) => {
     loading,
     ensureNews, ensureResearch,
     refresh,
+    lastUpdatedAt,
   } = useNewsData(open);
 
   // 활성 서브탭 데이터 보장 (초기 fetch에 포함 안 된 카테고리는 lazy load)
@@ -84,17 +84,11 @@ export const NewsSheet = ({ open, onClose }: Props) => {
   const newsSubLabel = NEWS_SUBS.find(t => t.key === newsSub)?.label || '';
   const researchSubLabel = RESEARCH_SUBS.find(t => t.key === researchSub)?.label || '';
 
-  // 시트 단위 통합 새로고침 — 모든 탭 데이터 일괄 갱신
+  // 시트 단위 통합 새로고침 — 모든 탭 데이터 일괄 갱신 (timestamp는 hook 내부 fresh fetch 감지로 자동)
   const handleRefresh = useCallback(async () => {
     const ok = await refresh();
-    if (ok) setLastUpdatedAt(new Date());
     toast.refreshResult(ok, '뉴스');
   }, [refresh, toast]);
-
-  // 시트 첫 진입 시 timestamp 기록 (loadInitial 완료 시점)
-  useEffect(() => {
-    if (open && !loading && !lastUpdatedAt) setLastUpdatedAt(new Date());
-  }, [open, loading, lastUpdatedAt]);
 
   if (!open) return null;
 

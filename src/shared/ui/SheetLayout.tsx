@@ -94,7 +94,9 @@ export const SheetLayout = ({
 const s = {
   overlay: (z: number) => css`
     position: fixed;
-    inset: 0;
+    /* OfflineBanner가 portal-fixed로 최상단에 뜨므로 그 높이만큼 시트도 밀어내림.
+       online 상태면 변수가 0이라 영향 없음. */
+    inset: var(--offline-banner-h, 0) 0 0 0;
     z-index: ${z};
     display: flex;
     flex-direction: column;

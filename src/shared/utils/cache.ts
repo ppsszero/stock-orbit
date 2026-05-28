@@ -19,3 +19,22 @@ export const cached = async <T>(
   store.set(key, { data, expireAt: Date.now() + ttlMs });
   return data;
 };
+
+/**
+ * `cached`의 status-aware 버전 — fromCache 플래그로 실제 fetch 여부 노출.
+ * lastUpdatedAt 갱신 같이 "fresh fetch가 일어났을 때만" 트리거할 액션이 있을 때 사용.
+ */
+export const cachedWithStatus = async <T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlMs: number,
+  forceRefresh = false,
+): Promise<{ data: T; fromCache: boolean }> => {
+  if (!forceRefresh) {
+    const entry = store.get(key);
+    if (entry && Date.now() < entry.expireAt) return { data: entry.data as T, fromCache: true };
+  }
+  const data = await fetcher();
+  store.set(key, { data, expireAt: Date.now() + ttlMs });
+  return { data, fromCache: false };
+};
