@@ -108,10 +108,11 @@ const Tile = memo(({
     ?? presets[0];
 
   // 툴팁 — 종목명 + 등락 (리스트뷰와 동일 포맷, vm.changeLabel 재사용). 등락 라인은 방향별 컬러.
+  // 줄 간격은 증시현황(SectorTreemap) 툴팁과 동일하게 spacing.sm 적용.
   const tooltipContent: React.ReactNode = vm.hasPrice
     ? (
       <>
-        <div>{vm.displayName}</div>
+        <div css={s.tipTitle}>{vm.displayName}</div>
         <div css={s.tipChange[vm.direction]}>{vm.changeLabel}</div>
       </>
     )
@@ -271,6 +272,8 @@ const s = {
   // flat 타일 전용 텍스트 — bg.elevated 위에서 가독성 확보 (라이트: 다크 텍스트, 다크: 라이트 텍스트)
   flatHeadingText: css`color: ${sem.text.primary}; text-shadow: none;`,
   flatPriceText: css`color: ${sem.text.secondary}; text-shadow: none;`,
+  // 툴팁 종목명 라인 — SectorTreemap.tipTitle과 동일한 줄 간격(spacing.sm)
+  tipTitle: css`margin-bottom: ${spacing.sm}px;`,
   // 툴팁 내 등락 라인 컬러 — 리스트/그리드의 등락 텍스트와 동일한 sem.feedback 토큰 (makeDirectionalChange와 일치)
   tipChange: {
     up:   css`color: ${sem.feedback.up};   font-variant-numeric: tabular-nums;`,
