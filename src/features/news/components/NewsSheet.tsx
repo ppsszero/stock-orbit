@@ -73,13 +73,14 @@ export const NewsSheet = ({ open, onClose }: Props) => {
     lastUpdatedAt,
   } = useNewsData(open);
 
-  // 활성 서브탭 데이터 보장 (초기 fetch에 포함 안 된 카테고리는 lazy load)
+  // 활성 서브탭 데이터 보장 — `open` deps 포함해야 시트 reopen 시에도 재발화.
+  // ensureXXX는 내부에서 cachedWithStatus를 거치므로 TTL 안이면 즉시 캐시 반환, 만료면 fresh fetch.
   useEffect(() => {
-    if (mainTab === 'news') ensureNews(newsSub);
-  }, [mainTab, newsSub, ensureNews]);
+    if (open && mainTab === 'news') ensureNews(newsSub);
+  }, [open, mainTab, newsSub, ensureNews]);
   useEffect(() => {
-    if (mainTab === 'research') ensureResearch(researchSub);
-  }, [mainTab, researchSub, ensureResearch]);
+    if (open && mainTab === 'research') ensureResearch(researchSub);
+  }, [open, mainTab, researchSub, ensureResearch]);
 
   const newsSubLabel = NEWS_SUBS.find(t => t.key === newsSub)?.label || '';
   const researchSubLabel = RESEARCH_SUBS.find(t => t.key === researchSub)?.label || '';

@@ -38,3 +38,14 @@ export const cachedWithStatus = async <T>(
   store.set(key, { data, expireAt: Date.now() + ttlMs });
   return { data, fromCache: false };
 };
+
+/**
+ * 특정 prefix로 시작하는 모든 캐시 키 무효화.
+ * 수동 새로고침 시 같은 도메인의 lazy 로드 캐시 일괄 invalidate에 사용.
+ * 예: `invalidateByPrefix('news-cat-')` → news-cat-flashnews / ranknews / ... 다 제거
+ */
+export const invalidateByPrefix = (prefix: string): void => {
+  for (const key of store.keys()) {
+    if (key.startsWith(prefix)) store.delete(key);
+  }
+};
