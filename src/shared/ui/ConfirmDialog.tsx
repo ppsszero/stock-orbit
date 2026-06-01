@@ -71,12 +71,16 @@ const ConfirmModal = ({ state, onResult }: {
         <div css={s.body} role="alertdialog">
           {opts && <div css={s.title}>{opts.title}</div>}
           {opts?.message && <div css={s.message}>{opts.message}</div>}
+          {/* 단일 버튼도 Modal.Actions로 감싸야 본문과의 margin-top(2xl)이 일관 적용됨.
+              직접 Modal.CTA를 두면 본문에 붙어 보이는 사고. */}
           {opts?.hideCancel ? (
-            <Modal.CTA ref={confirmBtnRef}
-              variant={opts.danger ? 'danger' : 'primary'}
-              onClick={() => onResult(true)}>
-              {opts.confirmText || '확인'}
-            </Modal.CTA>
+            <Modal.Actions>
+              <Modal.CTA ref={confirmBtnRef}
+                variant={opts.danger ? 'danger' : 'primary'}
+                onClick={() => onResult(true)}>
+                {opts.confirmText || '확인'}
+              </Modal.CTA>
+            </Modal.Actions>
           ) : (
             <Modal.Actions>
               <Modal.CTA variant="secondary" onClick={() => onResult(false)}>

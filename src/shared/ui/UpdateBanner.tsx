@@ -17,6 +17,18 @@ interface State {
   isReDownload?: boolean;
 }
 
+const SKIP_VERSION_KEY = 'orbit-skipped-update-version';
+
+const getSkippedVersion = (): string | null => {
+  try { return localStorage.getItem(SKIP_VERSION_KEY); }
+  catch { return null; }
+};
+
+const setSkippedVersion = (v: string) => {
+  try { localStorage.setItem(SKIP_VERSION_KEY, v); }
+  catch { /* ignore */ }
+};
+
 /**
  * 자동 업데이트 in-app UI — 공통 Modal 컴포넌트 사용 (X 버튼 X, 하단 CTA로 일관).
  *
@@ -39,7 +51,11 @@ export const UpdateBanner = () => {
 
     if (api?.onUpdateAvailable) {
       const off1 = api.onUpdateAvailable((info) => {
-        setState({ phase: 'available', version: info.version, dismissed: false });
+        // skip 체크 — 다운로드 단계부터 이미 dismiss된 상태로 시작, "다운로드 중" 깜빡임 방지.
+        // manual=true (트레이/설정 명시 호출)일 땐 skip 우회.
+        const skipped = getSkippedVersion();
+        const shouldDismiss = !info.manual && skipped === info.version;
+        setState({ phase: 'available', version: info.version, dismissed: shouldDismiss });
       });
       const off2 = api.onUpdateProgress((info) => {
         setState(prev => {
@@ -54,7 +70,16 @@ export const UpdateBanner = () => {
         });
       });
       const off3 = api.onUpdateDownloaded((info) => {
-        setState({ phase: 'ready', version: info.version, percent: 100, dismissed: false });
+        // 사용자가 "이 버전 건너뛰기"로 처리한 버전이면 처음부터 dismissed=true (모달 안 뜸).
+        // 단, manual=true(트레이/설정의 명시적 "업데이트 확인")일 땐 skip 우회 — 무조건 표시.
+        const skipped = getSkippedVersion();
+        const shouldDismiss = !info.manual && skipped === info.version;
+        setState({
+          phase: 'ready',
+          version: info.version,
+          percent: 100,
+          dismissed: shouldDismiss,
+        });
       });
       const off4 = api.onUpdateNotAvailable?.(() => {
         setState({ phase: 'up-to-date', dismissed: false });
@@ -104,12 +129,19 @@ export const UpdateBanner = () => {
 
   const handleInstall = useCallback(() => {
     setState(prev => ({ ...prev, phase: 'installing' }));
-    window.electronAPI?.quitAndInstall();
+    // 800ms 지연 — "재시작하는 중" 모달이 사용자 눈에 확실히 들어오게 한 뒤 quit.
+    // 안 그러면 클릭 직후 앱이 즉시 죽어 검은 갭만 보임.
+    setTimeout(() => window.electronAPI?.quitAndInstall(), 800);
   }, []);
 
   const handleDismiss = useCallback(() => {
     setState(prev => ({ ...prev, dismissed: true }));
   }, []);
+
+  const handleSkipVersion = useCallback(() => {
+    if (state.version) setSkippedVersion(state.version);
+    setState(prev => ({ ...prev, dismissed: true }));
+  }, [state.version]);
 
   const open = state.phase !== 'idle' && !state.dismissed;
 
@@ -120,6 +152,11 @@ export const UpdateBanner = () => {
         <div css={s.body}>
           <PhaseContent state={state} />
           <PhaseActions state={state} onDismiss={handleDismiss} onInstall={handleInstall} />
+          {state.phase === 'ready' && (
+            <button type="button" css={s.skipLink} onClick={handleSkipVersion}>
+              이 버전 건너뛰기
+            </button>
+          )}
         </div>
       </Modal.Content>
     </Modal>
@@ -255,5 +292,19 @@ const s = {
   progressFill: css`
     height: 100%; background: ${sem.action.primary};
     transition: width ${transition.fast} ease-out;
+  `,
+  // "이 버전 건너뛰기" — 메인 CTA 2개 아래 텍스트 링크. 위계 낮게 (tertiary).
+  skipLink: css`
+    background: transparent; border: none;
+    color: ${sem.text.tertiary};
+    font-size: ${fontSize.sm}px; font-family: inherit; font-weight: ${fontWeight.medium};
+    cursor: pointer;
+    margin: ${spacing.lg}px auto 0;
+    padding: ${spacing.sm}px ${spacing.md}px;
+    text-decoration: underline;
+    text-decoration-color: ${sem.border.muted};
+    text-underline-offset: 3px;
+    transition: color ${transition.fast};
+    &:hover { color: ${sem.text.secondary}; }
   `,
 };

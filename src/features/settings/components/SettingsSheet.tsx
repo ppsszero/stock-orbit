@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiRotateCcw, FiTerminal, FiBell, FiCopy, FiFolder } from 'react-icons/fi';
+import { FiRotateCcw, FiTerminal, FiBell, FiCopy, FiFolder, FiDownload } from 'react-icons/fi';
 import { AppSettings } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/app/store';
 import { spacing, fontSize, fontWeight, radius, height, transition } from '@/shared/styles/tokens';
@@ -95,6 +95,22 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
   const [logOpen, setLogOpen] = useState(false);
   const [appVersion, setAppVersion] = useState('');
   const [defaultScreenshotPath, setDefaultScreenshotPath] = useState('');
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  // "업데이트 확인" 클릭 → modal 뜨기 전까지 시각 피드백.
+  // checkForUpdates IPC 호출 + 최소 500ms 유지 (너무 빨리 사라져서 깜빡이는 거 방지).
+  const handleCheckUpdate = useCallback(async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    try {
+      await Promise.all([
+        window.electronAPI?.checkForUpdates(),
+        new Promise(r => setTimeout(r, 500)),
+      ]);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }, [checkingUpdate]);
 
   const handleShortcutChange = useCallback((shortcut: string) => {
     onUpdate({ screenshot: { ...settings.screenshot, shortcut } });
@@ -141,6 +157,9 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         </SettingRow>
         <SettingRow label="항상 맨 위에 고정">
           <Toggle checked={settings.alwaysOnTop} onChange={v => onUpdate({ alwaysOnTop: v })} />
+        </SettingRow>
+        <SettingRow label="업데이트 알림 받기">
+          <Toggle checked={settings.autoUpdateNotify} onChange={v => onUpdate({ autoUpdateNotify: v })} />
         </SettingRow>
         <SettingRow label="국내 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalDomestic}
@@ -220,6 +239,11 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         <SettingRow label="앱 버전">
           <span css={s.infoText}>v{appVersion || '...'}</span>
         </SettingRow>
+        <SettingRow label="업데이트 확인">
+          <button css={s.logBtn} onClick={handleCheckUpdate} disabled={checkingUpdate}>
+            <FiDownload size={12} /> {checkingUpdate ? '확인 중...' : '확인'}
+          </button>
+        </SettingRow>
         <SettingRow label="공지사항">
           <button css={s.logBtn} onClick={handleNoticeOpen}>
             <FiBell size={12} /> 더보기
@@ -263,7 +287,7 @@ const Section = ({ children }: { children: React.ReactNode }) => (
 );
 const sectionMargin = css`
   margin-top: ${spacing.lg}px;
-  &:first-child { margin-top: 0; }
+  &:first-of-type { margin-top: 0; }
 `;
 
 /** 라벨 + 컨트롤 행 — ListHeader (title + right) 패턴을 그대로 차용 */

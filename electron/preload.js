@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 자동 업데이트
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+  setUpdateNotify: (value) => ipcRenderer.send('set-update-notify', value),
   // NOTE: 각 listener는 cleanup 함수를 반환. useEffect에서 반드시 호출해 주세요.
   onUpdateAvailable: (cb) => {
     const handler = (_, v) => cb(v);

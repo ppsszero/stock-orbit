@@ -167,6 +167,6 @@ const s = {
   },
   actions: css`
     display: flex; gap: ${spacing.md}px;
-    margin-top: ${spacing['2xl']}px;
+    margin-top: ${spacing['xl']}px;
   `,
 };

@@ -36,6 +36,11 @@ export const useSyncElectron = () => {
     window.electronAPI?.setAutoLaunch(settings.autoLaunch);
   }, [settings.autoLaunch]);
 
+  // 자동 업데이트 알림 노출 여부 — main이 업데이트 이벤트 발화 시 이 플래그로 모달 전송 게이트
+  useEffect(() => {
+    window.electronAPI?.setUpdateNotify?.(settings.autoUpdateNotify);
+  }, [settings.autoUpdateNotify]);
+
   // 트레이에서 항상 위에 변경 시 동기화
   useEffect(() => {
     window.electronAPI?.onAlwaysOnTopChanged((value: boolean) => {

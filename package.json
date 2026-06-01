@@ -35,10 +35,11 @@
       "icon": "public/icon.png"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": true,
-      "deleteAppDataOnUninstall": true
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "deleteAppDataOnUninstall": false,
+      "include": "build/migration.nsh"
     },
     "publish": {
       "provider": "github",

@@ -7,6 +7,11 @@ let mainWindow = null;
 let tray = null;
 /** 수동 업데이트 체크 여부 — true일 때만 "최신 버전" / 에러 피드백을 렌더러에 전달 */
 let isManualUpdateCheck = false;
+/** 자동 업데이트 알림 모달 노출 여부 (renderer 설정과 sync). 끄면 자동 발화된 모달 차단,
+ *  단 트레이 "업데이트 확인" 같은 수동 액션은 항상 노출. 다운로드 자체는 계속 진행. */
+let autoUpdateNotifyEnabled = true;
+/** 자동 체크로 발견된 업데이트 상태 캐시 — mute 상태에서 트레이로 수동 확인 시 즉시 복원 */
+let pendingUpdate = null; // { phase: 'available' | 'downloading' | 'ready', version, percent? }
 
 const isDev = !app.isPackaged;
 
@@ -155,14 +160,29 @@ function buildTrayMenu(alwaysOnTop) {
         if (isDev) {
           // dev 모드: autoUpdater 없으므로 "최신 버전" 피드백 직접 전달
           withWindow(w => w.webContents.send('update-not-available', {}));
-        } else {
-          try {
-            isManualUpdateCheck = true;
-            autoUpdater.checkForUpdates();
-          } catch (err) {
-            isManualUpdateCheck = false;
-            withWindow(w => w.webContents.send('update-error', { message: String(err) }));
+          return;
+        }
+        // mute 상태에서 백그라운드로 이미 받아둔 업데이트가 있으면 즉시 surface.
+        // manual=true 플래그 — renderer 쪽에서 "이 버전 건너뛰기" skip 체크 우회 (사용자 명시 액션).
+        if (pendingUpdate) {
+          if (pendingUpdate.phase === 'ready') {
+            withWindow(w => w.webContents.send('update-downloaded', { version: pendingUpdate.version, manual: true }));
+            return;
           }
+          if (pendingUpdate.phase === 'downloading' || pendingUpdate.phase === 'available') {
+            withWindow(w => w.webContents.send('update-available', { version: pendingUpdate.version, manual: true }));
+            if (pendingUpdate.phase === 'downloading' && pendingUpdate.percent != null) {
+              withWindow(w => w.webContents.send('update-progress', { percent: pendingUpdate.percent }));
+            }
+            return;
+          }
+        }
+        try {
+          isManualUpdateCheck = true;
+          autoUpdater.checkForUpdates();
+        } catch (err) {
+          isManualUpdateCheck = false;
+          withWindow(w => w.webContents.send('update-error', { message: String(err) }));
         }
       },
     },
@@ -467,18 +487,47 @@ app.whenReady().then(() => {
   // === Auto Update (GitHub Releases) ===
   // 기본 Windows 알림 대신 in-app 배너로 UI 제공.
   // IPC 핸들러는 dev/prod 모두 등록해야 renderer가 안전하게 invoke 가능.
+  // 트레이 "업데이트 확인"과 동일 동작: pendingUpdate 있으면 즉시 manual=true로 surface,
+  // 없으면 autoUpdater 실제 체크.
   ipcMain.handle('check-for-updates', async () => {
-    if (isDev) return { success: false, error: 'dev mode' };
+    if (isDev) {
+      withWindow(w => w.webContents.send('update-not-available', {}));
+      return { success: false, error: 'dev mode' };
+    }
+    if (pendingUpdate) {
+      if (pendingUpdate.phase === 'ready') {
+        withWindow(w => w.webContents.send('update-downloaded', { version: pendingUpdate.version, manual: true }));
+        return { success: true, version: pendingUpdate.version };
+      }
+      if (pendingUpdate.phase === 'downloading' || pendingUpdate.phase === 'available') {
+        withWindow(w => w.webContents.send('update-available', { version: pendingUpdate.version, manual: true }));
+        if (pendingUpdate.phase === 'downloading' && pendingUpdate.percent != null) {
+          withWindow(w => w.webContents.send('update-progress', { percent: pendingUpdate.percent }));
+        }
+        return { success: true, version: pendingUpdate.version };
+      }
+    }
     try {
+      isManualUpdateCheck = true;
       const result = await autoUpdater.checkForUpdates();
       return { success: true, version: result?.updateInfo?.version };
     } catch (err) {
+      isManualUpdateCheck = false;
       return { success: false, error: err.message };
     }
   });
   ipcMain.handle('quit-and-install', () => {
     if (isDev) return;
+    // oneClick 모드는 isSilent=false여도 마법사 안 뜸 (oneClick은 wizard 자체가 없음).
+    // false로 두면 NSIS의 작은 진행바 창이 보여서 사용자가 "설치 진행 중" 인지 가능.
+    // true로 두면 /S 플래그 → 진행바도 안 떠서 검은 갭만 길어짐 (UX 손해).
+    // isForceRunAfter=true → 설치 후 자동 재실행.
     autoUpdater.quitAndInstall(false, true);
+  });
+
+  // renderer settings → autoUpdateNotifyEnabled sync
+  ipcMain.on('set-update-notify', (_, value) => {
+    autoUpdateNotifyEnabled = !!value;
   });
 
   if (!isDev) {
@@ -491,20 +540,29 @@ app.whenReady().then(() => {
       }
     };
 
+    // 자동 체크 + mute 상태면 모달 차단. 사용자가 트레이로 직접 확인하면 isManualUpdateCheck=true.
+    // 다운로드 자체는 항상 진행 (autoDownload=true) — mute는 UI만 막을 뿐.
+    const shouldNotify = () => isManualUpdateCheck || autoUpdateNotifyEnabled;
+
     autoUpdater.on('update-available', (info) => {
-      isManualUpdateCheck = false; // 업데이트 발견되면 수동/자동 무관하게 표시
-      send('update-available', { version: info.version });
+      pendingUpdate = { phase: 'available', version: info.version };
+      if (shouldNotify()) send('update-available', { version: info.version });
     });
     autoUpdater.on('download-progress', (p) => {
-      send('update-progress', {
-        percent: Math.round(p.percent || 0),
-        transferred: p.transferred,
-        total: p.total,
-        bytesPerSecond: p.bytesPerSecond,
-      });
+      const percent = Math.round(p.percent || 0);
+      pendingUpdate = { ...(pendingUpdate || {}), phase: 'downloading', percent };
+      if (shouldNotify()) {
+        send('update-progress', {
+          percent,
+          transferred: p.transferred,
+          total: p.total,
+          bytesPerSecond: p.bytesPerSecond,
+        });
+      }
     });
     autoUpdater.on('update-downloaded', (info) => {
-      send('update-downloaded', { version: info.version });
+      pendingUpdate = { phase: 'ready', version: info.version };
+      if (shouldNotify()) send('update-downloaded', { version: info.version });
     });
     autoUpdater.on('update-not-available', () => {
       // 수동 체크일 때만 "최신 버전" 피드백. 자동 체크는 조용히 넘김.
@@ -517,11 +575,14 @@ app.whenReady().then(() => {
       isManualUpdateCheck = false;
     });
 
-    // renderer가 IPC 리스너 붙은 뒤에 체크하도록 load 완료 후 실행
+    // renderer가 IPC 리스너 붙은 뒤에 체크하도록 load 완료 후 실행.
+    // 추가로 3초 지연 — renderer의 useSyncElectron useEffect가 autoUpdateNotify 값을 main에 보낼 시간 확보.
+    // 안 그러면 첫 check가 default(true) 상태에서 발동되어 mute 설정이 무시될 수 있음.
+    const startInitialCheck = () => setTimeout(() => autoUpdater.checkForUpdates(), 3000);
     if (mainWindow.webContents.isLoading()) {
-      mainWindow.webContents.once('did-finish-load', () => autoUpdater.checkForUpdates());
+      mainWindow.webContents.once('did-finish-load', startInitialCheck);
     } else {
-      autoUpdater.checkForUpdates();
+      startInitialCheck();
     }
 
     // 6시간 간격 자동 체크 — 트레이 상주 상태에서도 업데이트를 놓치지 않도록.

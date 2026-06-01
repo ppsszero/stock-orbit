@@ -43,6 +43,11 @@ export interface AppSettings {
   fontSize: 'small' | 'medium' | 'large' | 'xlarge';
   autoCleanLogs: boolean;
   autoLaunch: boolean;
+  /**
+   * 자동 업데이트 알림 표시 여부. 끄면 백그라운드 다운로드는 계속되지만 모달이 안 뜸.
+   * 트레이의 "업데이트 확인"은 이 설정과 무관하게 항상 표시 (사용자의 명시적 액션).
+   */
+  autoUpdateNotify: boolean;
   viewMode: 'list' | 'grid' | 'tile';
   sortKey: SortKey;
   sortDir: SortDir;
@@ -142,9 +147,11 @@ export interface ElectronAPI {
   // 자동 업데이트
   checkForUpdates: () => Promise<{ success: boolean; version?: string; error?: string }>;
   quitAndInstall: () => Promise<void>;
-  onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void;
-  onUpdateProgress: (callback: (info: { percent: number; transferred: number; total: number; bytesPerSecond: number }) => void) => () => void;
-  onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
+  setUpdateNotify: (value: boolean) => void;
+  onUpdateAvailable: (callback: (info: { version: string; manual?: boolean }) => void) => () => void;
+  onUpdateProgress: (callback: (info: { percent: number; transferred?: number; total?: number; bytesPerSecond?: number }) => void) => () => void;
+  /** manual: 트레이/설정에서 사용자가 명시적으로 호출했을 때 true. skipped 버전 우회. */
+  onUpdateDownloaded: (callback: (info: { version: string; manual?: boolean }) => void) => () => void;
   onUpdateNotAvailable: (callback: () => void) => () => void;
   onUpdateError: (callback: (info: { message: string }) => void) => () => void;
   onWebviewBack: (callback: () => void) => () => void;
