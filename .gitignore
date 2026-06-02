@@ -8,5 +8,7 @@ release/
 .claude/
 
 # 인간-Claude 협업용 내부 기술 문서
+.understand-anything/
+docs/superpowers/
 docs/research.md
 CLAUDE.md
