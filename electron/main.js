@@ -525,13 +525,21 @@ app.whenReady().then(() => {
     autoUpdater.quitAndInstall(false, true);
   });
 
+  // 사용자가 배너에서 '지금 받기' 선택 시에만 다운로드 시작 (autoDownload=false)
+  ipcMain.on('download-update', () => {
+    if (isDev) return;
+    autoUpdater.downloadUpdate();
+  });
+
   // renderer settings → autoUpdateNotifyEnabled sync
   ipcMain.on('set-update-notify', (_, value) => {
     autoUpdateNotifyEnabled = !!value;
   });
 
   if (!isDev) {
-    autoUpdater.autoDownload = true;
+    // 발견 즉시 받지 않음 — 사용자가 배너에서 '지금 받기'를 누를 때만 downloadUpdate().
+    // ('나중에'/'건너뛰기' 시 다운로드 자체가 없어 대역폭/디스크 낭비 방지)
+    autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
 
     const send = (channel, payload) => {

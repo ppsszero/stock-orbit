@@ -147,6 +147,7 @@ export interface ElectronAPI {
   // 자동 업데이트
   checkForUpdates: () => Promise<{ success: boolean; version?: string; error?: string }>;
   quitAndInstall: () => Promise<void>;
+  downloadUpdate: () => void;
   setUpdateNotify: (value: boolean) => void;
   onUpdateAvailable: (callback: (info: { version: string; manual?: boolean }) => void) => () => void;
   onUpdateProgress: (callback: (info: { percent: number; transferred?: number; total?: number; bytesPerSecond?: number }) => void) => () => void;

@@ -157,6 +157,12 @@ export const UpdateBanner = () => {
     if (state.version) openNotes(getReleaseUrl(state.version), { title: `v${state.version} 릴리즈 노트` });
   }, [state.version, openNotes]);
 
+  // '지금 받기' — autoDownload=false라 이때 비로소 다운로드 시작. 즉시 downloading 단계로 전환해 피드백.
+  const handleDownload = useCallback(() => {
+    window.electronAPI?.downloadUpdate();
+    setState(prev => ({ ...prev, phase: 'downloading', percent: 0 }));
+  }, []);
+
   const open = state.phase !== 'idle' && !state.dismissed;
   const showLinks = !!state.version
     && (state.phase === 'available' || state.phase === 'downloading' || state.phase === 'ready');
@@ -168,13 +174,13 @@ export const UpdateBanner = () => {
         <Modal.Content style={{ maxWidth: 300 }}>
           <div css={s.body}>
             <PhaseContent state={state} />
-            <PhaseActions state={state} onDismiss={handleDismiss} onInstall={handleInstall} />
+            <PhaseActions state={state} onDismiss={handleDismiss} onInstall={handleInstall} onDownload={handleDownload} />
             {showLinks && (
               <div css={s.linkRow}>
                 <button type="button" css={s.linkBtn} onClick={handleViewNotes}>
                   릴리즈 노트 보러가기
                 </button>
-                {state.phase === 'ready' && (
+                {(state.phase === 'available' || state.phase === 'ready') && (
                   <button type="button" css={s.linkBtn} onClick={handleSkipVersion}>
                     v{state.version} 건너뛰기
                   </button>
@@ -235,7 +241,16 @@ const PhaseContent = ({ state }: { state: State }) => {
       </>
     );
   }
-  // available / downloading
+  if (state.phase === 'available') {
+    return (
+      <>
+        <div css={[s.iconCircle, s.iconInfo]}><FiDownload size={24} /></div>
+        <div css={s.title}>v{state.version} 업데이트 있어요</div>
+        <div css={s.desc}>받아서 설치할 수 있어요</div>
+      </>
+    );
+  }
+  // downloading
   const percent = state.percent ?? 0;
   const versionPrefix = state.version ? `v${state.version} ` : '';
   return (
@@ -252,7 +267,7 @@ const PhaseContent = ({ state }: { state: State }) => {
 
 /* ── Phase별 액션 버튼 (Modal.Actions + Modal.CTA) ─────────────────────────── */
 
-const PhaseActions = ({ state, onDismiss, onInstall }: { state: State; onDismiss: () => void; onInstall: () => void }) => {
+const PhaseActions = ({ state, onDismiss, onInstall, onDownload }: { state: State; onDismiss: () => void; onInstall: () => void; onDownload: () => void }) => {
   if (state.phase === 'up-to-date') {
     return (
       <Modal.Actions>
@@ -275,7 +290,15 @@ const PhaseActions = ({ state, onDismiss, onInstall }: { state: State; onDismiss
       </Modal.Actions>
     );
   }
-  if (state.phase === 'available' || state.phase === 'downloading') {
+  if (state.phase === 'available') {
+    return (
+      <Modal.Actions>
+        <Modal.CTA variant="secondary" onClick={onDismiss}>나중에</Modal.CTA>
+        <Modal.CTA onClick={onDownload}>지금 받기</Modal.CTA>
+      </Modal.Actions>
+    );
+  }
+  if (state.phase === 'downloading') {
     return (
       <Modal.Actions>
         <Modal.CTA variant="secondary" onClick={onDismiss}>백그라운드로</Modal.CTA>
