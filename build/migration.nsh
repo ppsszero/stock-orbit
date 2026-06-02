@@ -31,6 +31,21 @@
     Pop $1
     FileWrite $9 "[5] backup robocopy exit = $1$\r$\n"
 
+    ; ── 백업 검증 게이트 (파괴 작업 전 필수) ──
+    ; 원본에 Local Storage(설정/관심종목)가 있는데 백업본엔 없으면 = 백업 실패.
+    ; robocopy exit만 보면 잠긴 파일 등 부분 실패를 놓칠 수 있어, 실제 백업 결과물을 직접 검증한다.
+    ; 백업 실패 시 파괴 작업(구 uninstaller)을 진행하지 않고 마이그레이션을 중단 → 구버전·데이터 그대로 보존.
+    ${If} ${FileExists} "$APPDATA\orbit\Local Storage\*"
+    ${AndIfNot} ${FileExists} "$TEMP\OrbitUserDataMigration\Local Storage\*"
+      FileWrite $9 "[5a] ABORT — 백업 실패 (robocopy exit=$1), 구버전 유지$\r$\n"
+      FileClose $9
+      Banner::destroy
+      IfSilent +2
+      MessageBox MB_OK|MB_ICONEXCLAMATION \
+        "사용자 데이터 백업에 실패해 안전을 위해 업데이트를 중단했어요.$\r$\n$\r$\n기존 버전과 설정은 그대로 유지됩니다.$\r$\n잠시 후 다시 시도해주세요."
+      Quit
+    ${EndIf}
+
     ; ── 옛 uninstaller (UAC 트리거) ──
     ; 옛 uninstaller가 사일런트 모드에서 자기 HKLM 레지스트리 정리를 빠뜨리는 버그 확인됨.
     ; → 배치 파일 1개로 uninstall + reg delete를 묶어 단일 UAC에서 elevated 실행.
