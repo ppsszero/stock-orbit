@@ -3,8 +3,11 @@ import { css, keyframes } from '@emotion/react';
 import { useEffect, useState, useCallback } from 'react';
 import { FiDownload, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { sem } from '@/shared/styles/semantic';
-import { fontSize, fontWeight, spacing, radius, transition } from '@/shared/styles/tokens';
+import { fontSize, fontWeight, spacing, radius, transition, zIndex } from '@/shared/styles/tokens';
 import { Modal } from '@/shared/ui/Modal';
+import { WebViewPanel } from '@/shared/ui/WebViewPanel';
+import { useWebViewState } from '@/shared/hooks/useWebViewState';
+import { getReleaseUrl } from '@/shared/utils/releaseUrl';
 
 type Phase = 'idle' | 'available' | 'downloading' | 'ready' | 'installing' | 'error' | 'up-to-date';
 
@@ -143,23 +146,49 @@ export const UpdateBanner = () => {
     setState(prev => ({ ...prev, dismissed: true }));
   }, [state.version]);
 
+  // 릴리즈 노트(GitHub 릴리즈 페이지)를 인앱 웹뷰로 — 공지사항(NoticeSheet)과 동일 방식.
+  // 웹뷰 열기/닫기는 업데이트 상태(state)를 건드리지 않으므로, 웹뷰를 닫고 돌아오면 모달이 그대로 유지된다.
+  // 모달이 닫히면(state.dismissed/phase idle) 웹뷰도 자동 정리.
+  const { view, open: openNotes, close: closeNotes } = useWebViewState(
+    state.phase !== 'idle' && !state.dismissed
+  );
+  const handleViewNotes = useCallback(() => {
+    if (state.version) openNotes(getReleaseUrl(state.version), { title: `v${state.version} 릴리즈 노트` });
+  }, [state.version, openNotes]);
+
   const open = state.phase !== 'idle' && !state.dismissed;
+  const showLinks = !!state.version
+    && (state.phase === 'available' || state.phase === 'downloading' || state.phase === 'ready');
 
   return (
-    <Modal open={open} onClose={handleDismiss}>
-      <Modal.Overlay />
-      <Modal.Content style={{ maxWidth: 300 }}>
-        <div css={s.body}>
-          <PhaseContent state={state} />
-          <PhaseActions state={state} onDismiss={handleDismiss} onInstall={handleInstall} />
-          {state.phase === 'ready' && state.version && (
-            <button type="button" css={s.skipLink} onClick={handleSkipVersion}>
-              v{state.version} 건너뛰기
-            </button>
-          )}
+    <>
+      <Modal open={open} onClose={handleDismiss}>
+        <Modal.Overlay />
+        <Modal.Content style={{ maxWidth: 300 }}>
+          <div css={s.body}>
+            <PhaseContent state={state} />
+            <PhaseActions state={state} onDismiss={handleDismiss} onInstall={handleInstall} />
+            {showLinks && (
+              <div css={s.linkRow}>
+                <button type="button" css={s.linkBtn} onClick={handleViewNotes}>
+                  릴리즈 노트 보러가기
+                </button>
+                {state.phase === 'ready' && (
+                  <button type="button" css={s.linkBtn} onClick={handleSkipVersion}>
+                    v{state.version} 건너뛰기
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </Modal.Content>
+      </Modal>
+      {view && (
+        <div css={s.webviewHost}>
+          <WebViewPanel url={view.url} title={view.title} onClose={closeNotes} />
         </div>
-      </Modal.Content>
-    </Modal>
+      )}
+    </>
   );
 };
 
@@ -293,18 +322,28 @@ const s = {
     height: 100%; background: ${sem.action.primary};
     transition: width ${transition.fast} ease-out;
   `,
-  // "이 버전 건너뛰기" — 메인 CTA 2개 아래 텍스트 링크. 위계 낮게 (tertiary).
-  skipLink: css`
+  // 메인 CTA 2개 아래 텍스트 링크 줄 — "릴리즈 노트 보러가기" + "건너뛰기" (순서 고정). 위계 낮게 (tertiary).
+  linkRow: css`
+    display: flex; justify-content: center; align-items: center;
+    gap: ${spacing.sm}px;
+    margin-top: ${spacing.lg}px;
+  `,
+  linkBtn: css`
     background: transparent; border: none;
     color: ${sem.text.tertiary};
     font-size: ${fontSize.sm}px; font-family: inherit; font-weight: ${fontWeight.medium};
     cursor: pointer;
-    margin: ${spacing.lg}px auto 0;
     padding: ${spacing.sm}px ${spacing.md}px;
     text-decoration: underline;
     text-decoration-color: ${sem.border.muted};
     text-underline-offset: 3px;
     transition: color ${transition.fast};
     &:hover { color: ${sem.text.secondary}; }
+  `,
+  // 릴리즈 노트 웹뷰 호스트 — 전체화면 고정, 업데이트 모달(zIndex.modal) 위에 표시.
+  // WebViewPanel이 position:absolute; inset:0 이므로 positioned 부모(이 host)를 꽉 채운다.
+  webviewHost: css`
+    position: fixed; inset: 0;
+    z-index: ${zIndex.toast};
   `,
 };
