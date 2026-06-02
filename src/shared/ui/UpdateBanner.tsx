@@ -1,6 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
 import { useEffect, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { FiDownload, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { sem } from '@/shared/styles/semantic';
 import { fontSize, fontWeight, spacing, radius, transition, zIndex } from '@/shared/styles/tokens';
@@ -183,10 +184,13 @@ export const UpdateBanner = () => {
           </div>
         </Modal.Content>
       </Modal>
-      {view && (
+      {view && ReactDOM.createPortal(
+        // Modal과 동일하게 body로 portal — 상위 stacking context(앱 셸 transform 등)에 갇혀
+        // 웹뷰 chrome(X 버튼)이 모달 overlay 아래로 깔리는 것을 방지. 모달 위(zIndex) 보장.
         <div css={s.webviewHost}>
           <WebViewPanel url={view.url} title={view.title} onClose={closeNotes} />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -340,10 +344,10 @@ const s = {
     transition: color ${transition.fast};
     &:hover { color: ${sem.text.secondary}; }
   `,
-  // 릴리즈 노트 웹뷰 호스트 — 전체화면 고정, 업데이트 모달(zIndex.modal) 위에 표시.
+  // 릴리즈 노트 웹뷰 호스트 — body로 portal + 전체화면 고정, 업데이트 모달(zIndex.modal 600) 위.
   // WebViewPanel이 position:absolute; inset:0 이므로 positioned 부모(이 host)를 꽉 채운다.
   webviewHost: css`
     position: fixed; inset: 0;
-    z-index: ${zIndex.toast};
+    z-index: ${zIndex.tooltip};
   `,
 };
