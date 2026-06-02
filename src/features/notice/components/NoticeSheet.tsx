@@ -5,6 +5,7 @@ import { spacing, fontSize, fontWeight, transition } from '@/shared/styles/token
 import { SheetLayout, TimelineRow, WebViewPanel } from '@/shared/ui';
 import { useToast } from '@/shared/ui/Toast';
 import { useWebViewState } from '@/shared/hooks/useWebViewState';
+import { getReleaseUrl } from '@/shared/utils/releaseUrl';
 import { NoticeItem } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
 
@@ -16,15 +17,12 @@ interface Props {
   onRefresh: () => Promise<boolean> | void;
 }
 
-/** 특정 버전의 릴리즈 노트 GitHub 페이지 URL */
-const releaseUrl = (version: string) => `https://github.com/ppsszero/stock-orbit/releases/tag/v${version}`;
-
 export const NoticeSheet = ({ open, notices, loading, onClose, onRefresh }: Props) => {
   const { view, open: openView, close: closeView } = useWebViewState(open);
   const toast = useToast();
 
   const handleItemClick = (n: NoticeItem) => {
-    openView(releaseUrl(n.version), { title: `v${n.version} 릴리즈 노트` });
+    openView(getReleaseUrl(n.version), { title: `v${n.version} 릴리즈 노트` });
   };
 
   const handleRefresh = useCallback(async () => {
