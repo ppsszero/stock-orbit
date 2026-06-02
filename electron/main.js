@@ -563,6 +563,9 @@ app.whenReady().then(() => {
     autoUpdater.on('update-downloaded', (info) => {
       pendingUpdate = { phase: 'ready', version: info.version };
       if (shouldNotify()) send('update-downloaded', { version: info.version });
+      // 터미널 이벤트 — 수동 체크 플래그 리셋. 안 그러면 manual 체크가 업데이트를 찾은 뒤
+      // (not-available/error가 안 와서) 플래그가 true로 남아 이후 자동 체크도 manual로 취급됨.
+      isManualUpdateCheck = false;
     });
     autoUpdater.on('update-not-available', () => {
       // 수동 체크일 때만 "최신 버전" 피드백. 자동 체크는 조용히 넘김.
