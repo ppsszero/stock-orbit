@@ -152,9 +152,9 @@ export const UpdateBanner = () => {
         <div css={s.body}>
           <PhaseContent state={state} />
           <PhaseActions state={state} onDismiss={handleDismiss} onInstall={handleInstall} />
-          {state.phase === 'ready' && (
+          {state.phase === 'ready' && state.version && (
             <button type="button" css={s.skipLink} onClick={handleSkipVersion}>
-              이 버전 건너뛰기
+              v{state.version} 건너뛰기
             </button>
           )}
         </div>
