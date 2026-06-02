@@ -61,6 +61,30 @@ describe('parsePollingData', () => {
     expect(r.updatedAt).toBe('2026-06-02T17:00:00');
   });
 
+  it('NXT 폐장 후(overMarketStatus CLOSE)에도 NXT 마지막가가 KRX 종가보다 최신이면 NXT 우선', () => {
+    // 실제 회귀 사례: 20시 이후 KRX(15:30 종가)와 NXT(20:00 종가) 둘 다 닫힘.
+    // 과거엔 overMarketStatus!=='OPEN'이라 KRX 종가로 되돌아갔으나, NXT가 더 최신이므로 NXT 우선이어야 함.
+    const d: NaverPollingData = {
+      itemCode: '000660', stockName: 'SK하이닉스',
+      closePriceRaw: '2,360,000', compareToPreviousClosePriceRaw: '3,000',
+      fluctuationsRatioRaw: '0.13', compareToPreviousPrice: { code: '5' },
+      marketStatus: 'CLOSE', localTradedAt: '2026-06-02T15:30:00+09:00',
+      stockExchangeType: { nationCode: 'KOR' },
+      overMarketPriceInfo: {
+        tradingSessionType: 'AFTER_MARKET', overMarketStatus: 'CLOSE',
+        overPrice: '2,324,000', compareToPreviousClosePrice: '39,000',
+        fluctuationsRatio: '1.65', compareToPreviousPrice: { code: '5' },
+        localTradedAt: '2026-06-02T20:00:00.000000+09:00',
+      },
+    };
+    const r = parsePollingData(d, '000660', 'stock');
+    expect(r.currentPrice).toBe(2324000);      // NXT 마지막가 (KRX 2,360,000 아님)
+    expect(r.change).toBe(-39000);
+    expect(r.changePercent).toBeCloseTo(-1.65);
+    expect(r.changeDirection).toBe('down');
+    expect(r.marketStatus).toBe('CLOSE');       // 둘 다 닫힘 → CLOSE 유지
+  });
+
   it('지수(index)는 nationCode 누락 시 US로 오분류하지 않고 빈 문자열', () => {
     const d: NaverPollingData = {
       itemCode: 'KOSPI', stockName: '코스피',
