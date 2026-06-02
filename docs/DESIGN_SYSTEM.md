@@ -477,97 +477,21 @@ export type SegSize = keyof typeof SEG_SIZES;
 
 ---
 
-## 7. Runtime Guards
+## 7. Composition 규칙 (수동 리뷰)
 
-타입으로 막을 수 없는 composition 규칙을 개발 환경에서 경고.
+타입(`ForbiddenButtonCombo`)·ESLint로 막을 수 없는 composition 규칙.
 
-### 7-1. guard 함수
+> **폐기 기록 (2026-06-02):** 과거 `utils/designGuard.ts`가 이 규칙들을 개발 환경 `console.warn`으로 경고했으나, **어디서도 호출되지 않아(orphan) 실제로 동작하지 않았음** → 파일 삭제. 현재는 **Reviewer가 코드 리뷰에서 수동 감사**한다. (헌법 CLAUDE.md 11.4와 동일)
 
-```ts
-// utils/designGuard.ts
+| 규칙 | 내용 | 강제 방식 |
+|------|------|----------|
+| `noPrimaryInCard` | Card 내부 primary/danger 버튼 금지 → ghost / IconButton | **수동 리뷰** |
+| `segSizeConsistency` | 한 시트 내 SegmentedControl size 통일 | **수동 리뷰** |
+| `fontFamilyInherit` | button / input / select에 `font-family: inherit` 필수 | **수동 리뷰** |
+| `buttonCombo` | small+primary / small+danger 조합 금지 | **TS 타입** `ForbiddenButtonCombo` (컴파일 차단) |
+| `noAlphaConcat` | 문자열 alpha 결합 (`var(--x)15`) 금지 | **ESLint** `no-alpha-concat` |
 
-const isDev = process.env.NODE_ENV === 'development';
-
-export const designGuard = {
-  /** primary 버튼이 Card 내부에서 사용됐을 때 */
-  noPrimaryInCard: (variant: string, context: string) => {
-    if (isDev && variant === 'primary' && context === 'card') {
-      console.warn(
-        `[DesignSystem] Button variant="primary" is forbidden inside Card.\n` +
-        `Use variant="ghost" or IconButton instead.`
-      );
-    }
-  },
-
-  /** 같은 시트 내 SegmentedControl size 불일치 */
-  segSizeConsistency: (sizes: string[]) => {
-    if (isDev && new Set(sizes).size > 1) {
-      console.warn(
-        `[DesignSystem] SegmentedControl sizes must be consistent within a sheet.\n` +
-        `Found: ${sizes.join(', ')}`
-      );
-    }
-  },
-
-  /** font-family: inherit 누락 검출 */
-  fontFamilyInherit: (element: string, hasInherit: boolean) => {
-    if (isDev && !hasInherit && ['button', 'input', 'select'].includes(element)) {
-      console.warn(
-        `[DesignSystem] <${element}> must have font-family: inherit.\n` +
-        `Without it, system font will be used instead of Pretendard.`
-      );
-    }
-  },
-
-  /** forbidden variant+size 조합 (타입 우회 방지) */
-  buttonCombo: (variant: string, size: string) => {
-    const forbidden = [
-      { variant: 'primary', size: 'sm' },
-      { variant: 'danger',  size: 'sm' },
-    ];
-    if (isDev && forbidden.some(f => f.variant === variant && f.size === size)) {
-      console.warn(
-        `[DesignSystem] Button variant="${variant}" size="${size}" is a forbidden combination.`
-      );
-    }
-  },
-
-  /** 문자열 alpha 결합 감지 */
-  noAlphaConcat: (value: string) => {
-    if (isDev && /var\(--[^)]+\)[0-9a-fA-F]{2}$/.test(value)) {
-      console.warn(
-        `[DesignSystem] String alpha concatenation detected: "${value}".\n` +
-        `Use pre-defined semantic tokens instead (e.g., sem.action.primaryTint).`
-      );
-    }
-  },
-} as const;
-```
-
-### 7-2. 컴포넌트 내 적용 예시
-
-```tsx
-// Button.tsx
-export const Button = ({ variant, size = 'md', ...props }: ButtonProps) => {
-  designGuard.buttonCombo(variant, size);
-
-  const tokens = buttonTokens[variant];
-  const sizeTokens = buttonSizes[size];
-  // ...
-};
-```
-
-```tsx
-// Card.tsx — children 내부에서 Button 사용 시
-export const Card = ({ variant = 'default', children }: CardProps) => {
-  // Card 컨텍스트를 Context API로 전달하여 내부 Button에서 검사
-  return (
-    <CardContext.Provider value="card">
-      <div css={...}>{children}</div>
-    </CardContext.Provider>
-  );
-};
-```
+즉 `buttonCombo`·`noAlphaConcat`은 자동 강제(타입/ESLint)로 유지되고, 나머지 3개만 수동 감사 대상이다.
 
 ---
 
@@ -715,8 +639,8 @@ interface TimelineRowProps {
 | 2 | 삽입 지점 패턴 일치 | code review |
 | 3 | 동일 컴포넌트 중복 확인 | code review |
 | 4 | 모든 상태 정의됨 | `buttonTokens` 등 참조 |
-| 5 | `font-family: inherit` | `designGuard.fontFamilyInherit` |
+| 5 | `font-family: inherit` | 수동 리뷰 (Reviewer) |
 | 6 | 2곳+ 중복 → shared | code review |
-| 7 | Forbidden combo 아님 | TypeScript compile + `designGuard.buttonCombo` |
-| 8 | Composition rule 준수 | `designGuard.noPrimaryInCard` 등 |
-| 9 | 문자열 alpha 결합 없음 | `designGuard.noAlphaConcat` |
+| 7 | Forbidden combo 아님 | TypeScript compile (`ForbiddenButtonCombo`) |
+| 8 | Composition rule 준수 | 수동 리뷰 (noPrimaryInCard / segSizeConsistency) |
+| 9 | 문자열 alpha 결합 없음 | ESLint `no-alpha-concat` |
