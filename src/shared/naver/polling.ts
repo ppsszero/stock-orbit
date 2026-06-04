@@ -25,16 +25,19 @@ const fmtMarketCapKr = (raw: string | undefined): string | undefined => {
  */
 export const parsePollingData = (d: NaverPollingData, code: string, category: PollingCategory): StockPrice => {
   const over = d.overMarketPriceInfo;
-  // NXT(시간외/장전) 가격 우선 규칙:
-  //  - KRX 정규장이 거래 중(marketStatus==='OPEN')이면 항상 KRX 가격.
-  //  - 그 외(폐장/장전/장후)엔 NXT(over) 가격이 있고 KRX 종가보다 최신이면 NXT 우선.
-  //    NXT 폐장(overMarketStatus='CLOSE', 보통 20:00) 후에도 마지막 NXT가를 유지한다.
-  //    (과거엔 overMarketStatus==='OPEN'만 인정 → NXT 폐장 후 더 오래된 KRX 종가로 되돌아가는 버그)
+  // NXT(시간외/장전) 가격 우선 규칙 — "본장 시간엔 본장가, 그 외엔 NXT":
+  //  - KRX 정규장 거래 중(marketStatus==='OPEN')이면 항상 KRX.
+  //  - NXT가 OPEN(장전 PRE_MARKET / 장후 AFTER_MARKET)이면 타임스탬프 무관하게 NXT 우선.
+  //    (장전엔 KRX가 PREOPEN이라 localTradedAt가 실시간 틱 → NXT 마지막 체결보다 최신처럼 보임.
+  //     타임스탬프만 비교하면 장전에 NXT가 무시되는 버그가 있었음. NXT가 OPEN이면 그게 곧 현재 시장.)
+  //  - NXT가 닫혔어도(20:00 이후) NXT 마지막 체결이 KRX 종가보다 최신이면 NXT 유지.
+  //    (본장 직후 15:30~15:40처럼 NXT 마지막이 더 오래된 경우엔 KRX 종가로 — 오래된 값 튐 방지)
   const hasOver = !!over && !!over.overPrice;
+  const overOpen = hasOver && over!.overMarketStatus === 'OPEN';
   const overTime = hasOver && over!.localTradedAt ? Date.parse(over!.localTradedAt) : NaN;
   const krxTime = d.localTradedAt ? Date.parse(d.localTradedAt) : NaN;
   const overNewer = !Number.isNaN(overTime) && (Number.isNaN(krxTime) || overTime >= krxTime);
-  const useOver = d.marketStatus !== 'OPEN' && hasOver && overNewer;
+  const useOver = d.marketStatus !== 'OPEN' && hasOver && (overOpen || overNewer);
 
   const price = useOver ? num(over!.overPrice!) : num(d.closePriceRaw);
   const changeRaw = useOver

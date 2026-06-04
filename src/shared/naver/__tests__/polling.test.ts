@@ -85,6 +85,30 @@ describe('parsePollingData', () => {
     expect(r.marketStatus).toBe('CLOSE');       // 둘 다 닫힘 → CLOSE 유지
   });
 
+  it('NXT 장전(PRE_MARKET, overMarketStatus OPEN)이면 KRX PREOPEN이어도 NXT 가격 우선', () => {
+    // 실제 회귀 사례(2026-06-05 08:53): 장전엔 KRX가 PREOPEN이라 localTradedAt가 실시간 틱해서
+    // NXT 마지막 체결(08:50)보다 최신처럼 보임 → 타임스탬프 비교만으론 NXT가 무시되던 버그.
+    // NXT가 OPEN이면 타임스탬프 무관하게 NXT 우선이어야 함.
+    const d: NaverPollingData = {
+      itemCode: '000660', stockName: 'SK하이닉스',
+      closePriceRaw: '2,298,000', compareToPreviousClosePriceRaw: '0',
+      fluctuationsRatioRaw: '0', compareToPreviousPrice: { code: '3' },
+      marketStatus: 'PREOPEN', localTradedAt: '2026-06-05T08:53:17.92027+09:00',
+      stockExchangeType: { nationCode: 'KOR' },
+      overMarketPriceInfo: {
+        tradingSessionType: 'PRE_MARKET', overMarketStatus: 'OPEN',
+        overPrice: '2,162,000', compareToPreviousClosePrice: '136,000',
+        fluctuationsRatio: '5.92', compareToPreviousPrice: { code: '5' },
+        localTradedAt: '2026-06-05T08:50:00.000000+09:00',
+      },
+    };
+    const r = parsePollingData(d, '000660', 'stock');
+    expect(r.currentPrice).toBe(2162000);   // NXT 장전가 (KRX 2,298,000 아님)
+    expect(r.changeDirection).toBe('down');
+    expect(r.changePercent).toBeCloseTo(-5.92);
+    expect(r.marketStatus).toBe('OPEN');     // NXT OPEN
+  });
+
   it('지수(index)는 nationCode 누락 시 US로 오분류하지 않고 빈 문자열', () => {
     const d: NaverPollingData = {
       itemCode: 'KOSPI', stockName: '코스피',
