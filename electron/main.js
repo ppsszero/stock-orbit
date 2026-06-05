@@ -5,6 +5,8 @@ const fs = require('fs');
 
 let mainWindow = null;
 let tray = null;
+/** 사용자가 설정한 창 투명도 — 트레이 복원 시 100%로 튀지 않도록 추적 (set-opacity로 갱신) */
+let currentOpacity = 0.95;
 /** 수동 업데이트 체크 여부 — true일 때만 "최신 버전" / 에러 피드백을 렌더러에 전달 */
 let isManualUpdateCheck = false;
 /** 자동 업데이트 알림 모달 노출 여부 (renderer 설정과 sync). 끄면 자동 발화된 모달 차단,
@@ -236,7 +238,8 @@ function createTray() {
           if (revealed) return;
           revealed = true;
           // w가 살아있고 webContents도 유효할 때만 opacity 복원
-          if (!w.isDestroyed() && !w.webContents.isDestroyed()) w.setOpacity(1);
+          // 사용자 설정 투명도로 복원 — 하드코딩 1(100%)로 두면 트레이 복원 후 투명도가 풀림
+          if (!w.isDestroyed() && !w.webContents.isDestroyed()) w.setOpacity(currentOpacity);
         };
 
         // 렌더러가 2프레임 완전히 그릴 때까지 대기 → 깜빡임 원천 차단
@@ -353,6 +356,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('set-opacity', (_, value) => {
+    currentOpacity = value;
     withWindow(w => w.setOpacity(value));
   });
 
