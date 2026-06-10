@@ -1,5 +1,18 @@
-import { StockPrice, StockSymbol, NaverAutoCompleteItem } from '@/shared/types';
+import { StockPrice, StockSymbol, NaverAutoCompleteItem, MarketSession } from '@/shared/types';
 import { sem } from '@/shared/styles/semantic';
+
+// === 시장 세션 ===
+/** 세션 → 표시 라벨 (live/close 위치에 표시) */
+export const SESSION_LABEL: Record<MarketSession, string> = {
+  REGULAR: '정규',
+  PRE: '프리',
+  AFTER: '애프터',
+  OVERNIGHT: '데이',
+  CLOSED: '장마감',
+};
+
+/** live 여부 — CLOSED 외 전부 거래 중. (가격 없음/undefined는 live 아님) */
+export const isLiveSession = (s?: MarketSession): boolean => s !== undefined && s !== 'CLOSED';
 
 // === 숫자 포맷 ===
 /** 사실상 소수 자릿수가 없는 통화 (베트남 동, 일본 엔, 한국 원) */

@@ -21,7 +21,7 @@ const makePrice = (code: string, name: string, overrides?: Partial<StockPrice>):
   code, name, nation: 'KR', market: 'KOSPI',
   currentPrice: 75_000, previousClose: 74_000,
   change: 1_000, changePercent: 1.35, changeDirection: 'up',
-  currency: 'KRW', marketStatus: 'OPEN', updatedAt: '2024-01-01T09:00:00Z',
+  currency: 'KRW', marketStatus: 'REGULAR', updatedAt: '2024-01-01T09:00:00Z',
   isTradingHalt: false, exchange: 'KOSPI',
   ...overrides,
 });

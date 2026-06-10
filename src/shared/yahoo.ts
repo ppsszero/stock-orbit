@@ -1,4 +1,4 @@
-import { YahooStreamQuote } from '@/shared/types';
+import { YahooStreamQuote, MarketSession } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
 
 /**
@@ -11,7 +11,12 @@ export interface ExtendedQuote {
   change: number;
   changePercent: number;
   direction: 'up' | 'down' | 'flat';
+  session: MarketSession;
 }
+
+/** 야후 marketHours → 세션. 0=장전 1=정규 2=장후 4=오버나잇. 야후는 네이버 CLOSED일 때만 조회되므로 기본은 OVERNIGHT(데이마켓). */
+const sessionFromMarketHours = (mh: number): MarketSession =>
+  mh === 0 ? 'PRE' : mh === 1 ? 'REGULAR' : mh === 2 ? 'AFTER' : 'OVERNIGHT';
 
 /** 점 포함 클래스주 등 예외 — 네이버 reutersCode의 '.' 앞부분(base)을 키로. 필요 시 확장. */
 const TICKER_EXCEPTIONS: Record<string, string> = {};
@@ -26,7 +31,13 @@ export const toYahooTicker = (reutersCode: string): string => {
 export const toExtendedQuote = (q: YahooStreamQuote | undefined | null): ExtendedQuote | null => {
   if (q == null || q.price == null) return null;
   const c = q.change ?? 0;
-  return { price: q.price, change: c, changePercent: q.changePercent ?? 0, direction: c > 0 ? 'up' : c < 0 ? 'down' : 'flat' };
+  return {
+    price: q.price,
+    change: c,
+    changePercent: q.changePercent ?? 0,
+    direction: c > 0 ? 'up' : c < 0 ? 'down' : 'flat',
+    session: sessionFromMarketHours(q.marketHours),
+  };
 };
 
 /**

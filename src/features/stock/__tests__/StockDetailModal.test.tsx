@@ -10,7 +10,7 @@ const price: StockPrice = {
   code: '005930', name: '삼성전자', nation: 'KR', market: 'KOSPI',
   currentPrice: 75_000, previousClose: 74_000,
   change: 1_000, changePercent: 1.35, changeDirection: 'up',
-  currency: 'KRW', marketStatus: 'OPEN', updatedAt: '2024-01-01T09:00:00Z',
+  currency: 'KRW', marketStatus: 'REGULAR', updatedAt: '2024-01-01T09:00:00Z',
   isTradingHalt: false, exchange: 'KOSPI',
   openPrice: 74_500, highPrice: 76_000, lowPrice: 73_500,
   volume: '12,345,678', tradingValue: '9,234억', marketCap: '448.3조',
@@ -49,9 +49,9 @@ describe('StockDetailModal', () => {
     expect(screen.getByText('시가총액')).toBeInTheDocument();
   });
 
-  it('LIVE 시장 상태를 표시한다', () => {
+  it('정규장 세션 상태를 표시한다', () => {
     render(<StockDetailModal symbol={sym} price={price} onClose={vi.fn()} />);
-    expect(screen.getByText('LIVE')).toBeInTheDocument();
+    expect(screen.getByText('정규')).toBeInTheDocument();
   });
 
   it('거래정지 상태를 표시한다', () => {

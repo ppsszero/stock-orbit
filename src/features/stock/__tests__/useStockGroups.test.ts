@@ -31,6 +31,7 @@ const usSymbol2: StockSymbol = {
 };
 
 const makePrice = (code: string, nation: string, status: 'OPEN' | 'CLOSE'): StockPrice => ({
+  // 테스트 편의: OPEN→REGULAR(live), CLOSE→CLOSED 매핑
   code,
   name: code,
   nation,
@@ -41,7 +42,7 @@ const makePrice = (code: string, nation: string, status: 'OPEN' | 'CLOSE'): Stoc
   changePercent: 0,
   changeDirection: 'flat',
   currency: nation === 'KR' ? 'KRW' : 'USD',
-  marketStatus: status,
+  marketStatus: status === 'OPEN' ? 'REGULAR' : 'CLOSED',
   updatedAt: '2024-01-01',
 });
 

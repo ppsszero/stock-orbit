@@ -22,7 +22,7 @@ describe('parsePollingData', () => {
     expect(r.previousClose).toBe(70000);
     expect(r.nation).toBe('KR');
     expect(r.currency).toBe('KRW');
-    expect(r.marketStatus).toBe('OPEN');
+    expect(r.marketStatus).toBe('REGULAR');
     expect(r.marketCapRaw).toBe(425000000000000);
     expect(r.marketCap).toBe('425.0조');
     expect(r.volume).toBe('15,219,364');
@@ -57,7 +57,7 @@ describe('parsePollingData', () => {
     expect(r.currentPrice).toBe(182500);
     expect(r.change).toBe(2500);
     expect(r.changePercent).toBeCloseTo(1.39);
-    expect(r.marketStatus).toBe('OPEN');
+    expect(r.marketStatus).toBe('AFTER');   // over OPEN, tradingSessionType 미지정 → 시간외(AFTER) 기본
     expect(r.updatedAt).toBe('2026-06-02T17:00:00');
   });
 
@@ -82,7 +82,7 @@ describe('parsePollingData', () => {
     expect(r.change).toBe(-39000);
     expect(r.changePercent).toBeCloseTo(-1.65);
     expect(r.changeDirection).toBe('down');
-    expect(r.marketStatus).toBe('CLOSE');       // 둘 다 닫힘 → CLOSE 유지
+    expect(r.marketStatus).toBe('CLOSED');      // 둘 다 닫힘 → CLOSED 유지
   });
 
   it('NXT 장전(PRE_MARKET, overMarketStatus OPEN)이면 KRX PREOPEN이어도 NXT 가격 우선', () => {
@@ -106,7 +106,7 @@ describe('parsePollingData', () => {
     expect(r.currentPrice).toBe(2162000);   // NXT 장전가 (KRX 2,298,000 아님)
     expect(r.changeDirection).toBe('down');
     expect(r.changePercent).toBeCloseTo(-5.92);
-    expect(r.marketStatus).toBe('OPEN');     // NXT OPEN
+    expect(r.marketStatus).toBe('PRE');      // NXT 장전 OPEN → PRE
   });
 
   it('지수(index)는 nationCode 누락 시 US로 오분류하지 않고 빈 문자열', () => {

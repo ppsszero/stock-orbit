@@ -31,6 +31,14 @@ export const inferCategory = (sym: StockSymbol): 'stock' | 'index' | 'futures' =
 export type SortKey = 'custom' | 'name' | 'change';
 export type SortDir = 'asc' | 'desc';
 
+/**
+ * 시장 세션 — 시간/DST 계산 없이 API가 직접 주는 세션 상태.
+ * REGULAR: 정규장(네이버 marketStatus OPEN) / PRE·AFTER: 네이버 over.tradingSessionType
+ * OVERNIGHT: US 데이마켓(야후 WS marketHours=4, 네이버 미제공) / CLOSED: 장마감
+ * live = CLOSED 외 전부.
+ */
+export type MarketSession = 'REGULAR' | 'PRE' | 'AFTER' | 'OVERNIGHT' | 'CLOSED';
+
 export interface AppSettings {
   theme: 'light' | 'dark';
   opacity: number;
@@ -101,7 +109,7 @@ export interface StockPrice {
   changePercent: number;
   changeDirection: 'up' | 'down' | 'flat';
   currency: string;
-  marketStatus: 'OPEN' | 'CLOSE' | 'PRE' | 'POST';
+  marketStatus: MarketSession;
   updatedAt: string;
   reutersCode?: string;
   // 보조 데이터

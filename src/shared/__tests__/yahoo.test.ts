@@ -17,19 +17,19 @@ describe('toYahooTicker', () => {
 });
 
 describe('toExtendedQuote', () => {
-  it('하락 (오버나잇 실측: SOXL marketHours=4)', () => {
+  it('하락 (오버나잇 실측: SOXL marketHours=4 → OVERNIGHT)', () => {
     const q: YahooStreamQuote = { price: 193.6, change: -8.08, changePercent: -4.01, marketHours: 4 };
-    expect(toExtendedQuote(q)).toEqual({ price: 193.6, change: -8.08, changePercent: -4.01, direction: 'down' });
+    expect(toExtendedQuote(q)).toEqual({ price: 193.6, change: -8.08, changePercent: -4.01, direction: 'down', session: 'OVERNIGHT' });
   });
 
-  it('상승', () => {
+  it('상승 (marketHours=0 → PRE)', () => {
     const q: YahooStreamQuote = { price: 205, change: 3.32, changePercent: 1.64, marketHours: 0 };
-    expect(toExtendedQuote(q)).toEqual({ price: 205, change: 3.32, changePercent: 1.64, direction: 'up' });
+    expect(toExtendedQuote(q)).toEqual({ price: 205, change: 3.32, changePercent: 1.64, direction: 'up', session: 'PRE' });
   });
 
-  it('변동 0 → flat', () => {
+  it('변동 0 → flat (marketHours=1 → REGULAR)', () => {
     const q: YahooStreamQuote = { price: 201.68, change: 0, changePercent: 0, marketHours: 1 };
-    expect(toExtendedQuote(q)).toEqual({ price: 201.68, change: 0, changePercent: 0, direction: 'flat' });
+    expect(toExtendedQuote(q)).toEqual({ price: 201.68, change: 0, changePercent: 0, direction: 'flat', session: 'REGULAR' });
   });
 
   it('가격 없으면 null (네이버 fallback)', () => {

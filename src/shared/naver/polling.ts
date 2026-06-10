@@ -1,4 +1,4 @@
-import { StockPrice } from '@/shared/types';
+import { StockPrice, MarketSession } from '@/shared/types';
 import { num, parseDir } from './client';
 import type { NaverPollingData } from './types';
 
@@ -77,9 +77,14 @@ export const parsePollingData = (d: NaverPollingData, code: string, category: Po
   const marketCapRaw = isStock && d.marketValueFullRaw
     ? Number(d.marketValueFullRaw) : undefined;
 
-  const marketOpen = useOver
-    ? over!.overMarketStatus === 'OPEN'
-    : d.marketStatus === 'OPEN';
+  // 세션 분류 (시간/DST 계산 없이 API 필드로 직접):
+  //  - KRX 정규장 OPEN → REGULAR
+  //  - over가 활성(OPEN)이면 tradingSessionType: PRE_MARKET→PRE / AFTER_MARKET→AFTER / 그 외→AFTER(시간외 기본)
+  //  - 그 외(둘 다 닫힘) → CLOSED.  ※ US 데이마켓(OVERNIGHT)은 야후 병합에서 세팅 (네이버 미제공)
+  let session: MarketSession;
+  if (d.marketStatus === 'OPEN') session = 'REGULAR';
+  else if (overOpen) session = over!.tradingSessionType === 'PRE_MARKET' ? 'PRE' : 'AFTER';
+  else session = 'CLOSED';
 
   const openPrice = useOver ? num(over!.openPrice) : num(d.openPriceRaw) || undefined;
   const highPrice = useOver ? num(over!.highPrice) : num(d.highPriceRaw) || undefined;
@@ -97,7 +102,7 @@ export const parsePollingData = (d: NaverPollingData, code: string, category: Po
     changePercent: dir >= 0 ? Math.abs(pct) : -Math.abs(pct),
     changeDirection: parseDir(dir),
     currency: isStock ? (d.currencyType?.code || '') : '',
-    marketStatus: marketOpen ? 'OPEN' : 'CLOSE',
+    marketStatus: session,
     updatedAt: (useOver ? over!.localTradedAt : d.localTradedAt) || new Date().toISOString(),
     reutersCode: d.reutersCode,
     exchange,

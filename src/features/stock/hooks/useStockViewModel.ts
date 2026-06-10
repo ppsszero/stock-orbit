@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { StockSymbol, StockPrice, inferCategory } from '@/shared/types';
 import { calcDisplayPrice } from '../utils/currency';
-import { fmtNum, fmtPercentArrow, fmtChangeArrow, NATION_BADGE, getLogoUrlFromSymbol, getDisplayName } from '@/shared/utils/format';
+import { fmtNum, fmtPercentArrow, fmtChangeArrow, NATION_BADGE, getLogoUrlFromSymbol, getDisplayName, SESSION_LABEL, isLiveSession } from '@/shared/utils/format';
 
 /** 종목 표시에 필요한 모든 파생 데이터 */
 export interface StockViewModel {
@@ -29,7 +29,7 @@ export interface StockViewModel {
   // 시장 상태
   isLive: boolean;
   isTradingHalt: boolean;
-  statusLabel: string;      // 'LIVE' / 'CLOSE' / '거래정지'
+  statusLabel: string;      // '정규' / '프리' / '애프터' / '데이' / '장마감' / '거래정지'
 
   // 원시값 (특수 계산 필요 시)
   hasPrice: boolean;
@@ -71,9 +71,9 @@ export const useStockViewModel = (
         : '',
       percentArrowLabel: p ? fmtPercentArrow(dir, p.changePercent) : '',
       direction: dir,
-      isLive: p?.marketStatus === 'OPEN',
+      isLive: isLiveSession(p?.marketStatus),
       isTradingHalt: p?.isTradingHalt === true,
-      statusLabel: p?.isTradingHalt ? '거래정지' : p?.marketStatus === 'OPEN' ? 'LIVE' : 'CLOSE',
+      statusLabel: p?.isTradingHalt ? '거래정지' : SESSION_LABEL[p?.marketStatus ?? 'CLOSED'],
       hasPrice: !!p,
     };
   }, [sym, price, currencyMode, usdkrw]);

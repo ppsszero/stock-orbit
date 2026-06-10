@@ -137,7 +137,7 @@ const fetchOverseasCycle = async (
 
   // 1-b. 네이버상 CLOSE인 US 주식 → 야후 오버나잇(데이마켓) 실시간가 병합. (네이버 미제공 = 오버나잇만, WS 스트리머)
   //     가격/등락/상태만 야후, 나머지는 네이버 그대로. 야후 미수신/stale 종목은 네이버 값 유지(fallback).
-  const closedUS = overseasStocks.filter(s => s.nation === 'US' && prices[s.code]?.marketStatus === 'CLOSE');
+  const closedUS = overseasStocks.filter(s => s.nation === 'US' && prices[s.code]?.marketStatus === 'CLOSED');
   if (closedUS.length > 0) {
     const ext = await fetchYahooExtended(closedUS.map(s => ({ code: s.code, reutersCode: s.reutersCode })));
     for (const [code, e] of Object.entries(ext)) {
@@ -149,7 +149,7 @@ const fetchOverseasCycle = async (
           change: e.change,
           changePercent: e.changePercent,
           changeDirection: e.direction,
-          marketStatus: 'OPEN',
+          marketStatus: e.session,   // 데이마켓(OVERNIGHT) 등 야후 세션
         };
       }
     }

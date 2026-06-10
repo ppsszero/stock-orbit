@@ -35,7 +35,7 @@ const makePrice = (overrides?: Partial<StockPrice>): StockPrice => ({
   changePercent: 1.35,
   changeDirection: 'up',
   currency: 'KRW',
-  marketStatus: 'OPEN',
+  marketStatus: 'REGULAR',
   updatedAt: '2024-01-01T09:00:00Z',
   isTradingHalt: false,
   exchange: 'KOSPI',
@@ -118,20 +118,20 @@ describe('StockRow', () => {
   });
 
   describe('시장 상태 표시', () => {
-    it('OPEN 시장이면 LIVE 상태를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'OPEN' })} />);
-      expect(screen.getByText('LIVE')).toBeInTheDocument();
+    it('정규장이면 정규 상태를 표시한다', () => {
+      render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'REGULAR' })} />);
+      expect(screen.getByText('정규')).toBeInTheDocument();
     });
 
-    it('CLOSE 시장이면 CLOSE 상태를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'CLOSE' })} />);
-      expect(screen.getByText('CLOSE')).toBeInTheDocument();
+    it('장마감이면 장마감 상태를 표시한다', () => {
+      render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
+      expect(screen.getByText('장마감')).toBeInTheDocument();
     });
 
     it('거래정지 종목이면 거래정지 레이블을 표시한다', () => {
       render(<StockRow {...baseProps} price={makePrice({ isTradingHalt: true })} />);
       expect(screen.getByText('거래정지')).toBeInTheDocument();
-      expect(screen.queryByText('LIVE')).not.toBeInTheDocument();
+      expect(screen.queryByText('정규')).not.toBeInTheDocument();
     });
   });
 

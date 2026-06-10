@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { StockSymbol, StockPrice, SortKey, SortDir, inferCategory } from '@/shared/types';
+import { isLiveSession } from '@/shared/utils/format';
 
 export interface StockGroup {
   label: string;
@@ -89,8 +90,8 @@ export const useStockGroups = (
         // 개장 중인 시장 우선 — 단일 그룹 뷰와 동일 규칙
         let stockOrder: StockSymbol[][] = [domestic, overseas];
         if (options?.sortByMarketOpen) {
-          const domesticLive = domestic.some(s => prices[s.code]?.marketStatus === 'OPEN');
-          const overseasLive = overseas.some(s => prices[s.code]?.marketStatus === 'OPEN');
+          const domesticLive = domestic.some(s => isLiveSession(prices[s.code]?.marketStatus));
+          const overseasLive = overseas.some(s => isLiveSession(prices[s.code]?.marketStatus));
           // 해외만 열려있으면 해외를 위로
           if (overseasLive && !domesticLive) stockOrder = [overseas, domestic];
         }
@@ -117,8 +118,8 @@ export const useStockGroups = (
 
     // NOTE: sortByMarketOpen — 현재 개장 중인 시장을 위로 올림.
     if (options?.sortByMarketOpen) {
-      const domesticLive = domestic.some(sym => prices[sym.code]?.marketStatus === 'OPEN');
-      const overseasLive = overseas.some(sym => prices[sym.code]?.marketStatus === 'OPEN');
+      const domesticLive = domestic.some(sym => isLiveSession(prices[sym.code]?.marketStatus));
+      const overseasLive = overseas.some(sym => isLiveSession(prices[sym.code]?.marketStatus));
       if (domesticLive || !overseasLive) {
         if (domestic.length > 0) groups.push({ label: '국내주식', items: domestic });
         if (overseas.length > 0) groups.push({ label: '해외주식', items: overseas });

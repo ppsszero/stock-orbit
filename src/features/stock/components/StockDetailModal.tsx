@@ -2,7 +2,7 @@
 import { css } from '@emotion/react';
 import { StockPrice, StockSymbol } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, sp } from '@/shared/styles/tokens';
-import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName, getDirColor } from '@/shared/utils/format';
+import { fmtNum, dirSign, fmtPercent, getLogoUrl, getDisplayName, getDirColor, SESSION_LABEL, isLiveSession } from '@/shared/utils/format';
 import { sem } from '@/shared/styles/semantic';
 import { Modal } from '@/shared/ui';
 
@@ -45,7 +45,7 @@ export const StockDetailModal = ({ symbol, price, onClose }: Props) => {
             {p.exchange && <span css={s.tag}>{p.exchange}</span>}
             {p.isTradingHalt
               ? <span css={s.tagHalt}>거래정지</span>
-              : <span css={s.tagStatus[String(p.marketStatus === 'OPEN')]}>{p.marketStatus === 'OPEN' ? 'LIVE' : 'CLOSE'}</span>
+              : <span css={s.tagStatus[String(isLiveSession(p.marketStatus))]}>{SESSION_LABEL[p.marketStatus]}</span>
             }
           </div>
         </div>

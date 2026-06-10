@@ -34,7 +34,7 @@ const makePrice = (overrides?: Partial<StockPrice>): StockPrice => ({
   changePercent: 1.35,
   changeDirection: 'up',
   currency: 'KRW',
-  marketStatus: 'OPEN',
+  marketStatus: 'REGULAR',
   updatedAt: '2024-01-01T09:00:00Z',
   isTradingHalt: false,
   exchange: 'KOSPI',
@@ -101,14 +101,14 @@ describe('GridCard', () => {
   });
 
   describe('시장 상태 표시', () => {
-    it('OPEN 시장이면 LIVE를 표시한다', () => {
-      render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'OPEN' })} />);
-      expect(screen.getByText('LIVE')).toBeInTheDocument();
+    it('정규장이면 정규를 표시한다', () => {
+      render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'REGULAR' })} />);
+      expect(screen.getByText('정규')).toBeInTheDocument();
     });
 
-    it('CLOSE 시장이면 CLOSE를 표시한다', () => {
-      render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'CLOSE' })} />);
-      expect(screen.getByText('CLOSE')).toBeInTheDocument();
+    it('장마감이면 장마감을 표시한다', () => {
+      render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
+      expect(screen.getByText('장마감')).toBeInTheDocument();
     });
   });
 
