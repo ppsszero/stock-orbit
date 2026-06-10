@@ -127,6 +127,21 @@ export interface MarqueeItem {
   type: 'index' | 'fx' | 'commodity' | 'metals' | 'energy' | 'agricultural' | 'transport';
 }
 
+/** 야후 v7 quote 원시 응답 (사용 필드만 — 해외 연장가용) */
+export interface YahooRawQuote {
+  symbol: string;
+  marketState?: string;
+  regularMarketPrice?: number;
+  regularMarketChange?: number;
+  regularMarketChangePercent?: number;
+  preMarketPrice?: number;
+  preMarketChange?: number;
+  preMarketChangePercent?: number;
+  postMarketPrice?: number;
+  postMarketChange?: number;
+  postMarketChangePercent?: number;
+}
+
 // === Electron API ===
 export interface ElectronAPI {
   close: () => void;
@@ -139,6 +154,8 @@ export interface ElectronAPI {
   onAlwaysOnTopChanged: (callback: (value: boolean) => void) => void;
   onWindowResized: (callback: (size: { width: number; height: number }) => void) => void;
   naverFetch: (url: string) => Promise<{ data?: unknown; error?: string }>;
+  /** 야후 해외 연장가 — symbols 배치 조회 (cookie+crumb는 메인이 관리) */
+  yahooQuote: (symbols: string[]) => Promise<{ quotes?: YahooRawQuote[]; error?: string; partial?: boolean }>;
   setZoom: (factor: number) => void;
   getDefaultScreenshotPath: () => Promise<string>;
   captureWindow: () => Promise<string>;                    // base64 이미지 반환
