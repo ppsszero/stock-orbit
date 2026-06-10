@@ -75,9 +75,13 @@ export const fetchYahooExtended = async (
       }
     }
     const m = res.meta;
+    // meta가 없으면 = 옛 메인 프로세스(electron/main.js HMR 안 됨). "끊김"으로 오인 방지.
+    const wsState = !m
+      ? '메인 재시작 필요(meta 없음 — dev 재기동)'
+      : `WS ${m.connected ? '연결' : '끊김'} · 구독 ${m.tracked} · 신선 ${m.fresh}`;
     logger.ws(
       `오버나잇 ${applied.length}/${tickers.length}개 적용`,
-      `WS ${m?.connected ? '연결' : '끊김'} · 구독 ${m?.tracked ?? 0} · 신선 ${m?.fresh ?? 0}${applied.length ? ' · ' + applied.join(', ') : ' · (프레임 대기중 — 다음 사이클 반영)'}`,
+      `${wsState}${applied.length ? ' · ' + applied.join(', ') : ' · (프레임 대기중 — 다음 사이클 반영)'}`,
     );
   } catch (e) {
     logger.ws('오버나잇 조회 실패 — 네이버 fallback', String(e));   // 야후 실패 → 빈 결과 = 네이버 유지
