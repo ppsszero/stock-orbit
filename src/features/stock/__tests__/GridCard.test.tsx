@@ -1,13 +1,15 @@
 /** @jsxImportSource @emotion/react */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import { GridCard } from '../components/GridCard';
+import { ConfirmProvider } from '@/shared/ui/ConfirmDialog';
+import { ToastProvider } from '@/shared/ui/Toast';
 import type { StockSymbol, StockPrice } from '@/shared/types';
 
 vi.mock('../../../store/selectors', () => ({
   useTheme: () => ({ border: '#333333', accent: '#4D9EFF', up: '#F04452', down: '#3182F6' }),
 }));
 
-vi.mock('@dnd-kit/sortable', () => ({
+vi.mock('@dnd-kit/sortable', async (importOriginal) => ({ ...(await importOriginal()),
   useSortable: () => ({
     attributes: {}, listeners: {}, setNodeRef: () => {},
     transform: null, transition: null, isDragging: false,
@@ -51,25 +53,29 @@ const baseProps = {
   onDetail: vi.fn(),
 };
 
+// useSymbolRemove(useConfirm/useToast) → Provider 래핑
+const renderCard = (ui: React.ReactElement) =>
+  rtlRender(<ToastProvider><ConfirmProvider>{ui}</ConfirmProvider></ToastProvider>);
+
 /* ── Tests ── */
 
 describe('GridCard', () => {
   describe('기본 렌더링', () => {
     it('종목명과 코드를 표시한다', () => {
-      render(<GridCard {...baseProps} />);
+      renderCard(<GridCard {...baseProps} />);
       expect(screen.getByText('삼성전자')).toBeInTheDocument();
       expect(screen.getByText('005930')).toBeInTheDocument();
     });
 
     it('가격 데이터가 없으면 ··· 를 표시한다', () => {
-      render(<GridCard {...baseProps} price={undefined} />);
+      renderCard(<GridCard {...baseProps} price={undefined} />);
       expect(screen.getByText('···')).toBeInTheDocument();
     });
   });
 
   describe('등락 방향 표시', () => {
     it('상승 시 ▲ 와 + 부호를 표시한다', () => {
-      const { container } = render(
+      const { container } = renderCard(
         <GridCard {...baseProps} price={makePrice({ changeDirection: 'up', changePercent: 1.35 })} />,
       );
       expect(container.textContent).toContain('▲');
@@ -77,7 +83,7 @@ describe('GridCard', () => {
     });
 
     it('하락 시 ▼ 와 - 부호를 표시한다', () => {
-      const { container } = render(
+      const { container } = renderCard(
         <GridCard
           {...baseProps}
           price={makePrice({ changeDirection: 'down', change: -1_000, changePercent: -1.35 })}
@@ -89,7 +95,7 @@ describe('GridCard', () => {
     });
 
     it('보합 시 화살표를 표시하지 않는다', () => {
-      const { container } = render(
+      const { container } = renderCard(
         <GridCard
           {...baseProps}
           price={makePrice({ changeDirection: 'flat', change: 0, changePercent: 0 })}
@@ -102,63 +108,41 @@ describe('GridCard', () => {
 
   describe('시장 상태 표시', () => {
     it('정규장이면 정규를 표시한다', () => {
-      render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'REGULAR' })} />);
+      renderCard(<GridCard {...baseProps} price={makePrice({ marketStatus: 'REGULAR' })} />);
       expect(screen.getByText('정규')).toBeInTheDocument();
     });
 
     it('장마감이면 장마감을 표시한다', () => {
-      render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
+      renderCard(<GridCard {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
       expect(screen.getByText('장마감')).toBeInTheDocument();
     });
   });
 
-  describe('카드 클릭은 웹뷰를 열지 않는다', () => {
-    it('카드 자체를 클릭해도 onClick이 호출되지 않는다', () => {
+  // 액션은 호버 버튼 → 우클릭 컨텍스트 메뉴로 변경됨. 카드 클릭은 웹뷰 열기(onClick).
+  describe('상호작용', () => {
+    it('카드 클릭 시 onClick이 심볼과 함께 호출된다', () => {
       const onClick = vi.fn();
-      const { container } = render(<GridCard {...baseProps} onClick={onClick} />);
-      fireEvent.click(container.firstChild!);
-      expect(onClick).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('호버 액션 버튼', () => {
-    it('외부 링크, 차트, 삭제 버튼이 존재한다', () => {
-      render(<GridCard {...baseProps} />);
-      expect(screen.getByRole('button', { name: '외부 링크 열기' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '차트 보기' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '종목 삭제' })).toBeInTheDocument();
-    });
-
-    it('외부 링크 버튼 클릭 시 onClick이 심볼과 함께 호출된다', () => {
-      const onClick = vi.fn();
-      render(<GridCard {...baseProps} onClick={onClick} />);
-      fireEvent.click(screen.getByRole('button', { name: '외부 링크 열기' }));
+      renderCard(<GridCard {...baseProps} onClick={onClick} />);
+      fireEvent.click(screen.getByText('삼성전자'));
       expect(onClick).toHaveBeenCalledTimes(1);
       expect(onClick).toHaveBeenCalledWith(sym);
     });
 
-    it('상세 버튼 클릭 시 onDetail이 호출된다', () => {
+    it('우클릭 시 컨텍스트 메뉴(상세 정보 보기/삭제)를 표시한다', () => {
+      renderCard(<GridCard {...baseProps} />);
+      fireEvent.contextMenu(screen.getByText('삼성전자'));
+      expect(screen.getByText('상세 정보 보기')).toBeInTheDocument();
+      expect(screen.getByText('삭제')).toBeInTheDocument();
+    });
+
+    it('메뉴의 상세 정보 보기 클릭 시 onDetail이 심볼과 가격과 함께 호출된다', () => {
       const onDetail = vi.fn();
       const price = makePrice();
-      render(<GridCard {...baseProps} price={price} onDetail={onDetail} />);
-      fireEvent.click(screen.getByRole('button', { name: '상세 보기' }));
+      renderCard(<GridCard {...baseProps} price={price} onDetail={onDetail} />);
+      fireEvent.contextMenu(screen.getByText('삼성전자'));
+      fireEvent.click(screen.getByText('상세 정보 보기'));
       expect(onDetail).toHaveBeenCalledTimes(1);
       expect(onDetail).toHaveBeenCalledWith(sym, price);
-    });
-
-    it('삭제 버튼 클릭 시 onRemove가 종목 코드와 함께 호출된다', () => {
-      const onRemove = vi.fn();
-      render(<GridCard {...baseProps} onRemove={onRemove} />);
-      fireEvent.click(screen.getByRole('button', { name: '종목 삭제' }));
-      expect(onRemove).toHaveBeenCalledTimes(1);
-      expect(onRemove).toHaveBeenCalledWith('005930');
-    });
-
-    it('가격 없으면 차트 버튼이 숨겨진다', () => {
-      render(<GridCard {...baseProps} price={undefined} />);
-      expect(screen.queryByRole('button', { name: '차트 보기' })).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '외부 링크 열기' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '종목 삭제' })).toBeInTheDocument();
     });
   });
 });

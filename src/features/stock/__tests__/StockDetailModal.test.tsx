@@ -29,8 +29,8 @@ describe('StockDetailModal', () => {
   });
 
   it('현재가와 변동률을 표시한다', () => {
-    const { container } = render(<StockDetailModal symbol={sym} price={price} onClose={vi.fn()} />);
-    expect(container.textContent).toContain('+1.35%');
+    render(<StockDetailModal symbol={sym} price={price} onClose={vi.fn()} />);
+    expect(document.body.textContent).toContain('+1.35%');
   });
 
   it('가격 정보 섹션을 표시한다', () => {
@@ -71,7 +71,7 @@ describe('StockDetailModal', () => {
 
   it('하락 종목은 - 부호를 표시한다', () => {
     const downPrice = { ...price, changeDirection: 'down' as const, change: -1000, changePercent: -1.35 };
-    const { container } = render(<StockDetailModal symbol={sym} price={downPrice} onClose={vi.fn()} />);
-    expect(container.textContent).toContain('-1.35%');
+    render(<StockDetailModal symbol={sym} price={downPrice} onClose={vi.fn()} />);
+    expect(document.body.textContent).toContain('-1.35%');
   });
 });

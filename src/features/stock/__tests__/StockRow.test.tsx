@@ -1,14 +1,16 @@
 /** @jsxImportSource @emotion/react */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StockRow } from '../components/StockRow';
+import { ConfirmProvider } from '@/shared/ui/ConfirmDialog';
+import { ToastProvider } from '@/shared/ui/Toast';
 import type { StockSymbol, StockPrice } from '@/shared/types';
 
 vi.mock('../../../store/selectors', () => ({
   useTheme: () => ({ border: '#333333', accent: '#4D9EFF' }),
 }));
 
-vi.mock('@dnd-kit/sortable', () => ({
+vi.mock('@dnd-kit/sortable', async (importOriginal) => ({ ...(await importOriginal()),
   useSortable: () => ({
     attributes: {}, listeners: {}, setNodeRef: () => {},
     transform: null, transition: null, isDragging: false,
@@ -52,35 +54,39 @@ const baseProps = {
   onDetail: vi.fn(),
 };
 
+// useSymbolRemove(useConfirm/useToast) → Provider 래핑
+const renderRow = (ui: React.ReactElement) =>
+  rtlRender(<ToastProvider><ConfirmProvider>{ui}</ConfirmProvider></ToastProvider>);
+
 /* ── Tests ── */
 
 describe('StockRow', () => {
   describe('기본 렌더링', () => {
     it('종목명과 코드를 표시한다', () => {
-      render(<StockRow {...baseProps} />);
+      renderRow(<StockRow {...baseProps} />);
       expect(screen.getByText('삼성전자')).toBeInTheDocument();
       expect(screen.getByText('005930')).toBeInTheDocument();
     });
 
     it('가격 데이터가 없으면 ··· 를 표시한다', () => {
-      render(<StockRow {...baseProps} price={undefined} />);
+      renderRow(<StockRow {...baseProps} price={undefined} />);
       expect(screen.getByText('···')).toBeInTheDocument();
     });
 
     it('role="listitem" 을 가진다', () => {
-      render(<StockRow {...baseProps} />);
+      renderRow(<StockRow {...baseProps} />);
       expect(screen.getByRole('listitem')).toBeInTheDocument();
     });
   });
 
   describe('등락 방향 표시 — 이 버그가 국내주식에서 반전되었었음', () => {
     it('changeDirection이 up이면 ▲ 화살표를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ changeDirection: 'up' })} />);
+      renderRow(<StockRow {...baseProps} price={makePrice({ changeDirection: 'up' })} />);
       expect(screen.getByRole('listitem')).toHaveTextContent('▲');
     });
 
     it('changeDirection이 down이면 ▼ 화살표를 표시한다', () => {
-      render(
+      renderRow(
         <StockRow
           {...baseProps}
           price={makePrice({ changeDirection: 'down', change: -1_000, changePercent: -1.35 })}
@@ -91,7 +97,7 @@ describe('StockRow', () => {
     });
 
     it('changeDirection이 flat이면 화살표를 표시하지 않는다', () => {
-      render(
+      renderRow(
         <StockRow
           {...baseProps}
           price={makePrice({ changeDirection: 'flat', change: 0, changePercent: 0 })}
@@ -102,12 +108,12 @@ describe('StockRow', () => {
     });
 
     it('상승 시 변동률에 + 부호를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ changeDirection: 'up', changePercent: 1.35 })} />);
+      renderRow(<StockRow {...baseProps} price={makePrice({ changeDirection: 'up', changePercent: 1.35 })} />);
       expect(screen.getByRole('listitem')).toHaveTextContent('+1.35%');
     });
 
     it('하락 시 변동률에 - 부호를 표시한다', () => {
-      render(
+      renderRow(
         <StockRow
           {...baseProps}
           price={makePrice({ changeDirection: 'down', change: -1_000, changePercent: -1.35 })}
@@ -119,17 +125,17 @@ describe('StockRow', () => {
 
   describe('시장 상태 표시', () => {
     it('정규장이면 정규 상태를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'REGULAR' })} />);
+      renderRow(<StockRow {...baseProps} price={makePrice({ marketStatus: 'REGULAR' })} />);
       expect(screen.getByText('정규')).toBeInTheDocument();
     });
 
     it('장마감이면 장마감 상태를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
+      renderRow(<StockRow {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
       expect(screen.getByText('장마감')).toBeInTheDocument();
     });
 
     it('거래정지 종목이면 거래정지 레이블을 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ isTradingHalt: true })} />);
+      renderRow(<StockRow {...baseProps} price={makePrice({ isTradingHalt: true })} />);
       expect(screen.getByText('거래정지')).toBeInTheDocument();
       expect(screen.queryByText('정규')).not.toBeInTheDocument();
     });
@@ -137,52 +143,41 @@ describe('StockRow', () => {
 
   describe('통화 모드', () => {
     it('KRW 모드에서 ₩ 접두사를 표시한다', () => {
-      render(<StockRow {...baseProps} price={makePrice({ currency: 'KRW' })} currencyMode="KRW" />);
+      renderRow(<StockRow {...baseProps} price={makePrice({ currency: 'KRW' })} currencyMode="KRW" />);
       expect(screen.getByRole('listitem')).toHaveTextContent('₩');
     });
 
     it('USD 모드에서 해외주식은 $ 접두사를 표시한다', () => {
       const usSym: StockSymbol = { code: 'AAPL', name: 'Apple', market: 'NASDAQ', nation: 'US', reutersCode: 'AAPL.O' };
       const usPrice = makePrice({ currency: 'USD', currentPrice: 195.5, change: 1.5, changePercent: 0.77 });
-      render(<StockRow {...baseProps} sym={usSym} price={usPrice} currencyMode="USD" />);
+      renderRow(<StockRow {...baseProps} sym={usSym} price={usPrice} currencyMode="USD" />);
       expect(screen.getByRole('listitem')).toHaveTextContent('$');
     });
   });
 
-  describe('호버 액션', () => {
-    it('마우스를 올리면 삭제/차트/링크 버튼이 나타난다', async () => {
-      const user = userEvent.setup();
-      render(<StockRow {...baseProps} />);
-      await user.hover(screen.getByRole('listitem'));
-      expect(screen.getByRole('button', { name: '종목 삭제' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '차트 보기' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '외부 링크 열기' })).toBeInTheDocument();
-    });
-
-    it('삭제 버튼 클릭 시 onRemove가 종목 코드와 함께 호출된다', () => {
-      const onRemove = vi.fn();
-      render(<StockRow {...baseProps} onRemove={onRemove} />);
-      fireEvent.mouseEnter(screen.getByRole('listitem'));
-      fireEvent.click(screen.getByRole('button', { name: '종목 삭제' }));
-      expect(onRemove).toHaveBeenCalledTimes(1);
-      expect(onRemove).toHaveBeenCalledWith('005930');
-    });
-
-    it('외부 링크 버튼 클릭 시 onClick이 심볼 객체와 함께 호출된다', () => {
+  // 액션은 호버 버튼 → 우클릭 컨텍스트 메뉴로 변경됨. 행 클릭은 웹뷰 열기(onClick).
+  describe('상호작용', () => {
+    it('행 클릭 시 onClick이 심볼과 함께 호출된다', () => {
       const onClick = vi.fn();
-      render(<StockRow {...baseProps} onClick={onClick} />);
-      fireEvent.mouseEnter(screen.getByRole('listitem'));
-      fireEvent.click(screen.getByRole('button', { name: '외부 링크 열기' }));
+      renderRow(<StockRow {...baseProps} onClick={onClick} />);
+      fireEvent.click(screen.getByRole('listitem'));
       expect(onClick).toHaveBeenCalledTimes(1);
       expect(onClick).toHaveBeenCalledWith(sym);
     });
 
-    it('상세 버튼 클릭 시 onDetail이 심볼과 가격 데이터와 함께 호출된다', () => {
+    it('우클릭 시 컨텍스트 메뉴(상세 정보 보기/삭제)를 표시한다', () => {
+      renderRow(<StockRow {...baseProps} />);
+      fireEvent.contextMenu(screen.getByRole('listitem'));
+      expect(screen.getByText('상세 정보 보기')).toBeInTheDocument();
+      expect(screen.getByText('삭제')).toBeInTheDocument();
+    });
+
+    it('메뉴의 상세 정보 보기 클릭 시 onDetail이 심볼과 가격과 함께 호출된다', () => {
       const onDetail = vi.fn();
       const price = makePrice();
-      render(<StockRow {...baseProps} price={price} onDetail={onDetail} />);
-      fireEvent.mouseEnter(screen.getByRole('listitem'));
-      fireEvent.click(screen.getByRole('button', { name: '상세 보기' }));
+      renderRow(<StockRow {...baseProps} price={price} onDetail={onDetail} />);
+      fireEvent.contextMenu(screen.getByRole('listitem'));
+      fireEvent.click(screen.getByText('상세 정보 보기'));
       expect(onDetail).toHaveBeenCalledTimes(1);
       expect(onDetail).toHaveBeenCalledWith(sym, price);
     });

@@ -68,7 +68,7 @@ describe('StockTile', () => {
   });
 
   it('가격 없는 종목은 ··· 를 표시한다', () => {
-    renderTile(<StockTile {...baseProps} prices={{}} />);
+    renderTile(<StockTile {...baseProps} prices={{ '005930': makePrice('005930', '삼성전자') }} />);
     const dots = screen.getAllByText('···');
     expect(dots.length).toBeGreaterThanOrEqual(1);
   });
