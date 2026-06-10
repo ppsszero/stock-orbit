@@ -3,6 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useRef, useEffect } from 'react';
 import { spacing, fontSize, fontWeight, radius, transition } from '@/shared/styles/tokens';
 import { sem } from '@/shared/styles/semantic';
+import { Tooltip } from './Tooltip';
 
 type Size = 'sm' | 'md' | 'lg';
 
@@ -18,6 +19,8 @@ interface Props {
   step?: number;
   /** 입력 확정(blur) 시 값이 min/max를 벗어나 clamp된 경우 호출 — 안내 토스트 등에 사용 */
   onClamp?: (attempted: number, clamped: number) => void;
+  /** hover 시 "최소 N, 최대 M" 범위를 툴팁으로 안내 */
+  rangeTooltip?: boolean;
   disabled?: boolean;
   size?: Size;
   inputWidth?: number;
@@ -33,7 +36,7 @@ const SIZE_MAP: Record<Size, { btn: number; wrap: number; input: number }> = {
 
 export const NumberStepper = ({
   value: controlled, onChange, defaultValue = 0,
-  min = 0, max = 999, step = 1, onClamp,
+  min = 0, max = 999, step = 1, onClamp, rangeTooltip = false,
   disabled = false, size = 'md', inputWidth,
   decreaseLabel = '감소', increaseLabel = '증가',
 }: Props) => {
@@ -78,7 +81,7 @@ export const NumberStepper = ({
   const inW = inputWidth ?? dim.input;
   const display = draft ?? String(value);
 
-  return (
+  const stepper = (
     <div css={s.wrap(disabled)}>
       <button css={s.btn(dim.btn)} aria-label={decreaseLabel} type="button"
         disabled={disabled || value <= min}
@@ -123,6 +126,10 @@ export const NumberStepper = ({
       <span css={s.srOnly} aria-live="polite" aria-atomic="true">{value}</span>
     </div>
   );
+
+  return rangeTooltip
+    ? <Tooltip content={`최소 ${min}, 최대 ${max}`} position="top" display="inline-flex">{stepper}</Tooltip>
+    : stepper;
 };
 
 const s = {

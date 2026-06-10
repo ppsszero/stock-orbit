@@ -185,13 +185,13 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         </SettingRow>
         <SettingRow label="국내 증시현황 개수">
           <NumberStepper value={settings.sectorCountDomestic} defaultValue={DEFAULT_SETTINGS.sectorCountDomestic}
-            min={10} max={SECTOR_MAX.domestic} step={1}
+            min={10} max={SECTOR_MAX.domestic} step={1} rangeTooltip
             onChange={v => onUpdate({ sectorCountDomestic: v })}
             onClamp={(att, cl) => { if (att > cl) toast.show(`국내 증시현황은 최대 ${SECTOR_MAX.domestic}개까지 표시할 수 있어요`, 'error'); }} />
         </SettingRow>
         <SettingRow label="해외 증시현황 개수">
           <NumberStepper value={settings.sectorCountOverseas} defaultValue={DEFAULT_SETTINGS.sectorCountOverseas}
-            min={10} max={SECTOR_MAX.USA} step={1}
+            min={10} max={SECTOR_MAX.USA} step={1} rangeTooltip
             onChange={v => onUpdate({ sectorCountOverseas: v })}
             onClamp={(att, cl) => { if (att > cl) toast.show(`해외 증시현황은 최대 ${SECTOR_MAX.USA}개까지 표시할 수 있어요`, 'error'); }} />
         </SettingRow>
@@ -208,7 +208,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
           <SegmentedControl items={FONT_SIZES} value={settings.fontSize} onChange={v => onUpdate({ fontSize: v })} size="md" />
         </SettingRow>
         <SettingRow label="시장지표 스크롤 속도">
-          <NumberStepper value={settings.tickerSpeed} defaultValue={DEFAULT_SETTINGS.tickerSpeed} min={20} max={120}
+          <NumberStepper value={settings.tickerSpeed} defaultValue={DEFAULT_SETTINGS.tickerSpeed} min={20} max={120} rangeTooltip
             onChange={v => onUpdate({ tickerSpeed: v })} />
         </SettingRow>
 
