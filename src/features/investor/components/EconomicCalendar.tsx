@@ -55,14 +55,15 @@ export const EconomicCalendar = ({ refreshSignal }: Props = {}) => {
           )}
         </div>
 
-        <button css={s.navBtn} onClick={goNext} disabled={!canNext} aria-label="다음 날짜">
-          <FiChevronRight size={16} />
-        </button>
+        {/* '오늘'을 '>' 앞에 — '>'가 항상 맨 오른쪽에 고정되어 연타해도 오늘로 안 튐 */}
         {!isToday && (
           <button css={[s.navBtn, s.todayBtn]} onClick={goToday} aria-label="오늘로 이동">
             오늘
           </button>
         )}
+        <button css={s.navBtn} onClick={goNext} disabled={!canNext} aria-label="다음 날짜">
+          <FiChevronRight size={16} />
+        </button>
       </div>
 
       <div css={s.body}>
