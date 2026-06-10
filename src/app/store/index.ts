@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   refreshIntervalDomestic: 15,
   refreshIntervalOverseas: 70,
   tickerSpeed: 50,
+  sectorCount: 20,
   currencyMode: 'USD',
   resolution: { width: 420, height: 680 },
   fontSize: 'medium',

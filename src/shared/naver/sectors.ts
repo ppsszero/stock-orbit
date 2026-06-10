@@ -37,11 +37,13 @@ export interface SectorOverview {
 export const dirFromFluctuationsType = (t?: string): 'up' | 'down' | 'flat' =>
   t === 'RISING' ? 'up' : t === 'FALLING' ? 'down' : 'flat';
 
-export const fetchSectors = async (nation: SectorNation): Promise<SectorOverview | null> => {
+export const fetchSectors = async (nation: SectorNation, count = 20): Promise<SectorOverview | null> => {
   const extra = nation === 'domestic' ? '&sectorType=upjong' : '';
+  // 네이버 API는 pageSize > 50이면 'too_big' 에러로 차단 → 1~50으로 clamp
+  const pageSize = Math.min(Math.max(Math.floor(count) || 20, 1), 50);
   try {
     const d = await fetchJSON<SectorOverviewRaw>(
-      `${MOBILE_BASE}/front-api/stock/sectors/all/price?businessDayCategory=daily&nationType=${nation}&sectorSortType=MARKET_VALUE${extra}&page=1&pageSize=20`
+      `${MOBILE_BASE}/front-api/stock/sectors/all/price?businessDayCategory=daily&nationType=${nation}&sectorSortType=MARKET_VALUE${extra}&page=1&pageSize=${pageSize}`
     );
     const r = d.result;
     if (!r) return null;

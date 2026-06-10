@@ -5,6 +5,7 @@ import { spacing, fontSize, fontWeight } from '@/shared/styles/tokens';
 import { Sector, SectorNation } from '@/shared/naver';
 import { Tabs, LoadingCenter } from '@/shared/ui';
 import { subTabPadStyle } from '@/shared/styles/sharedStyles';
+import { useStore } from '@/app/store';
 import { useSectorData } from '../hooks/useSectorData';
 import { SectorTreemap } from './SectorTreemap';
 import { SectorDetail } from './SectorDetail';
@@ -24,7 +25,8 @@ const NATIONS: { key: SectorNation; label: string }[] = [
 ];
 
 export const SectorView = ({ active, onStockClick, refreshSignal }: Props) => {
-  const { nation, setNation, overview, loading, refreshAll } = useSectorData(active);
+  const sectorCount = useStore(s => s.settings.sectorCount);
+  const { nation, setNation, overview, loading, refreshAll } = useSectorData(active, sectorCount);
   const [selected, setSelected] = useState<Sector | null>(null);
 
   // 외부 시그널로 양쪽 nation 모두 force fetch

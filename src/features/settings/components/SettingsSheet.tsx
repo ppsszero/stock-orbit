@@ -196,6 +196,10 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
           <NumberStepper value={settings.tickerSpeed} defaultValue={DEFAULT_SETTINGS.tickerSpeed} min={20} max={120}
             onChange={v => onUpdate({ tickerSpeed: v })} />
         </SettingRow>
+        <SettingRow label="증시현황 개수">
+          <NumberStepper value={settings.sectorCount} defaultValue={DEFAULT_SETTINGS.sectorCount} min={10} max={50} step={5}
+            onChange={v => onUpdate({ sectorCount: v })} />
+        </SettingRow>
 
         <Section>스크린샷</Section>
         <SettingRow label="단축키">
