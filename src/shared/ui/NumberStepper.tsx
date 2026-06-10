@@ -130,7 +130,7 @@ export const NumberStepper = ({
   return rangeTooltip
     ? (
       <Tooltip
-        content={<span css={s.tip}>최소 <b css={s.tipMin}>{min}</b> · 최대 <b css={s.tipMax}>{max}</b></span>}
+        content={<span css={s.tip}>최소 <b css={s.tipMin}>{min}</b> · 최대 <b css={s.tipMax}>{max}</b> 설정 가능</span>}
         position="top" display="inline-flex">
         {stepper}
       </Tooltip>
