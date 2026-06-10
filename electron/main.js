@@ -411,62 +411,89 @@ app.whenReady().then(() => {
     }
   });
 
-  // === Yahoo Finance (해외 연장가) ===
-  // 네이버가 US 프리/애프터마켓을 안 줘서 가격만 야후에서 빌림. 인증: 익명 cookie+crumb (yfinance 방식).
-  // 모듈 캐시 — 평상시 재인증 없이 quote만. 401/Invalid Crumb 등에서만 재수집.
-  let yahooCookie = '';
-  let yahooCrumb = '';
-  const YAHOO_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
-  const yahooFetch = (url, extra = {}) => {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 10_000);
-    return fetch(url, { signal: ac.signal, headers: { 'User-Agent': YAHOO_UA, ...extra } }).finally(() => clearTimeout(timer));
-  };
-  const collectCookies = (res) => {
-    const list = typeof res.headers.getSetCookie === 'function'
-      ? res.headers.getSetCookie()
-      : [res.headers.get('set-cookie')].filter(Boolean);
-    return list.map(c => c.split(';')[0]).filter(Boolean);
-  };
-  // 쿠키 + crumb 재수집 (fc.yahoo.com → getcrumb)
-  const ensureYahooAuth = async () => {
-    const jar = [];
-    const r1 = await yahooFetch('https://fc.yahoo.com/');
-    collectCookies(r1).forEach(c => jar.push(c));
-    const r2 = await yahooFetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { Cookie: jar.join('; ') });
-    collectCookies(r2).forEach(c => jar.push(c));
-    yahooCookie = jar.join('; ');
-    yahooCrumb = (await r2.text()).trim();
-    if (!yahooCrumb) throw new Error('crumb empty');
-  };
-  const yahooQuoteOnce = async (symbols) => {
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(','))}&crumb=${encodeURIComponent(yahooCrumb)}`;
-    const res = await yahooFetch(url, { Cookie: yahooCookie });
-    if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const qr = (await res.json()).quoteResponse;
-    if (!qr || qr.error) throw new Error(qr?.error?.code || 'quote error');
-    return qr.result || [];
-  };
-  ipcMain.handle('yahoo-quote', async (_, symbols) => {
-    if (isDev) return { error: 'dev mode' };
-    if (!Array.isArray(symbols) || symbols.length === 0) return { quotes: [] };
-    try {
-      if (!yahooCrumb || !yahooCookie) await ensureYahooAuth();
-      try {
-        return { quotes: await yahooQuoteOnce(symbols) };
-      } catch {
-        await ensureYahooAuth();               // 만료/실패 → 쿠키+crumb 재수집
-        return { quotes: await yahooQuoteOnce(symbols) };  // 1회 재시도
-      }
-    } catch {
-      // 배치 실패 → 개별 1콜씩 (일부라도 살림). 실패한 종목은 누락 = 네이버 fallback.
-      const quotes = [];
-      for (const sym of symbols) {
-        try { const r = await yahooQuoteOnce([sym]); if (r[0]) quotes.push(r[0]); } catch { /* skip */ }
-      }
-      return { quotes, partial: true };
+  // === Yahoo Finance 실시간 스트리머 (해외 연장가 / 오버나잇) ===
+  // 네이버는 US 오버나잇(8pm~4am ET = KST 09:00~17:00)을 안 줌. REST(v7/v8)도 8pm ET에서 끊김.
+  // 야후 WS 스트리머만 오버나잇 라이브를 푸시 → ws로 구독, protobuf 디코드, 최신값 캐시.
+  // 의존성 ws: Electron 메인(Node 20)에 WebSocket 전역이 없어 도입 (Yahoo 오버나잇 유일 경로).
+  const WebSocket = require('ws');
+  const YAHOO_WS_URL = 'wss://streamer.finance.yahoo.com/?version=2';
+  const YAHOO_STALE_MS = 5 * 60 * 1000;   // 5분 이상 미수신 → stale = 네이버 fallback (주말/완전마감)
+
+  let yahooWs = null;
+  let yahooConnected = false;
+  let yahooReconnectTimer = null;
+  let yahooReconnectDelay = 1000;          // 1s → 2 → 4 ... cap 30s
+  const yahooTracked = new Set();          // 구독 중인 티커 (연결과 독립 — 재연결 시 전체 재구독)
+  const yahooCache = new Map();            // ticker → { price, change, changePercent, marketHours, receivedAt }
+
+  // protobuf PricingData 최소 디코더 (1=id str, 2=price f32, 7=marketHours varint, 8=changePercent f32, 12=change f32)
+  const decodeYahooPricing = (b64) => {
+    const buf = Buffer.from(b64, 'base64');
+    let i = 0; const out = {};
+    while (i < buf.length) {
+      const tag = buf[i++], field = tag >> 3, wire = tag & 7;
+      if (wire === 2) { const len = buf[i++]; out[field] = buf.slice(i, i + len).toString('utf8'); i += len; }
+      else if (wire === 5) { out[field] = buf.readFloatLE(i); i += 4; }
+      else if (wire === 0) { let b; do { b = buf[i++]; } while (b & 0x80); out[field] = field === 7 ? buf[i - 1] : 0; } // 미사용 varint(time 등)는 값 무시, marketHours만 단일바이트로 충분
+      else if (wire === 1) { i += 8; }     // 64bit fixed — 미사용 스킵
+      else break;
     }
+    if (out[1] == null || out[2] == null) return null;
+    return { id: out[1], price: out[2], change: out[12] ?? 0, changePercent: out[8] ?? 0, marketHours: out[7] ?? -1 };
+  };
+
+  const yahooSend = (obj) => { try { if (yahooWs && yahooConnected) yahooWs.send(JSON.stringify(obj)); } catch { /* noop */ } };
+
+  const scheduleYahooReconnect = () => {
+    if (yahooReconnectTimer || yahooTracked.size === 0) return;  // 구독 대상 없으면 보류
+    yahooReconnectTimer = setTimeout(() => {
+      yahooReconnectTimer = null;
+      yahooReconnectDelay = Math.min(yahooReconnectDelay * 2, 30_000);
+      yahooConnect();
+    }, yahooReconnectDelay);
+  };
+
+  const yahooConnect = () => {
+    if (yahooWs) return;
+    try { yahooWs = new WebSocket(YAHOO_WS_URL); } catch { scheduleYahooReconnect(); return; }
+    yahooWs.on('open', () => {
+      yahooConnected = true;
+      yahooReconnectDelay = 1000;
+      if (yahooTracked.size > 0) yahooSend({ subscribe: [...yahooTracked] });
+    });
+    yahooWs.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === 'pricing' && msg.message) {
+          const q = decodeYahooPricing(msg.message);
+          if (q) yahooCache.set(q.id, { price: q.price, change: q.change, changePercent: q.changePercent, marketHours: q.marketHours, receivedAt: Date.now() });
+        }
+      } catch { /* 비-JSON / 디코드 실패 → 무시 */ }
+    });
+    const onDown = () => { yahooConnected = false; yahooWs = null; scheduleYahooReconnect(); };
+    yahooWs.on('close', onDown);
+    yahooWs.on('error', onDown);
+  };
+
+  const yahooEnsureSubscribed = (tickers) => {
+    const fresh = tickers.filter(t => t && !yahooTracked.has(t));
+    fresh.forEach(t => yahooTracked.add(t));
+    if (yahooConnected && fresh.length > 0) yahooSend({ subscribe: fresh });
+    yahooConnect();   // 미연결이면 연결 (open에서 전체 재구독)
+  };
+
+  ipcMain.handle('yahoo-quotes', async (_, tickers) => {
+    if (!Array.isArray(tickers) || tickers.length === 0) return { quotes: {} };
+    yahooEnsureSubscribed(tickers);
+    const now = Date.now();
+    const quotes = {};
+    for (const t of tickers) {
+      const c = yahooCache.get(t);
+      if (c && now - c.receivedAt < YAHOO_STALE_MS) {
+        quotes[t] = { price: c.price, change: c.change, changePercent: c.changePercent, marketHours: c.marketHours };
+      }
+    }
+    return { quotes };
   });
 
   // === Screenshot ===

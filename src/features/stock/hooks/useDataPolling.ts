@@ -135,8 +135,8 @@ const fetchOverseasCycle = async (
     if (i + BATCH_SIZE < overseasStocks.length) await sleep(BATCH_DELAY_MS);
   }
 
-  // 1-b. 네이버상 CLOSE인 US 주식 → 야후 연장가(데이마켓) 병합. (네이버 미제공분, 정규장 닫히면 연장가 우선)
-  //     가격/등락/상태만 야후, 나머지는 네이버 그대로. 야후 실패 종목은 네이버 값 유지(fallback).
+  // 1-b. 네이버상 CLOSE인 US 주식 → 야후 오버나잇(데이마켓) 실시간가 병합. (네이버 미제공 = 오버나잇만, WS 스트리머)
+  //     가격/등락/상태만 야후, 나머지는 네이버 그대로. 야후 미수신/stale 종목은 네이버 값 유지(fallback).
   const closedUS = overseasStocks.filter(s => s.nation === 'US' && prices[s.code]?.marketStatus === 'CLOSE');
   if (closedUS.length > 0) {
     const ext = await fetchYahooExtended(closedUS.map(s => ({ code: s.code, reutersCode: s.reutersCode })));

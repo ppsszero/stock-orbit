@@ -127,19 +127,12 @@ export interface MarqueeItem {
   type: 'index' | 'fx' | 'commodity' | 'metals' | 'energy' | 'agricultural' | 'transport';
 }
 
-/** 야후 v7 quote 원시 응답 (사용 필드만 — 해외 연장가용) */
-export interface YahooRawQuote {
-  symbol: string;
-  marketState?: string;
-  regularMarketPrice?: number;
-  regularMarketChange?: number;
-  regularMarketChangePercent?: number;
-  preMarketPrice?: number;
-  preMarketChange?: number;
-  preMarketChangePercent?: number;
-  postMarketPrice?: number;
-  postMarketChange?: number;
-  postMarketChangePercent?: number;
+/** 야후 실시간 스트리머(WS) 디코드 결과 — 해외 연장가/오버나잇. marketHours: 0=장전 1=정규 2=장후 4=오버나잇 */
+export interface YahooStreamQuote {
+  price: number;
+  change: number;
+  changePercent: number;
+  marketHours: number;
 }
 
 // === Electron API ===
@@ -154,8 +147,8 @@ export interface ElectronAPI {
   onAlwaysOnTopChanged: (callback: (value: boolean) => void) => void;
   onWindowResized: (callback: (size: { width: number; height: number }) => void) => void;
   naverFetch: (url: string) => Promise<{ data?: unknown; error?: string }>;
-  /** 야후 해외 연장가 — symbols 배치 조회 (cookie+crumb는 메인이 관리) */
-  yahooQuote: (symbols: string[]) => Promise<{ quotes?: YahooRawQuote[]; error?: string; partial?: boolean }>;
+  /** 야후 실시간 연장가/오버나잇 — 티커 구독 + 최신 스냅샷 (WS+protobuf는 메인이 관리) */
+  yahooQuotes: (tickers: string[]) => Promise<{ quotes?: Record<string, YahooStreamQuote>; error?: string }>;
   setZoom: (factor: number) => void;
   getDefaultScreenshotPath: () => Promise<string>;
   captureWindow: () => Promise<string>;                    // base64 이미지 반환

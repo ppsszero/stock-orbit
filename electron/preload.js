@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   // Naver API proxy (CORS 우회)
   naverFetch: (url) => ipcRenderer.invoke('naver-fetch', url),
-  yahooQuote: (symbols) => ipcRenderer.invoke('yahoo-quote', symbols),
+  yahooQuotes: (tickers) => ipcRenderer.invoke('yahoo-quotes', tickers),
   // 줌 팩터 (글자 크기)
   setZoom: (factor) => webFrame.setZoomFactor(factor),
   getDefaultScreenshotPath: () => ipcRenderer.invoke('get-default-screenshot-path'),
