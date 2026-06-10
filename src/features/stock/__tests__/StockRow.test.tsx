@@ -123,9 +123,9 @@ describe('StockRow', () => {
       expect(screen.getByText('정규')).toBeInTheDocument();
     });
 
-    it('장마감이면 장마감 상태를 표시한다', () => {
+    it('마감이면 마감 상태를 표시한다', () => {
       render(<StockRow {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
-      expect(screen.getByText('장마감')).toBeInTheDocument();
+      expect(screen.getByText('마감')).toBeInTheDocument();
     });
 
     it('거래정지 종목이면 거래정지 레이블을 표시한다', () => {

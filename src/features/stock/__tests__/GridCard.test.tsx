@@ -106,9 +106,9 @@ describe('GridCard', () => {
       expect(screen.getByText('정규')).toBeInTheDocument();
     });
 
-    it('장마감이면 장마감을 표시한다', () => {
+    it('마감이면 마감을 표시한다', () => {
       render(<GridCard {...baseProps} price={makePrice({ marketStatus: 'CLOSED' })} />);
-      expect(screen.getByText('장마감')).toBeInTheDocument();
+      expect(screen.getByText('마감')).toBeInTheDocument();
     });
   });
 

@@ -14,9 +14,9 @@ export interface ExtendedQuote {
   session: MarketSession;
 }
 
-/** 야후 marketHours → 세션. 0=장전 1=정규 2=장후 4=오버나잇. 야후는 네이버 CLOSED일 때만 조회되므로 기본은 OVERNIGHT(데이마켓). */
+/** 야후 marketHours → 세션. 0=장전 1=정규 2=장후 4=오버나잇. 미지(-1/누락 등)는 CLOSED로(가짜 live 방지). */
 const sessionFromMarketHours = (mh: number): MarketSession =>
-  mh === 0 ? 'PRE' : mh === 1 ? 'REGULAR' : mh === 2 ? 'AFTER' : 'OVERNIGHT';
+  mh === 0 ? 'PRE' : mh === 1 ? 'REGULAR' : mh === 2 ? 'AFTER' : mh === 4 ? 'OVERNIGHT' : 'CLOSED';
 
 /** 점 포함 클래스주 등 예외 — 네이버 reutersCode의 '.' 앞부분(base)을 키로. 필요 시 확장. */
 const TICKER_EXCEPTIONS: Record<string, string> = {};
@@ -68,7 +68,9 @@ export const fetchYahooExtended = async (
       const code = tickerToCode[ticker];
       if (!code) continue;
       const ext = toExtendedQuote(q);
-      if (ext) {
+      // 오버나잇(데이마켓)만 빌림 — 프리/정규/장후는 네이버가 제공(이때 네이버 CLOSED 아니라 트리거도 안 됨).
+      // 야후가 정규/장후를 줘도 네이버 CLOSED를 덮어쓰지 않음(표시값 거짓 방지).
+      if (ext && ext.session === 'OVERNIGHT') {
         out[code] = ext;
         const sign = ext.changePercent > 0 ? '+' : '';
         applied.push(`${ticker} ${ext.price}(${sign}${ext.changePercent.toFixed(2)}%)`);

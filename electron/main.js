@@ -472,19 +472,30 @@ app.whenReady().then(() => {
       } catch { /* 비-JSON / 디코드 실패 → 무시 */ }
     });
     const onDown = (info) => {
-      yahooConnected = false; yahooWs = null;
+      yahooConnected = false;
+      // 죽은 소켓 리스너 제거 + 종료 (재연결 시 새 소켓만 살아있게 — orphan 리스너/late 캐시쓰기 방지)
+      if (yahooWs) { try { yahooWs.removeAllListeners(); yahooWs.terminate(); } catch { /* noop */ } }
+      yahooWs = null;
       console.log(`[yahoo-ws] down (${info && info.message ? info.message : 'closed'}) · reconnect in ${yahooReconnectDelay}ms`);
       scheduleYahooReconnect();
     };
-    yahooWs.on('close', () => onDown());
+    // error → close 연쇄 시 첫 onDown의 removeAllListeners가 close 리스너도 제거 → 중복 호출 없음
+    yahooWs.on('close', (code) => onDown({ message: `close ${code}` }));
     yahooWs.on('error', onDown);
   };
 
+  // 구독 집합을 요청(현재 CLOSED인 US)과 동기화 — 추가/제거 모두 반영해 무한 증가 방지.
   const yahooEnsureSubscribed = (tickers) => {
-    const fresh = tickers.filter(t => t && !yahooTracked.has(t));
-    fresh.forEach(t => yahooTracked.add(t));
-    if (yahooConnected && fresh.length > 0) yahooSend({ subscribe: fresh });
-    yahooConnect();   // 미연결이면 연결 (open에서 전체 재구독)
+    const want = new Set(tickers.filter(Boolean));
+    const toAdd = [...want].filter(t => !yahooTracked.has(t));
+    const toRemove = [...yahooTracked].filter(t => !want.has(t));
+    toRemove.forEach(t => yahooTracked.delete(t));
+    toAdd.forEach(t => yahooTracked.add(t));
+    if (yahooConnected) {
+      if (toAdd.length) yahooSend({ subscribe: toAdd });
+      if (toRemove.length) yahooSend({ unsubscribe: toRemove });
+    }
+    yahooConnect();   // 미연결이면 연결 (open에서 현재 tracked 전체 재구독)
   };
 
   ipcMain.handle('yahoo-quotes', async (_, tickers) => {
@@ -500,6 +511,12 @@ app.whenReady().then(() => {
       }
     }
     return { quotes, meta: { connected: yahooConnected, tracked: yahooTracked.size, fresh: Object.keys(quotes).length } };
+  });
+
+  // 앱 종료 시 WS/타이머 정리 (dangling 소켓 + 종료 중 재연결 storm 방지)
+  app.on('before-quit', () => {
+    if (yahooReconnectTimer) { clearTimeout(yahooReconnectTimer); yahooReconnectTimer = null; }
+    if (yahooWs) { try { yahooWs.removeAllListeners(); yahooWs.close(); } catch { /* noop */ } yahooWs = null; }
   });
 
   // === Screenshot ===

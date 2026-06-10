@@ -129,7 +129,7 @@ describe('getDisplayName', () => {
     changePercent: 1.41,
     changeDirection: 'up',
     currency: 'KRW',
-    marketStatus: 'OPEN',
+    marketStatus: 'REGULAR',
     updatedAt: '2024-01-01',
   };
 
@@ -144,7 +144,7 @@ describe('getDisplayName', () => {
     changePercent: 1.69,
     changeDirection: 'up',
     currency: 'USD',
-    marketStatus: 'OPEN',
+    marketStatus: 'REGULAR',
     updatedAt: '2024-01-01',
   };
 
