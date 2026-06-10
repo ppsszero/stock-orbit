@@ -164,7 +164,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         </SettingRow>
 
         <Section>데이터</Section>
-        <SettingRow label="국내 새로고침">
+        <SettingRow label="국내주식 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalDomestic}
             onChange={e => onUpdate({ refreshIntervalDomestic: parseInt(e.target.value) })}>
             <option value="10">10초</option>
@@ -174,7 +174,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             <option value="180">3분</option>
           </select>
         </SettingRow>
-        <SettingRow label="해외·시장지표 새로고침">
+        <SettingRow label="해외주식·시장지표 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalOverseas}
             onChange={e => onUpdate({ refreshIntervalOverseas: parseInt(e.target.value) })}>
             <option value="70">1분</option>
@@ -183,17 +183,17 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             <option value="300">5분</option>
           </select>
         </SettingRow>
-        <SettingRow label="증시현황 개수 (국내)">
+        <SettingRow label="국내 증시현황 개수">
           <NumberStepper value={settings.sectorCountDomestic} defaultValue={DEFAULT_SETTINGS.sectorCountDomestic}
             min={10} max={SECTOR_MAX.domestic} step={1}
             onChange={v => onUpdate({ sectorCountDomestic: v })}
-            onClamp={(att, cl) => { if (att > cl) toast.show(`국내 증시현황은 최대 ${SECTOR_MAX.domestic}개까지 표시할 수 있어요`); }} />
+            onClamp={(att, cl) => { if (att > cl) toast.show(`국내 증시현황은 최대 ${SECTOR_MAX.domestic}개까지 표시할 수 있어요`, 'error'); }} />
         </SettingRow>
-        <SettingRow label="증시현황 개수 (해외)">
+        <SettingRow label="해외 증시현황 개수">
           <NumberStepper value={settings.sectorCountOverseas} defaultValue={DEFAULT_SETTINGS.sectorCountOverseas}
             min={10} max={SECTOR_MAX.USA} step={1}
             onChange={v => onUpdate({ sectorCountOverseas: v })}
-            onClamp={(att, cl) => { if (att > cl) toast.show(`해외 증시현황은 최대 ${SECTOR_MAX.USA}개까지 표시할 수 있어요`); }} />
+            onClamp={(att, cl) => { if (att > cl) toast.show(`해외 증시현황은 최대 ${SECTOR_MAX.USA}개까지 표시할 수 있어요`, 'error'); }} />
         </SettingRow>
 
         <Section>디스플레이</Section>
