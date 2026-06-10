@@ -18,8 +18,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   refreshIntervalDomestic: 15,
   refreshIntervalOverseas: 70,
   tickerSpeed: 50,
-  sectorCountDomestic: 20,
-  sectorCountOverseas: 20,
+  // 기본 = 표시 가능한 최대(SECTOR_MAX). 처음엔 전체 업종을 다 보여주고, 적게 보고 싶으면 설정에서 줄임
+  sectorCountDomestic: 31,
+  sectorCountOverseas: 33,
   currencyMode: 'USD',
   resolution: { width: 420, height: 680 },
   fontSize: 'medium',
