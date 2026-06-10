@@ -38,8 +38,9 @@ export interface AppSettings {
   refreshIntervalDomestic: number; // seconds — 국내 주식/지수/선물
   refreshIntervalOverseas: number; // seconds — 해외 주식/지수/선물/원자재/환율/마퀴
   tickerSpeed: number;     // px per second
-  /** 증시현황(섹터 트리맵) 표시 업종 수. 네이버 API 상한 50 */
-  sectorCount: number;
+  /** 증시현황(섹터 트리맵) 표시 업종 수 — nation별 (API 상한: 국내 31 / 해외 33) */
+  sectorCountDomestic: number;
+  sectorCountOverseas: number;
   currencyMode: 'KRW' | 'USD';
   resolution: { width: number; height: number };
   fontSize: 'small' | 'medium' | 'large' | 'xlarge';

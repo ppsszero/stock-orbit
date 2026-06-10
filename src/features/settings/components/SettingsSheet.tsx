@@ -3,6 +3,7 @@ import { css } from '@emotion/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiRotateCcw, FiTerminal, FiBell, FiCopy, FiFolder, FiDownload } from 'react-icons/fi';
 import { AppSettings } from '@/shared/types';
+import { SECTOR_MAX } from '@/shared/naver';
 import { DEFAULT_SETTINGS } from '@/app/store';
 import { spacing, fontSize, fontWeight, radius, height, transition } from '@/shared/styles/tokens';
 import { ListHeader } from '@/shared/ui';
@@ -182,9 +183,17 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             <option value="300">5분</option>
           </select>
         </SettingRow>
-        <SettingRow label="증시현황 개수">
-          <NumberStepper value={settings.sectorCount} defaultValue={DEFAULT_SETTINGS.sectorCount} min={10} max={50} step={5}
-            onChange={v => onUpdate({ sectorCount: v })} />
+        <SettingRow label="증시현황 개수 (국내)">
+          <NumberStepper value={settings.sectorCountDomestic} defaultValue={DEFAULT_SETTINGS.sectorCountDomestic}
+            min={10} max={SECTOR_MAX.domestic} step={1}
+            onChange={v => onUpdate({ sectorCountDomestic: v })}
+            onClamp={(att, cl) => { if (att > cl) toast.show(`국내 증시현황은 최대 ${SECTOR_MAX.domestic}개까지 표시할 수 있어요`); }} />
+        </SettingRow>
+        <SettingRow label="증시현황 개수 (해외)">
+          <NumberStepper value={settings.sectorCountOverseas} defaultValue={DEFAULT_SETTINGS.sectorCountOverseas}
+            min={10} max={SECTOR_MAX.USA} step={1}
+            onChange={v => onUpdate({ sectorCountOverseas: v })}
+            onClamp={(att, cl) => { if (att > cl) toast.show(`해외 증시현황은 최대 ${SECTOR_MAX.USA}개까지 표시할 수 있어요`); }} />
         </SettingRow>
 
         <Section>디스플레이</Section>

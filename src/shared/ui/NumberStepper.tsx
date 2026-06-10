@@ -16,6 +16,8 @@ interface Props {
   min?: number;
   max?: number;
   step?: number;
+  /** 입력 확정(blur) 시 값이 min/max를 벗어나 clamp된 경우 호출 — 안내 토스트 등에 사용 */
+  onClamp?: (attempted: number, clamped: number) => void;
   disabled?: boolean;
   size?: Size;
   inputWidth?: number;
@@ -31,7 +33,7 @@ const SIZE_MAP: Record<Size, { btn: number; wrap: number; input: number }> = {
 
 export const NumberStepper = ({
   value: controlled, onChange, defaultValue = 0,
-  min = 0, max = 999, step = 1,
+  min = 0, max = 999, step = 1, onClamp,
   disabled = false, size = 'md', inputWidth,
   decreaseLabel = '감소', increaseLabel = '증가',
 }: Props) => {
@@ -98,12 +100,18 @@ export const NumberStepper = ({
           if (!isNaN(v)) setClamped(v);
         }}
         onBlur={() => {
+          const parsed = draft === null ? NaN : parseInt(draft, 10);
           // 빈/유효하지 않은 입력 fallback:
           // - controlled: 외부 value로 복귀 (외부 store 의도 보존)
           // - uncontrolled: defaultValue로 복귀
-          if (draft === '' || draft === null || isNaN(parseInt(draft, 10))) {
+          if (draft === '' || draft === null || isNaN(parsed)) {
             const fallback = isControlled ? (controlled as number) : defaultValue;
             setClamped(fallback);
+          } else if (parsed < min || parsed > max) {
+            // 입력값이 범위를 벗어남 → clamp + 안내 콜백 (keystroke가 아닌 확정 시 1회)
+            const clamped = Math.max(min, Math.min(max, parsed));
+            setClamped(clamped);
+            onClamp?.(parsed, clamped);
           }
           setDraft(null);
         }}

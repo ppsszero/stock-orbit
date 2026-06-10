@@ -25,8 +25,9 @@ const NATIONS: { key: SectorNation; label: string }[] = [
 ];
 
 export const SectorView = ({ active, onStockClick, refreshSignal }: Props) => {
-  const sectorCount = useStore(s => s.settings.sectorCount);
-  const { nation, setNation, overview, loading, refreshAll } = useSectorData(active, sectorCount);
+  const countDomestic = useStore(s => s.settings.sectorCountDomestic);
+  const countOverseas = useStore(s => s.settings.sectorCountOverseas);
+  const { nation, setNation, overview, loading, refreshAll } = useSectorData(active, countDomestic, countOverseas);
   const [selected, setSelected] = useState<Sector | null>(null);
 
   // 외부 시그널로 양쪽 nation 모두 force fetch
