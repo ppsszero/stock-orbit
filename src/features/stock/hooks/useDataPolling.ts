@@ -12,6 +12,7 @@ import {
   fetchCommodities,
   fetchFXRates,
 } from '@/shared/naver';
+import { fetchYahooExtended } from '@/shared/yahoo';
 
 /** 한 배치당 요청할 종목 수 */
 const BATCH_SIZE = 10;
@@ -132,6 +133,26 @@ const fetchOverseasCycle = async (
       if (price) prices[key] = price;
     }
     if (i + BATCH_SIZE < overseasStocks.length) await sleep(BATCH_DELAY_MS);
+  }
+
+  // 1-b. 네이버상 CLOSE인 US 주식 → 야후 연장가(데이마켓) 병합. (네이버 미제공분, 정규장 닫히면 연장가 우선)
+  //     가격/등락/상태만 야후, 나머지는 네이버 그대로. 야후 실패 종목은 네이버 값 유지(fallback).
+  const closedUS = overseasStocks.filter(s => s.nation === 'US' && prices[s.code]?.marketStatus === 'CLOSE');
+  if (closedUS.length > 0) {
+    const ext = await fetchYahooExtended(closedUS.map(s => ({ code: s.code, reutersCode: s.reutersCode })));
+    for (const [code, e] of Object.entries(ext)) {
+      const base = prices[code];
+      if (base) {
+        prices[code] = {
+          ...base,
+          currentPrice: e.price,
+          change: e.change,
+          changePercent: e.changePercent,
+          changeDirection: e.direction,
+          marketStatus: 'OPEN',
+        };
+      }
+    }
   }
 
   // 2. 유저 해외 지수/선물

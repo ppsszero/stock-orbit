@@ -411,6 +411,64 @@ app.whenReady().then(() => {
     }
   });
 
+  // === Yahoo Finance (해외 연장가) ===
+  // 네이버가 US 프리/애프터마켓을 안 줘서 가격만 야후에서 빌림. 인증: 익명 cookie+crumb (yfinance 방식).
+  // 모듈 캐시 — 평상시 재인증 없이 quote만. 401/Invalid Crumb 등에서만 재수집.
+  let yahooCookie = '';
+  let yahooCrumb = '';
+  const YAHOO_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+  const yahooFetch = (url, extra = {}) => {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
+    return fetch(url, { signal: ac.signal, headers: { 'User-Agent': YAHOO_UA, ...extra } }).finally(() => clearTimeout(timer));
+  };
+  const collectCookies = (res) => {
+    const list = typeof res.headers.getSetCookie === 'function'
+      ? res.headers.getSetCookie()
+      : [res.headers.get('set-cookie')].filter(Boolean);
+    return list.map(c => c.split(';')[0]).filter(Boolean);
+  };
+  // 쿠키 + crumb 재수집 (fc.yahoo.com → getcrumb)
+  const ensureYahooAuth = async () => {
+    const jar = [];
+    const r1 = await yahooFetch('https://fc.yahoo.com/');
+    collectCookies(r1).forEach(c => jar.push(c));
+    const r2 = await yahooFetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { Cookie: jar.join('; ') });
+    collectCookies(r2).forEach(c => jar.push(c));
+    yahooCookie = jar.join('; ');
+    yahooCrumb = (await r2.text()).trim();
+    if (!yahooCrumb) throw new Error('crumb empty');
+  };
+  const yahooQuoteOnce = async (symbols) => {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(','))}&crumb=${encodeURIComponent(yahooCrumb)}`;
+    const res = await yahooFetch(url, { Cookie: yahooCookie });
+    if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const qr = (await res.json()).quoteResponse;
+    if (!qr || qr.error) throw new Error(qr?.error?.code || 'quote error');
+    return qr.result || [];
+  };
+  ipcMain.handle('yahoo-quote', async (_, symbols) => {
+    if (isDev) return { error: 'dev mode' };
+    if (!Array.isArray(symbols) || symbols.length === 0) return { quotes: [] };
+    try {
+      if (!yahooCrumb || !yahooCookie) await ensureYahooAuth();
+      try {
+        return { quotes: await yahooQuoteOnce(symbols) };
+      } catch {
+        await ensureYahooAuth();               // 만료/실패 → 쿠키+crumb 재수집
+        return { quotes: await yahooQuoteOnce(symbols) };  // 1회 재시도
+      }
+    } catch {
+      // 배치 실패 → 개별 1콜씩 (일부라도 살림). 실패한 종목은 누락 = 네이버 fallback.
+      const quotes = [];
+      for (const sym of symbols) {
+        try { const r = await yahooQuoteOnce([sym]); if (r[0]) quotes.push(r[0]); } catch { /* skip */ }
+      }
+      return { quotes, partial: true };
+    }
+  });
+
   // === Screenshot ===
   ipcMain.handle('capture-window', async () => {
     if (!mainWindow || mainWindow.isDestroyed()) {
