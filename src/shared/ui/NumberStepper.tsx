@@ -128,7 +128,13 @@ export const NumberStepper = ({
   );
 
   return rangeTooltip
-    ? <Tooltip content={`최소 ${min}, 최대 ${max}`} position="top" display="inline-flex">{stepper}</Tooltip>
+    ? (
+      <Tooltip
+        content={<span css={s.tip}>최소 <b css={s.tipMin}>{min}</b> · 최대 <b css={s.tipMax}>{max}</b></span>}
+        position="top" display="inline-flex">
+        {stepper}
+      </Tooltip>
+    )
     : stepper;
 };
 
@@ -164,4 +170,8 @@ const s = {
     padding: 0; margin: -1px; overflow: hidden;
     clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   `,
+  // 범위 툴팁 — 숫자에 컬러로 가독성. 최소=accent, 최대=danger(상한 초과 경고 토스트와 톤 일치)
+  tip: css`white-space: nowrap; font-weight: ${fontWeight.medium};`,
+  tipMin: css`color: ${sem.action.primary}; font-weight: ${fontWeight.bold};`,
+  tipMax: css`color: ${sem.action.danger}; font-weight: ${fontWeight.bold};`,
 };
