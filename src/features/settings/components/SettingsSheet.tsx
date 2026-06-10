@@ -161,6 +161,8 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         <SettingRow label="업데이트 알림 받기">
           <Toggle checked={settings.autoUpdateNotify} onChange={v => onUpdate({ autoUpdateNotify: v })} />
         </SettingRow>
+
+        <Section>데이터</Section>
         <SettingRow label="국내 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalDomestic}
             onChange={e => onUpdate({ refreshIntervalDomestic: parseInt(e.target.value) })}>
@@ -180,6 +182,10 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             <option value="300">5분</option>
           </select>
         </SettingRow>
+        <SettingRow label="증시현황 개수">
+          <NumberStepper value={settings.sectorCount} defaultValue={DEFAULT_SETTINGS.sectorCount} min={10} max={50} step={5}
+            onChange={v => onUpdate({ sectorCount: v })} />
+        </SettingRow>
 
         <Section>디스플레이</Section>
         <SettingRow label="해상도">
@@ -192,13 +198,9 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         <SettingRow label="글자 크기">
           <SegmentedControl items={FONT_SIZES} value={settings.fontSize} onChange={v => onUpdate({ fontSize: v })} size="md" />
         </SettingRow>
-        <SettingRow label="스크롤 속도">
+        <SettingRow label="시장지표 스크롤 속도">
           <NumberStepper value={settings.tickerSpeed} defaultValue={DEFAULT_SETTINGS.tickerSpeed} min={20} max={120}
             onChange={v => onUpdate({ tickerSpeed: v })} />
-        </SettingRow>
-        <SettingRow label="증시현황 개수">
-          <NumberStepper value={settings.sectorCount} defaultValue={DEFAULT_SETTINGS.sectorCount} min={10} max={50} step={5}
-            onChange={v => onUpdate({ sectorCount: v })} />
         </SettingRow>
 
         <Section>스크린샷</Section>
