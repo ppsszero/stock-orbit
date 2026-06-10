@@ -1,4 +1,5 @@
 import { YahooStreamQuote } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
 
 /**
  * 야후 파이낸스 해외 연장가/오버나잇 — 네이버가 안 주는 US 오버나잇(데이마켓) 가격만 빌림.
@@ -51,14 +52,24 @@ export const fetchYahooExtended = async (
 
   try {
     const res = await window.electronAPI.yahooQuotes(tickers);
+    const applied: string[] = [];
     for (const [ticker, q] of Object.entries(res.quotes || {})) {
       const code = tickerToCode[ticker];
       if (!code) continue;
       const ext = toExtendedQuote(q);
-      if (ext) out[code] = ext;
+      if (ext) {
+        out[code] = ext;
+        const sign = ext.changePercent > 0 ? '+' : '';
+        applied.push(`${ticker} ${ext.price}(${sign}${ext.changePercent.toFixed(2)}%)`);
+      }
     }
-  } catch {
-    /* 야후 실패 → 빈 결과 = 네이버 fallback */
+    const m = res.meta;
+    logger.ws(
+      `오버나잇 ${applied.length}/${tickers.length}개 적용`,
+      `WS ${m?.connected ? '연결' : '끊김'} · 구독 ${m?.tracked ?? 0} · 신선 ${m?.fresh ?? 0}${applied.length ? ' · ' + applied.join(', ') : ' · (프레임 대기중 — 다음 사이클 반영)'}`,
+    );
+  } catch (e) {
+    logger.ws('오버나잇 조회 실패 — 네이버 fallback', String(e));   // 야후 실패 → 빈 결과 = 네이버 유지
   }
   return out;
 };

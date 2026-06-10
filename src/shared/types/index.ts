@@ -147,8 +147,12 @@ export interface ElectronAPI {
   onAlwaysOnTopChanged: (callback: (value: boolean) => void) => void;
   onWindowResized: (callback: (size: { width: number; height: number }) => void) => void;
   naverFetch: (url: string) => Promise<{ data?: unknown; error?: string }>;
-  /** 야후 실시간 연장가/오버나잇 — 티커 구독 + 최신 스냅샷 (WS+protobuf는 메인이 관리) */
-  yahooQuotes: (tickers: string[]) => Promise<{ quotes?: Record<string, YahooStreamQuote>; error?: string }>;
+  /** 야후 실시간 연장가/오버나잇 — 티커 구독 + 최신 스냅샷 (WS+protobuf는 메인이 관리). meta: 가시성용 연결상태 */
+  yahooQuotes: (tickers: string[]) => Promise<{
+    quotes?: Record<string, YahooStreamQuote>;
+    meta?: { connected: boolean; tracked: number; fresh: number };
+    error?: string;
+  }>;
   setZoom: (factor: number) => void;
   getDefaultScreenshotPath: () => Promise<string>;
   captureWindow: () => Promise<string>;                    // base64 이미지 반환

@@ -460,6 +460,7 @@ app.whenReady().then(() => {
       yahooConnected = true;
       yahooReconnectDelay = 1000;
       if (yahooTracked.size > 0) yahooSend({ subscribe: [...yahooTracked] });
+      console.log(`[yahoo-ws] open · subscribe ${yahooTracked.size}: ${[...yahooTracked].join(',')}`);
     });
     yahooWs.on('message', (data) => {
       try {
@@ -470,8 +471,12 @@ app.whenReady().then(() => {
         }
       } catch { /* 비-JSON / 디코드 실패 → 무시 */ }
     });
-    const onDown = () => { yahooConnected = false; yahooWs = null; scheduleYahooReconnect(); };
-    yahooWs.on('close', onDown);
+    const onDown = (info) => {
+      yahooConnected = false; yahooWs = null;
+      console.log(`[yahoo-ws] down (${info && info.message ? info.message : 'closed'}) · reconnect in ${yahooReconnectDelay}ms`);
+      scheduleYahooReconnect();
+    };
+    yahooWs.on('close', () => onDown());
     yahooWs.on('error', onDown);
   };
 
@@ -483,7 +488,8 @@ app.whenReady().then(() => {
   };
 
   ipcMain.handle('yahoo-quotes', async (_, tickers) => {
-    if (!Array.isArray(tickers) || tickers.length === 0) return { quotes: {} };
+    const meta = () => ({ connected: yahooConnected, tracked: yahooTracked.size, fresh: 0 });
+    if (!Array.isArray(tickers) || tickers.length === 0) return { quotes: {}, meta: meta() };
     yahooEnsureSubscribed(tickers);
     const now = Date.now();
     const quotes = {};
@@ -493,7 +499,7 @@ app.whenReady().then(() => {
         quotes[t] = { price: c.price, change: c.change, changePercent: c.changePercent, marketHours: c.marketHours };
       }
     }
-    return { quotes };
+    return { quotes, meta: { connected: yahooConnected, tracked: yahooTracked.size, fresh: Object.keys(quotes).length } };
   });
 
   // === Screenshot ===

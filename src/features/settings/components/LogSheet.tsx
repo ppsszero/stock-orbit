@@ -14,6 +14,7 @@ const LEVEL_STYLE: Record<LogLevel, { color: string; label: string }> = {
   warn: { color: sem.action.warning, label: 'WARN' },
   error: { color: sem.action.danger, label: 'ERR' },
   api: { color: sem.action.success, label: 'API' },
+  ws: { color: sem.text.secondary, label: 'WS' },  // 야후 스트리머 등 WebSocket 전용 (4색과 겹치지 않게 중립)
 };
 
 const FILTERS = [
@@ -22,6 +23,7 @@ const FILTERS = [
   { key: 'warn' as FilterKey, label: 'WARN' },
   { key: 'error' as FilterKey, label: 'ERR' },
   { key: 'api' as FilterKey, label: 'API' },
+  { key: 'ws' as FilterKey, label: 'WS' },
 ];
 
 /**

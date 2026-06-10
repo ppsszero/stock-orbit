@@ -1,4 +1,4 @@
-export type LogLevel = 'info' | 'warn' | 'error' | 'api';
+export type LogLevel = 'info' | 'warn' | 'error' | 'api' | 'ws';
 
 export interface LogEntry {
   id: number;
@@ -28,6 +28,7 @@ export const logger = {
   warn: (msg: string, detail?: string) => logger.log('warn', msg, detail),
   error: (msg: string, detail?: string) => logger.log('error', msg, detail),
   api: (msg: string, detail?: string) => logger.log('api', msg, detail),
+  ws: (msg: string, detail?: string) => logger.log('ws', msg, detail),
   getLogs: () => _logs,
   clear: () => { _logs = []; notify(); },
   setAutoClean: (v: boolean) => { _autoClean = v; },
