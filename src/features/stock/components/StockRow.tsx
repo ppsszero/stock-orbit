@@ -174,7 +174,8 @@ const s = {
   logoWrap: css`
     width: ${spacing['4xl']}px; height: ${spacing['4xl']}px; flex-shrink: 0; margin-right: ${sp('md', 'xs')};
   `,
-  left: css`display: flex; flex-direction: column; gap: ${spacing.xs}px; min-width: 0; flex: 1;`,
+  /* gap sm — 뱃지 높이 14px 축소와 세트로 행 높이 29px 유지하며 줄 사이 공기 확보 */
+  left: css`display: flex; flex-direction: column; gap: ${spacing.sm}px; min-width: 0; flex: 1;`,
   nameRow: css`display: flex; align-items: center; gap: ${spacing.sm + spacing.xs}px;`,
   badges: css`display: flex; align-items: center; gap: ${spacing.xs}px;`,
   name: css`
@@ -182,7 +183,7 @@ const s = {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   `,
   sub: css`display: flex; align-items: center; gap: ${spacing.md}px;`,
-  code: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-variant-numeric: tabular-nums; line-height: 1;`,
+  code: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-variant-numeric: tabular-nums; line-height: 1.1;`,
   right: css`display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: ${spacing.xs}px; flex-shrink: 0; min-width: 100px; min-height: 38px;`,
   price: css`font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
   change: makeDirectionalChange(fontSize.sm),

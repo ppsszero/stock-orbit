@@ -124,10 +124,10 @@ export const GridCard = memo(({
             <span css={s.codeTxt}>{vm.displayCode}</span>
             {vm.hasPrice && (
               vm.isTradingHalt
-                ? <StatusDot color={sem.action.danger} label="거래정지" />
+                ? <StatusDot color={sem.action.danger} label="거래정지" size="xs" />
                 : isDmLoading
-                  ? <StatusDot color={sem.text.secondary} label="연결중" pulse />
-                  : <StatusDot color={vm.isLive ? sem.action.success : sem.text.tertiary} label={vm.statusLabel} />
+                  ? <StatusDot color={sem.text.secondary} label="연결중" pulse size="xs" />
+                  : <StatusDot color={vm.isLive ? sem.action.success : sem.text.tertiary} label={vm.statusLabel} size="xs" />
             )}
           </div>
         </div>
@@ -187,6 +187,7 @@ const s = {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   `,
   codeRow: css`display: flex; align-items: center; gap: ${spacing.sm}px; min-width: 0;`,
+  /* line-height 1 — StatusDot 라벨과 박스 높이를 맞춰 baseline 일치 (StockRow s.code 패턴) */
   codeTxt: css`font-size: ${fontSize.xs}px; color: ${sem.text.tertiary}; line-height: 1.2; font-variant-numeric: tabular-nums;`,
   cardBottom: css`display: flex; flex-direction: column; align-items: flex-end; gap: ${spacing.xs}px;`,
   price: css`
