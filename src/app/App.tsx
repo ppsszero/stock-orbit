@@ -70,7 +70,8 @@ const AppContent = () => {
   useWebviewKeyForward();
 
   const displaySymbols = useDisplaySymbols();
-  const { loading: dataLoading, fetching, lastUpdated, refresh, marqueeItems, progressRef, subscribeProgress } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);
+  // 데이마켓 연결 안내는 종목 StatusDot 펄스('연결중')로 — App에선 daymarketConnecting 미사용.
+  const { loading: dataLoading, fetching, lastUpdated, refresh, marqueeItems, progressRef, subscribeProgress } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas, true);
 
   const openMarquee = useCallback(() => {
     setSheet('marquee');

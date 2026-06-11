@@ -20,12 +20,13 @@ interface Props {
   onRemove: (code: string) => void;
   onClick: (symbol: StockSymbol) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
+  daymarketConnecting?: boolean;
 }
 
 // 메인 리스트뷰는 보기 전용 — 순서 변경은 편집 시트에서만 가능.
 export const StockList = memo(({
   symbols, prices, currencyMode, usdkrw,
-  customGroups, onRemove, onClick, onDetail,
+  customGroups, onRemove, onClick, onDetail, daymarketConnecting = false,
 }: Props) => {
   const sortKey = useStore(s => s.settings.sortKey);
   const sortDir = useStore(s => s.settings.sortDir);
@@ -48,6 +49,7 @@ export const StockList = memo(({
               onRemove={onRemove}
               onClick={onClick}
               onDetail={onDetail}
+              daymarketConnecting={daymarketConnecting}
             />
           ))}
         </div>

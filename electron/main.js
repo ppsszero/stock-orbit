@@ -460,7 +460,7 @@ app.whenReady().then(() => {
       yahooConnected = true;
       yahooReconnectDelay = 1000;
       if (yahooTracked.size > 0) yahooSend({ subscribe: [...yahooTracked] });
-      console.log(`[yahoo-ws] open · subscribe ${yahooTracked.size}: ${[...yahooTracked].join(',')}`);
+      // WS 상태는 렌더러 시스템로그 WS 탭에서 확인 (메인 콘솔 로그 X — 헌법 21)
     });
     yahooWs.on('message', (data) => {
       try {
@@ -476,7 +476,6 @@ app.whenReady().then(() => {
       // 죽은 소켓 리스너 제거 + 종료 (재연결 시 새 소켓만 살아있게 — orphan 리스너/late 캐시쓰기 방지)
       if (yahooWs) { try { yahooWs.removeAllListeners(); yahooWs.terminate(); } catch { /* noop */ } }
       yahooWs = null;
-      console.log(`[yahoo-ws] down (${info && info.message ? info.message : 'closed'}) · reconnect in ${yahooReconnectDelay}ms`);
       scheduleYahooReconnect();
     };
     // error → close 연쇄 시 첫 onDown의 removeAllListeners가 close 리스너도 제거 → 중복 호출 없음
@@ -489,7 +488,7 @@ app.whenReady().then(() => {
     const want = new Set(tickers.filter(Boolean));
     const toAdd = [...want].filter(t => !yahooTracked.has(t));
     const toRemove = [...yahooTracked].filter(t => !want.has(t));
-    toRemove.forEach(t => yahooTracked.delete(t));
+    toRemove.forEach(t => { yahooTracked.delete(t); yahooCache.delete(t); });   // 캐시도 정리 — 구독 churn 시 누적 방지
     toAdd.forEach(t => yahooTracked.add(t));
     if (yahooConnected) {
       if (toAdd.length) yahooSend({ subscribe: toAdd });

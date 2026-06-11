@@ -122,6 +122,8 @@ export interface StockPrice {
   marketCapRaw?: number; // 원본 시가총액 (treemap 크기 계산용)
   exchange?: string; // 거래소명 (KOSPI, NASDAQ 등)
   isTradingHalt?: boolean; // 거래정지 여부
+  /** 네이버 시간외(pre/post = overMarketPriceInfo) 제공 여부. US 데이마켓(야후 오버나잇) 지원 판별에 사용 */
+  hasExtendedHours?: boolean;
 }
 
 // === Marquee Index/FX Data ===

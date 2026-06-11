@@ -27,6 +27,8 @@ interface Props {
   onRemove?: (code: string) => void;
   onClick: (symbol: StockSymbol) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
+  /** 타일뷰(히트맵)는 미사용 — commonProps 스프레드 수용용. 연결 안내는 리스트/그리드 StatusDot 펄스로. */
+  daymarketConnecting?: boolean;
 }
 
 /**

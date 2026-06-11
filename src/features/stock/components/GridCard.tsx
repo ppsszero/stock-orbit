@@ -13,6 +13,7 @@ import { Menu, ReorderIcon, StatusDot, Tooltip } from '@/shared/ui';
 import { EditSymbolsSheet } from '@/features/preset';
 import { sem } from '@/shared/styles/semantic';
 import { priceFlash, makeDirectionalChange } from '@/shared/styles/sharedStyles';
+import { isDaymarketCapable } from '@/shared/yahoo';
 
 interface Props {
   sym: StockSymbol;
@@ -22,11 +23,12 @@ interface Props {
   onRemove: (code: string) => void;
   onClick: (symbol: StockSymbol) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
+  daymarketConnecting?: boolean;
 }
 
 export const GridCard = memo(({
   sym, price: p, currencyMode, usdkrw,
-  onRemove, onClick, onDetail,
+  onRemove, onClick, onDetail, daymarketConnecting = false,
 }: Props) => {
   const [logoFailed, setLogoFailed] = useState(false);
   const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
@@ -35,6 +37,11 @@ export const GridCard = memo(({
   const activeId = useStore(s => s.activeId);
   const vm = useStockViewModel(sym, p, currencyMode, usdkrw);
   const flash = usePriceFlash(p, vm.direction);
+  // 데이마켓 진행 중 + US + 아직 장마감 + 데이마켓 가능 종목 → StatusDot 펄스 '연결중'
+  // 가능 판단 = 네이버 시간외 정보(시간대 따라 사라짐) OR 학습된 이력(오버나잇 데이터 받은 적 있음 — 안 흔들림).
+  // SQLT처럼 둘 다 아닌 종목은 펄스 없이 '장마감'.
+  const isDmLoading = daymarketConnecting && sym.nation === 'US' && p?.marketStatus === 'CLOSED'
+    && (p?.hasExtendedHours === true || isDaymarketCapable(sym.code));
 
   const tintDir = vm.direction;
 
@@ -118,7 +125,9 @@ export const GridCard = memo(({
             {vm.hasPrice && (
               vm.isTradingHalt
                 ? <StatusDot color={sem.action.danger} label="거래정지" />
-                : <StatusDot color={vm.isLive ? sem.action.success : sem.text.tertiary} label={vm.statusLabel} />
+                : isDmLoading
+                  ? <StatusDot color={sem.text.secondary} label="연결중" pulse />
+                  : <StatusDot color={vm.isLive ? sem.action.success : sem.text.tertiary} label={vm.statusLabel} />
             )}
           </div>
         </div>

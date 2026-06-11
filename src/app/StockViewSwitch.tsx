@@ -22,13 +22,16 @@ export const StockViewSwitch = memo(() => {
   // React Query 캐시 공유 — App.tsx와 동일한 displaySymbols + interval을 사용하므로
   // 같은 queryKey가 되어 API 중복 호출 없이 캐시에서 읽기만 함.
   // WARNING: displaySymbols 셀렉터를 변경하면 App.tsx와 반드시 동기화할 것.
-  const { prices, marqueeItems } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);
+  const { prices, marqueeItems, daymarketConnecting } = useDataPolling(displaySymbols, settings.refreshIntervalDomestic, settings.refreshIntervalOverseas);
   const usdkrw = marqueeItems.find(i => i.code === 'FX_USDKRW')?.currentValue || 0;
 
   const handleDetail = useCallback((sym: StockSymbol, price: StockPrice) => {
     setInfoSymbol({ sym, price });
   }, [setInfoSymbol]);
 
+  // PERF: prices 외 모든 commonProps는 안정 참조여야 함 — 폴링(국내 15초/데이마켓)마다 prices 정체성이
+  // 바뀌어 StockList/Grid/Tile은 리렌더되지만, 행(StockRow/GridCard/Tile)은 개별 price 참조로 memo됨.
+  // 여기 인라인 람다(onClick={() => ...})를 추가하면 매 폴링마다 모든 행이 리렌더되니 금지. (콜백은 useCallback/store)
   const commonProps = {
     symbols: displaySymbols,
     prices,
@@ -38,6 +41,7 @@ export const StockViewSwitch = memo(() => {
     onRemove: removeSymbol,
     onClick: setDetailSymbol,
     onDetail: handleDetail,
+    daymarketConnecting,
   };
 
   const view = (() => {

@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
-import { spacing, fontSize, fontWeight, radius } from '@/shared/styles/tokens';
+import { css, keyframes } from '@emotion/react';
+import { spacing, fontSize, fontWeight, radius, opacity } from '@/shared/styles/tokens';
 
 interface BadgeProps {
   bg: string;
@@ -15,11 +15,13 @@ export const Badge = ({ bg, fg, children }: BadgeProps) => (
 interface StatusDotProps {
   color: string;
   label: string;
+  /** 진행 중(데이마켓 연결/로딩) 표시 — 점이 깜빡임 */
+  pulse?: boolean;
 }
 
-export const StatusDot = ({ color, label }: StatusDotProps) => (
+export const StatusDot = ({ color, label, pulse = false }: StatusDotProps) => (
   <span css={s.status(color)}>
-    <span css={s.dot(color)} />
+    <span css={s.dot(color, pulse)} />
     {label}
   </span>
 );
@@ -48,10 +50,16 @@ const s = {
     align-items: center;
     gap: ${spacing.xs + 1}px;
   `,
-  dot: (color: string) => css`
+  dot: (color: string, pulse: boolean) => css`
     width: 4px;
     height: 4px;
     border-radius: ${radius.full}px;
     background: ${color};
+    ${pulse && css`animation: ${blink} 1.1s ease-in-out infinite;`}
   `,
 };
+
+const blink = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: ${opacity.pulse}; }
+`;

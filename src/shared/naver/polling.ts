@@ -109,6 +109,8 @@ export const parsePollingData = (d: NaverPollingData, code: string, category: Po
     isTradingHalt: isStock
       ? ((useOver ? over!.tradeStopType?.code : d.tradeStopType?.code) ?? '1') !== '1'
       : false,
+    // 네이버 시간외(over) 가격 존재 = 시간외 거래 종목 → US 데이마켓(야후 오버나잇) 지원 판별 신호
+    hasExtendedHours: isStock && hasOver,
     openPrice: openPrice || undefined,
     highPrice: highPrice || undefined,
     lowPrice: lowPrice || undefined,
