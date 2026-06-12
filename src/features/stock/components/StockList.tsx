@@ -18,7 +18,7 @@ interface Props {
   usdkrw: number;
   customGroups?: StockGroup[];
   onRemove: (code: string) => void;
-  onClick: (symbol: StockSymbol) => void;
+  onClick: (symbol: StockSymbol, price?: StockPrice) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
   daymarketConnecting?: boolean;
 }

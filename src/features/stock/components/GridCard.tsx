@@ -21,7 +21,7 @@ interface Props {
   currencyMode: 'KRW' | 'USD';
   usdkrw: number;
   onRemove: (code: string) => void;
-  onClick: (symbol: StockSymbol) => void;
+  onClick: (symbol: StockSymbol, price?: StockPrice) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
   daymarketConnecting?: boolean;
 }
@@ -45,9 +45,10 @@ export const GridCard = memo(({
 
   const tintDir = vm.direction;
 
+  // price 동봉 — 부모가 데이마켓 세션 여부(marketStatus)로 웹뷰 소스를 결정
   const handleCardClick = useCallback(() => {
-    onClick(sym);
-  }, [onClick, sym]);
+    onClick(sym, p);
+  }, [onClick, sym, p]);
   const handleDetail = useCallback(() => {
     if (p) onDetail(sym, p);
     setCtxPos(null);

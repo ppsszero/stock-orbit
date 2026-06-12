@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toYahooTicker, toExtendedQuote, applyYahooExtended, selectDaymarketTargets, withDaymarketSentinel, DM_SENTINEL, isDaymarketCapable, rememberDaymarketCapable, type ExtendedQuote } from '../yahoo';
+import { toYahooTicker, getYahooStockUrl, toExtendedQuote, applyYahooExtended, selectDaymarketTargets, withDaymarketSentinel, DM_SENTINEL, isDaymarketCapable, rememberDaymarketCapable, type ExtendedQuote } from '../yahoo';
 import type { YahooStreamQuote, StockPrice, StockSymbol } from '@/shared/types';
 
 const baseNaver = (over: Partial<StockPrice> = {}): StockPrice => ({
@@ -21,6 +21,19 @@ describe('toYahooTicker', () => {
   });
   it('빈 값은 빈 문자열', () => {
     expect(toYahooTicker('')).toBe('');
+  });
+});
+
+describe('getYahooStockUrl', () => {
+  it('reutersCode 우선으로 야후 quote URL 생성', () => {
+    expect(getYahooStockUrl({ code: 'NVDA.O', reutersCode: 'NVDA.O' })).toBe('https://finance.yahoo.com/quote/NVDA');
+    expect(getYahooStockUrl({ code: 'SQLT.K', reutersCode: 'SQLT.K' })).toBe('https://finance.yahoo.com/quote/SQLT');
+  });
+  it('reutersCode 없으면 code로 폴백', () => {
+    expect(getYahooStockUrl({ code: 'TQQQ' })).toBe('https://finance.yahoo.com/quote/TQQQ');
+  });
+  it('티커 변환 실패(빈 값)는 null — 호출부가 네이버 폴백', () => {
+    expect(getYahooStockUrl({ code: '' })).toBeNull();
   });
 });
 

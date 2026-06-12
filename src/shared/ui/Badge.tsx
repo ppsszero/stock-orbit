@@ -61,6 +61,8 @@ const s = {
     height: 4px;
     border-radius: ${radius.full}px;
     background: ${color};
+    /* 박스 중심 정렬 시 닷이 광학적으로 떠 보임 (리스트/그리드 공통) — 0.5px 아래 보정 */
+    transform: translateY(0.5px);
     ${pulse && css`animation: ${blink} 1.1s ease-in-out infinite;`}
   `,
 };

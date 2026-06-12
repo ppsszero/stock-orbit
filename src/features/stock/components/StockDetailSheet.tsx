@@ -4,16 +4,22 @@ import { useEffect } from 'react';
 import { useBackAction } from '@/shared/hooks/useBackAction';
 import { useWebView } from '@/shared/hooks/useWebView';
 import { FiX } from 'react-icons/fi';
-import { StockSymbol } from '@/shared/types';
+import { StockSymbol, WebviewSource } from '@/shared/types';
 import { spacing, fontSize, fontWeight, radius, height as h, zIndex, transition } from '@/shared/styles/tokens';
 import { getNaverStockUrl } from '@/shared/naver';
+import { getYahooStockUrl } from '@/shared/yahoo';
 import { sem } from '@/shared/styles/semantic';
 import { LoadingCenter } from '@/shared/ui/LoadingCenter';
 import { ElectronWebView } from '@/shared/ui/ElectronWebView';
 
-interface Props { symbol: StockSymbol | null; onClose: () => void; }
+interface Props {
+  symbol: StockSymbol | null;
+  /** 웹뷰 소스 — 데이마켓에서 야후 선택 시 'yahoo'. 기본 네이버. */
+  source?: WebviewSource;
+  onClose: () => void;
+}
 
-export const StockDetailSheet = ({ symbol, onClose }: Props) => {
+export const StockDetailSheet = ({ symbol, source = 'naver', onClose }: Props) => {
   useBackAction(!!symbol, onClose);
   const { wvRef, loaded } = useWebView(!!symbol);
 
@@ -51,7 +57,9 @@ export const StockDetailSheet = ({ symbol, onClose }: Props) => {
           </div>
         )}
         <div css={s.wv} style={{ opacity: loaded ? 1 : 0 }}>
-          <ElectronWebView ref={wvRef} src={getNaverStockUrl(symbol)} />
+          {/* 야후 티커 변환 실패(null) 시 네이버 폴백 */}
+          <ElectronWebView ref={wvRef}
+            src={(source === 'yahoo' && getYahooStockUrl(symbol)) || getNaverStockUrl(symbol)} />
         </div>
       </div>
     </div>

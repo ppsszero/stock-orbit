@@ -39,6 +39,38 @@ const withWindow = (fn) => {
   return fn(mainWindow);
 };
 
+// === 웹뷰 광고 차단 ===
+// 브라우저와 달리 webview엔 광고차단 확장이 없어 야후 등 외부 페이지가 광고 무게로 느려짐.
+// 서드파티 광고/트래커 네트워크 도메인만 차단 — 콘텐츠/API 도메인(finance.yahoo.com,
+// naver.com 본체)은 목록에 없으므로 페이지 기능에 영향 없음.
+const AD_HOSTS = [
+  // 구글 광고
+  'doubleclick.net', 'googlesyndication.com', 'googleadservices.com', 'google-analytics.com',
+  // 주요 애드 익스체인지/DSP
+  'amazon-adsystem.com', 'adnxs.com', 'criteo.com', 'criteo.net', 'pubmatic.com',
+  'rubiconproject.com', 'openx.net', 'casalemedia.com', 'smartadserver.com', 'teads.tv',
+  '33across.com', 'yieldmo.com', 'sharethrough.com', 'triplelift.com', 'media.net',
+  // 네이티브 광고 (야후 파이낸스 하단 추천 위젯)
+  'taboola.com', 'outbrain.com',
+  // 광고 측정/트래커
+  'scorecardresearch.com', 'moatads.com', 'adsafeprotected.com', 'doubleverify.com',
+  // 야후 자체 광고 서빙 (콘텐츠 서브도메인 아님)
+  'ads.yahoo.com', 'ybp.yahoo.com', 'adtechus.com',
+];
+const isAdHost = (host) => AD_HOSTS.some((d) => host === d || host.endsWith('.' + d));
+
+/** 세션당 1회만 등록 (onBeforeRequest는 세션당 리스너 1개 — 재등록 시 덮어씀) */
+const adBlockedSessions = new WeakSet();
+const enableAdBlock = (ses) => {
+  if (adBlockedSessions.has(ses)) return;
+  adBlockedSessions.add(ses);
+  ses.webRequest.onBeforeRequest((details, callback) => {
+    let cancel = false;
+    try { cancel = isAdHost(new URL(details.url).hostname); } catch { /* 무효 URL은 통과 */ }
+    callback({ cancel });
+  });
+};
+
 // 창 크기/위치 저장 경로
 const boundsFile = path.join(app.getPath('userData'), 'window-bounds.json');
 
@@ -77,12 +109,13 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // 웹뷰 내 target="_blank" 링크를 같은 웹뷰에서 열기
+  // 웹뷰 내 target="_blank" 링크를 같은 웹뷰에서 열기 + 광고 차단
   mainWindow.webContents.on('did-attach-webview', (_, wvContents) => {
     wvContents.setWindowOpenHandler(({ url }) => {
       wvContents.loadURL(url);
       return { action: 'deny' };
     });
+    enableAdBlock(wvContents.session);
   });
 
   // dev 로드 실패 재시도 — 무한 루프 방지를 위해 최대 10회 제한

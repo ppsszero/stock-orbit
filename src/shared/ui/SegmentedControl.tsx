@@ -57,8 +57,10 @@ const s = {
     background: ${sem.surface.seg};
     border-radius: 5px;
     box-shadow: ${shadow.seg};
-    transform: translateX(${idx * 100}%);
+    transform: translateX(${Math.max(idx, 0) * 100}%);
     transition: transform ${transition.smooth};
+    /* value가 items에 없는 상태(예: 데이마켓 종목 상세보기 'ask' = 아직 미선택) — 슬라이더 숨김 */
+    ${idx < 0 && 'visibility: hidden;'}
   `,
   btn: (active: boolean, size: 'sm' | 'md', col: number) => css`
     grid-row: 1;

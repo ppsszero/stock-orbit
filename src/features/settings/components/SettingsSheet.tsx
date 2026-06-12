@@ -34,6 +34,13 @@ const FONT_SIZES = [
   { key: 'xlarge' as const, label: 'XL' },
 ];
 
+// 데이마켓(OVERNIGHT) 종목 클릭 시 웹뷰 소스 — 네이버는 데이장 시세 미제공이라 야후 선택지 제공.
+// '물어보기(ask)'는 첫 사용 기본 상태(선택 모달)일 뿐 설정 옵션이 아님 — 미선택(슬라이더 없음)으로 표시.
+const DAYMARKET_SOURCES = [
+  { key: 'naver' as const, label: '네이버' },
+  { key: 'yahoo' as const, label: '야후' },
+];
+
 /**
  * 설정 시트 컴포넌트.
  *
@@ -194,6 +201,11 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             min={10} max={SECTOR_MAX.USA} step={1} rangeTooltip
             onChange={v => onUpdate({ sectorCountOverseas: v })}
             onClamp={(att, cl) => { if (att > cl) toast.show(`해외 증시현황은 최대 ${SECTOR_MAX.USA}개까지 표시할 수 있어요`, 'error'); }} />
+        </SettingRow>
+        <SettingRow label="데이마켓 종목 페이지">
+          <SegmentedControl<AppSettings['daymarketWebviewSource']>
+            items={DAYMARKET_SOURCES} value={settings.daymarketWebviewSource}
+            onChange={v => onUpdate({ daymarketWebviewSource: v })} size="md" />
         </SettingRow>
 
         <Section>디스플레이</Section>

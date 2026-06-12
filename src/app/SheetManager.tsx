@@ -2,11 +2,11 @@
 import { memo, useCallback } from 'react';
 import { useStore } from './store';
 import { useActivePreset, useActiveGroupId } from './store/selectors';
-import { MarqueeItem } from '@/shared/types';
+import { MarqueeItem, WebviewSource } from '@/shared/types';
 import { QueryErrorBoundary } from '@/shared/ui/QueryErrorBoundary';
 import { SearchSheet } from '@/features/search';
 import { SettingsSheet } from '@/features/settings';
-import { StockDetailSheet, StockDetailModal } from '@/features/stock';
+import { StockDetailSheet, StockDetailModal, DaymarketSourceModal } from '@/features/stock';
 import { InvestorSheet } from '@/features/investor';
 import { RankingSheet } from '@/features/ranking';
 import { NewsSheet } from '@/features/news';
@@ -40,7 +40,10 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
   const removeSymbol = useStore(s => s.removeSymbol);
   const setActiveId = useStore(s => s.setActiveId);
   const detailSymbol = useStore(s => s.detailSymbol);
+  const detailSource = useStore(s => s.detailSource);
   const setDetailSymbol = useStore(s => s.setDetailSymbol);
+  const daymarketAskSymbol = useStore(s => s.daymarketAskSymbol);
+  const setDaymarketAskSymbol = useStore(s => s.setDaymarketAskSymbol);
   const infoSymbol = useStore(s => s.infoSymbol);
   const setInfoSymbol = useStore(s => s.setInfoSymbol);
   const resetAll = useStore(s => s.resetAll);
@@ -51,6 +54,16 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
   const closeSheet = useCallback(() => setSheet(null), [setSheet]);
   const closeDetail = useCallback(() => setDetailSymbol(null), [setDetailSymbol]);
   const closeInfo = useCallback(() => setInfoSymbol(null), [setInfoSymbol]);
+  const closeDaymarketAsk = useCallback(() => setDaymarketAskSymbol(null), [setDaymarketAskSymbol]);
+
+  // 데이마켓 소스 선택 — 기억하기 체크 시 설정 저장 (이후 모달 생략), 선택 소스로 웹뷰 오픈
+  const handleDaymarketSelect = useCallback((source: WebviewSource, remember: boolean) => {
+    const sym = useStore.getState().daymarketAskSymbol;
+    if (!sym) return;
+    if (remember) updateSettings({ daymarketWebviewSource: source });
+    setDaymarketAskSymbol(null);
+    setDetailSymbol(sym, source);
+  }, [updateSettings, setDaymarketAskSymbol, setDetailSymbol]);
 
   const handleAddPreset = useCallback((name: string) => {
     addPreset(name);
@@ -67,7 +80,9 @@ export const SheetManager = memo(({ marqueeItems }: Props) => {
         onGroupSelect={setActiveId} onAddPreset={addPreset}
         onRenamePreset={renamePreset} onRemovePreset={removePreset} />
 
-      <StockDetailSheet symbol={detailSymbol} onClose={closeDetail} />
+      <StockDetailSheet symbol={detailSymbol} source={detailSource} onClose={closeDetail} />
+      <DaymarketSourceModal symbol={daymarketAskSymbol}
+        onSelect={handleDaymarketSelect} onClose={closeDaymarketAsk} />
       <StockDetailModal symbol={infoSymbol?.sym || null} price={infoSymbol?.price || null}
         onClose={closeInfo} />
       <SettingsSheet open={openSheet === 'settings'} settings={settings}

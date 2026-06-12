@@ -27,6 +27,17 @@ export const toYahooTicker = (reutersCode: string): string => {
   return TICKER_EXCEPTIONS[base] || base;
 };
 
+/**
+ * 야후 파이낸스 종목 페이지 URL — 데이마켓(OVERNIGHT) 시세는 네이버 미제공이라 야후로 열 때 사용.
+ * 티커 변환 실패(빈 값) 시 null 반환 — 호출부가 네이버 URL로 폴백.
+ */
+export const getYahooStockUrl = (
+  symbol: Pick<StockSymbol, 'code' | 'reutersCode'>,
+): string | null => {
+  const ticker = toYahooTicker(symbol.reutersCode || symbol.code);
+  return ticker ? `https://finance.yahoo.com/quote/${ticker}` : null;
+};
+
 /** 스트리머 quote → ExtendedQuote. 가격 없으면 null (= 네이버 fallback). direction은 change 부호. */
 export const toExtendedQuote = (q: YahooStreamQuote | undefined | null): ExtendedQuote | null => {
   if (q == null || q.price == null) return null;

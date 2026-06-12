@@ -39,6 +39,9 @@ export type SortDir = 'asc' | 'desc';
  */
 export type MarketSession = 'REGULAR' | 'PRE' | 'AFTER' | 'OVERNIGHT' | 'CLOSED';
 
+/** 종목 웹뷰 소스 — 네이버(기본) / 야후(데이마켓 시세 표시 가능) */
+export type WebviewSource = 'naver' | 'yahoo';
+
 export interface AppSettings {
   theme: 'light' | 'dark';
   opacity: number;
@@ -59,6 +62,12 @@ export interface AppSettings {
    * 트레이의 "업데이트 확인"은 이 설정과 무관하게 항상 표시 (사용자의 명시적 액션).
    */
   autoUpdateNotify: boolean;
+  /**
+   * US 데이마켓(OVERNIGHT) 세션 종목 클릭 시 웹뷰 소스.
+   * 네이버는 데이장 시세 미제공 → 야후 선택지 제공. 'ask'면 클릭 시 모달로 물어봄.
+   * 데이마켓 외 세션은 이 설정과 무관하게 항상 네이버.
+   */
+  daymarketWebviewSource: 'ask' | WebviewSource;
   viewMode: 'list' | 'grid' | 'tile';
   sortKey: SortKey;
   sortDir: SortDir;

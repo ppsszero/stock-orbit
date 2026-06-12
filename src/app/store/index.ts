@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppSettings, Preset, StockSymbol, StockPrice } from '@/shared/types';
+import { AppSettings, Preset, StockSymbol, StockPrice, WebviewSource } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
 
 /* ─── Default Values ─── */
@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoCleanLogs: true,
   autoLaunch: false,
   autoUpdateNotify: true,
+  daymarketWebviewSource: 'ask',
   viewMode: 'list',
   sortKey: 'custom',
   sortDir: 'desc',
@@ -140,7 +141,12 @@ interface AppState {
 
   // Detail views
   detailSymbol: StockSymbol | null;
-  setDetailSymbol: (sym: StockSymbol | null) => void;
+  /** 웹뷰 소스 — 데이마켓에서 야후 선택 시 'yahoo', 그 외 기본 'naver' */
+  detailSource: WebviewSource;
+  setDetailSymbol: (sym: StockSymbol | null, source?: WebviewSource) => void;
+  /** 데이마켓 소스 선택 모달 대상 종목 (daymarketWebviewSource === 'ask') */
+  daymarketAskSymbol: StockSymbol | null;
+  setDaymarketAskSymbol: (sym: StockSymbol | null) => void;
   infoSymbol: { sym: StockSymbol; price: StockPrice } | null;
   setInfoSymbol: (info: { sym: StockSymbol; price: StockPrice } | null) => void;
 
@@ -342,7 +348,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   /* ─── Detail views ─── */
   detailSymbol: null,
-  setDetailSymbol: (sym) => set({ detailSymbol: sym }),
+  detailSource: 'naver',
+  // source 미지정 = 네이버 (열 때마다 명시 — 이전 야후 선택이 다음 종목에 새지 않게 항상 리셋)
+  setDetailSymbol: (sym, source = 'naver') => set({ detailSymbol: sym, detailSource: source }),
+  daymarketAskSymbol: null,
+  setDaymarketAskSymbol: (sym) => set({ daymarketAskSymbol: sym }),
   infoSymbol: null,
   setInfoSymbol: (info) => set({ infoSymbol: info }),
 

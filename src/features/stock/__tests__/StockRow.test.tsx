@@ -162,7 +162,8 @@ describe('StockRow', () => {
       renderRow(<StockRow {...baseProps} onClick={onClick} />);
       fireEvent.click(screen.getByRole('listitem'));
       expect(onClick).toHaveBeenCalledTimes(1);
-      expect(onClick).toHaveBeenCalledWith(sym);
+      // price 동봉 — 부모가 데이마켓 세션 여부로 웹뷰 소스 결정
+      expect(onClick).toHaveBeenCalledWith(sym, baseProps.price);
     });
 
     it('우클릭 시 컨텍스트 메뉴(상세 정보 보기/삭제)를 표시한다', () => {

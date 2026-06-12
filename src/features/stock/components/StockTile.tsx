@@ -25,7 +25,7 @@ interface Props {
   usdkrw: number;
   customGroups?: StockGroup[];
   onRemove?: (code: string) => void;
-  onClick: (symbol: StockSymbol) => void;
+  onClick: (symbol: StockSymbol, price?: StockPrice) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
   /** 타일뷰(히트맵)는 미사용 — commonProps 스프레드 수용용. 연결 안내는 리스트/그리드 StatusDot 펄스로. */
   daymarketConnecting?: boolean;
@@ -70,7 +70,7 @@ const Tile = memo(({
   sym: StockSymbol; price: StockPrice | null; span: number; bg: string;
   currencyMode: 'KRW' | 'USD'; usdkrw: number;
   onRemove?: (code: string) => void;
-  onClick: (symbol: StockSymbol) => void;
+  onClick: (symbol: StockSymbol, price?: StockPrice) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
 }) => {
   const isLarge = span >= 3;
@@ -127,7 +127,7 @@ const Tile = memo(({
         background: bg,
         viewTransitionName: `tile-${sym.nation}-${sym.code.replace(/[^\w]/g, '_')}`,
       }}
-      onClick={() => onClick(sym)}
+      onClick={() => onClick(sym, p ?? undefined)}
       onContextMenu={handleContextMenu}
     >
       <span ref={nameRef} css={[s.name[sizeKey], isFlat && s.flatHeadingText]}>{vm.displayName}</span>

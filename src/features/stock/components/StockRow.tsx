@@ -22,7 +22,7 @@ interface Props {
   currencyMode: 'KRW' | 'USD';
   usdkrw: number;
   onRemove: (code: string) => void;
-  onClick: (symbol: StockSymbol) => void;
+  onClick: (symbol: StockSymbol, price?: StockPrice) => void;
   onDetail: (symbol: StockSymbol, price: StockPrice) => void;
   daymarketConnecting?: boolean;
 }
@@ -43,9 +43,10 @@ export const StockRow = memo(({
   const isDmLoading = daymarketConnecting && sym.nation === 'US' && p?.marketStatus === 'CLOSED'
     && (p?.hasExtendedHours === true || isDaymarketCapable(sym.code));
 
+  // price 동봉 — 부모가 데이마켓 세션 여부(marketStatus)로 웹뷰 소스를 결정
   const handleRowClick = useCallback(() => {
-    onClick(sym);
-  }, [onClick, sym]);
+    onClick(sym, p);
+  }, [onClick, sym, p]);
 
   const handleDetail = useCallback(() => {
     if (p) onDetail(sym, p);
@@ -183,7 +184,8 @@ const s = {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   `,
   sub: css`display: flex; align-items: center; gap: ${spacing.md}px;`,
-  code: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-variant-numeric: tabular-nums; line-height: 1.1;`,
+  /* lh 1 — StatusDot 라벨(lh 1)과 박스 동일해야 baseline 일치. 1.1 같은 소수 leading은 Chromium 내림 처리로 0.55px 어긋남 */
+  code: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; font-variant-numeric: tabular-nums; line-height: 1;`,
   right: css`display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: ${spacing.xs}px; flex-shrink: 0; min-width: 100px; min-height: 38px;`,
   price: css`font-size: ${fontSize.xl}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; font-variant-numeric: tabular-nums;`,
   change: makeDirectionalChange(fontSize.sm),

@@ -64,7 +64,8 @@ describe('StockTile', () => {
     const onClick = vi.fn();
     renderTile(<StockTile {...baseProps} onClick={onClick} />);
     await user.click(screen.getByText('삼성전자'));
-    expect(onClick).toHaveBeenCalledWith(sym1);
+    // price 동봉 — 부모가 데이마켓 세션 여부로 웹뷰 소스 결정
+    expect(onClick).toHaveBeenCalledWith(sym1, prices[sym1.code]);
   });
 
   it('가격 없는 종목은 ··· 를 표시한다', () => {
