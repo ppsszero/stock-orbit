@@ -75,6 +75,7 @@ export const sem = {
     card:        v.cardBg,
     titleBar:    v.titleBarBg,
     marquee:     v.marqueeBg,
+    control:     v.controlBg,   // 폼 컨트롤 채움 (select/input/버튼) — 라이트 흰색 / 다크 bg.surface 톤
     seg:         v.accentSeg,
     popover:     v.popoverBg,
   },

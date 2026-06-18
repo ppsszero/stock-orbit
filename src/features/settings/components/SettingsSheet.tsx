@@ -171,7 +171,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
         </SettingRow>
 
         <Section>데이터</Section>
-        <SettingRow label="국내주식 새로고침">
+        <SettingRow label="국내·미국주식 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalDomestic}
             onChange={e => onUpdate({ refreshIntervalDomestic: parseInt(e.target.value) })}>
             <option value="10">10초</option>
@@ -181,7 +181,11 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             <option value="180">3분</option>
           </select>
         </SettingRow>
-        <SettingRow label="해외주식·시장지표 새로고침">
+        <p css={s.rowHint}>
+          국내 주식·지수는 네이버 증권, 미국 주식은 야후 파이낸스 시세예요.
+          미국 주식도 야후 실시간가라 이 주기로 함께 갱신돼요.
+        </p>
+        <SettingRow label="해외 새로고침">
           <select css={s.ctrl} value={settings.refreshIntervalOverseas}
             onChange={e => onUpdate({ refreshIntervalOverseas: parseInt(e.target.value) })}>
             <option value="70">1분</option>
@@ -190,6 +194,7 @@ export const SettingsSheet = ({ open, settings, onClose, onUpdate, onReset }: Pr
             <option value="300">5분</option>
           </select>
         </SettingRow>
+        <p css={s.rowHint}>해외 지수·환율·원자재와 미국 외 종목에 적용돼요.</p>
         <SettingRow label="국내 증시현황 개수">
           <NumberStepper value={settings.sectorCountDomestic} defaultValue={DEFAULT_SETTINGS.sectorCountDomestic}
             min={10} max={SECTOR_MAX.domestic} step={1} rangeTooltip
@@ -330,14 +335,14 @@ const s = {
   ctrl: css`
     height: ${height.control}px; padding: 0 ${spacing.md + 2}px;
     border: 1px solid ${sem.border.default}; border-radius: ${radius.lg}px;
-    background: ${sem.bg.surface}; color: ${sem.text.primary}; font-size: ${fontSize.base}px;
+    background: ${sem.surface.control}; color: ${sem.text.primary}; font-size: ${fontSize.base}px;
     outline: none; cursor: pointer; flex-shrink: 0;
   `,
   pair: css`display: flex; align-items: center; gap: ${spacing.md - 2}px; flex-shrink: 0;`,
   numIn: css`
     width: 84px; height: ${height.control}px; padding: 0 ${spacing.md}px;
     border: 1px solid ${sem.border.default}; border-radius: ${radius.lg}px;
-    background: ${sem.bg.surface}; color: ${sem.text.primary}; font-size: ${fontSize.base}px;
+    background: ${sem.surface.control}; color: ${sem.text.primary}; font-size: ${fontSize.base}px;
     text-align: center; outline: none;
     &:focus { border-color: ${sem.action.primary}; }
     &::-webkit-outer-spin-button,
@@ -346,7 +351,7 @@ const s = {
   x: css`font-size: ${fontSize.md}px; color: ${sem.text.tertiary};`,
   logBtn: css`
     height: ${height.control}px; padding: 0 ${spacing.lg}px;
-    border: 1px solid ${sem.border.default}; background: ${sem.bg.surface}; border-radius: ${radius.lg}px;
+    border: 1px solid ${sem.border.default}; background: ${sem.surface.control}; border-radius: ${radius.lg}px;
     color: ${sem.text.secondary}; font-size: ${fontSize.md}px; font-weight: ${fontWeight.semibold};
     cursor: pointer; display: flex; align-items: center; gap: ${spacing.sm}px; flex-shrink: 0;
     &:hover { background: ${sem.bg.elevated}; }
@@ -359,6 +364,11 @@ const s = {
     transition: all ${transition.fast}; &:hover { background: ${sem.action.dangerTint}; }
   `,
   resetHint: css`font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; text-align: center;`,
+  // 설정 행 아래 보조 설명(줄글) — ListHeader 좌우 패딩(spacing.xl)과 정렬, 행 라벨 밑에 붙임
+  rowHint: css`
+    font-size: ${fontSize.sm}px; color: ${sem.text.tertiary}; line-height: 1.5;
+    margin: ${spacing.xs}px 0 ${spacing.sm}px; padding: 0 ${spacing.xl}px;
+  `,
   badge: css`
     width: 6px; height: 6px; border-radius: 50%;
     background: ${sem.action.danger}; flex-shrink: 0;
@@ -369,7 +379,7 @@ const s = {
   `,
   emailBtn: css`
     height: ${height.control}px; padding: 0 ${spacing.lg}px;
-    border: 1px solid ${sem.border.default}; background: ${sem.bg.surface}; border-radius: ${radius.lg}px;
+    border: 1px solid ${sem.border.default}; background: ${sem.surface.control}; border-radius: ${radius.lg}px;
     color: ${sem.text.secondary}; font-size: ${fontSize.sm}px; font-weight: ${fontWeight.semibold};
     font-family: inherit; cursor: pointer;
     display: flex; align-items: center; gap: ${spacing.sm}px; flex-shrink: 0;
@@ -378,7 +388,7 @@ const s = {
   shortcutInput: (capturing: boolean) => css`
     width: 120px; height: ${height.control}px; padding: 0 ${spacing.md}px;
     border: 1px solid ${capturing ? sem.action.primary : sem.border.default};
-    border-radius: ${radius.lg}px; background: ${sem.bg.surface};
+    border-radius: ${radius.lg}px; background: ${sem.surface.control};
     color: ${capturing ? sem.action.primary : sem.text.primary};
     font-size: ${fontSize.base}px; font-weight: ${fontWeight.bold};
     font-family: inherit; text-align: center;

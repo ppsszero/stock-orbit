@@ -23,6 +23,7 @@ const lightColors = {
   cardBg: '#F1F4F7',
   titleBarBg: '#EBEEF2',
   marqueeBg: '#F4F6F8',
+  controlBg: '#FFFFFF',   // 폼 컨트롤(select/input/버튼) 채움 — 라이트는 흰 시트 위 흰 컨트롤+border(회색 채움 disabled 오인 방지)
   shadow: '0 1px 3px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.05)',
   // Action
   danger: '#F04452',
@@ -86,6 +87,7 @@ const darkColors = {
   cardBg: '#16191F',
   titleBarBg: '#0A0C10',
   marqueeBg: '#14171C',
+  controlBg: '#232730',   // 다크는 현 bg.surface와 동일 — 어두운 시트 위 떠 보이는 칩 유지
   shadow: '0 2px 8px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2)',
   // Action
   danger: '#F04452',

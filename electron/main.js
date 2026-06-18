@@ -170,7 +170,7 @@ function createWindow() {
 
 function buildTrayMenu(alwaysOnTop) {
   return Menu.buildFromTemplate([
-    { label: 'ORBIT with Npay 증권', enabled: false },
+    { label: 'ORBIT for Realtime Stocks', enabled: false },
     { type: 'separator' },
     {
       label: '열기',

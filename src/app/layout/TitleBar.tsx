@@ -51,7 +51,7 @@ export const TitleBar = memo(({
     <div css={s.bar(showOpacity)} onClick={() => showOpacity && setShowOpacity(false)}>
       <div css={s.left}>
         <img src={logoSvg} alt="" css={s.logo} />
-        <span css={s.title}>ORBIT<span css={s.sub}> with Npay 증권</span></span>
+        <span css={s.title}>ORBIT<span css={s.sub}>for Realtime Stocks</span></span>
       </div>
       <div css={s.actions}>
         <Tooltip content={isDark ? '라이트 모드' : '다크 모드'} position="bottom" display="inline-flex">
@@ -90,7 +90,7 @@ const s = {
   left: css`display: flex; align-items: center; gap: ${spacing.sm + 2}px;`,
   logo: css`width: ${spacing.xl}px; height: ${spacing.xl}px;`,
   title: css`font-size: ${fontSize.base}px; font-weight: ${fontWeight.bold}; color: ${sem.text.primary}; letter-spacing: ${letterSpacing.tight}px;`,
-  sub: css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.medium}; color: ${sem.text.secondary}; letter-spacing: ${letterSpacing.normal}px;`,
+  sub: css`font-size: ${fontSize.xs}px; font-weight: ${fontWeight.medium}; color: ${sem.text.secondary}; letter-spacing: ${letterSpacing.normal}px; margin-left: ${spacing.sm}px;`,
   actions: css`display: flex; align-items: center; gap: ${spacing.xs}px; -webkit-app-region: no-drag;`,
   btn: css`
     width: 30px; height: 30px; border: none; background: transparent;

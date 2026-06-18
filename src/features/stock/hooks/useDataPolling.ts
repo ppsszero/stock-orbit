@@ -12,7 +12,7 @@ import {
   fetchCommodities,
   fetchFXRates,
 } from '@/shared/naver';
-import { fetchYahooExtended, applyYahooExtended, selectDaymarketTargets, withDaymarketSentinel, DM_SENTINEL, type ExtendedQuote } from '@/shared/yahoo';
+import { fetchYahooExtended, applyYahooExtended, selectYahooTargets, withDaymarketSentinel, DM_SENTINEL, type ExtendedQuote } from '@/shared/yahoo';
 
 /** 한 배치당 요청할 종목 수 */
 const BATCH_SIZE = 10;
@@ -136,16 +136,16 @@ const fetchOverseasCycle = async (
     if (i + BATCH_SIZE < overseasStocks.length) await sleep(BATCH_DELAY_MS);
   }
 
-  // 1-b. 데이마켓 후보(CLOSED/OVERNIGHT US 전부) → 야후 오버나잇(데이마켓) 실시간가 병합. (네이버 미제공 = 오버나잇만, WS 스트리머)
-  //     가격/등락/상태만 야후, 나머지는 네이버 그대로. 야후 미수신/stale 종목은 네이버 값 유지(fallback).
-  //     타겟 선정은 selectDaymarketTargets 단일 기준(15초 fast·부트스트랩과 동일) — 경로 간 기준이 다르면
-  //     구독/해지 churn 발생. hasExtendedHours로 좁히지 않는 이유는 selectDaymarketTargets 주석 참조(깜빡임 사고).
-  const dmTargets = selectDaymarketTargets(overseasStocks, prices);
+  // 1-b. US 종목 → 야후 WS 실시간가 병합. 정규장: 네이버(지연)보다 신선한 가격만 차용 / 오버나잇(데이마켓):
+  //     네이버 미제공분 차용. 적용 가드(세션 권한)는 applyYahooExtended가 네이버 base로 판단.
+  //     가격/등락만 야후, 나머지(거래량·시총·세션)는 네이버. 야후 미수신/stale 종목은 네이버 유지(fallback).
+  //     타겟은 selectYahooTargets 단일 기준(15초 fast·부트스트랩 공유) — 경로 간 기준 다르면 구독 churn.
+  const dmTargets = selectYahooTargets(overseasStocks, prices);
   if (dmTargets.length > 0) {
     // 센티널(QQQ) 동승 — 오버나잇 응답이 1건이라도 있으면(센티널 포함) 데이마켓 세션 라이브 확정
     const ext = await fetchYahooExtended(withDaymarketSentinel(dmTargets));
     Object.assign(prices, applyYahooExtended(prices, ext));
-    daymarketLive = Object.keys(ext).length > 0;
+    daymarketLive = Object.values(ext).some(e => e.session === 'OVERNIGHT');   // 라이브 = 데이마켓(OVERNIGHT)만 — 정규장 차용은 제외
   }
 
   // 2. 유저 해외 지수/선물
@@ -191,7 +191,7 @@ export const useDataPolling = (
   // 데이마켓 fast 갱신 소유 여부. useDataPolling은 App.tsx + StockViewSwitch 두 곳에서 실행되는데
   // 네이버 사이클은 React Query가 같은 queryKey로 dedup하지만, 데이마켓 효과는 useEffect 직접 호출이라
   // dedup 안 됨 → 두 인스턴스 중 App(루트, 항상 마운트)만 소유. 나머지는 공유 캐시를 읽기만.
-  ownsDaymarketRefresh = false,
+  ownsYahooRefresh = false,
 ): DataPollingResult => {
   // progress (ref 기반 — 리렌더 방지)
   const progressRef = useRef(0);
@@ -268,26 +268,28 @@ export const useDataPolling = (
   // 야후 응답을 overseas 캐시에 머지 — fast 갱신·부트스트랩 공용.
   // no-op 가드: 센티널만 왔고(사용자 종목 0) 라이브 플래그도 이미 참이면 old 그대로 반환
   //  → React Query가 알림 자체를 스킵(무의미한 컨테이너 재생성·리렌더 방지, 전 종목 저유동 시 무한 no-op write 차단).
-  const mergeDaymarketExt = useCallback((ext: Record<string, ExtendedQuote>) => {
+  const mergeYahooExt = useCallback((ext: Record<string, ExtendedQuote>) => {
     if (Object.keys(ext).length === 0) return;   // 미수신 = 네이버 값 유지
     const hasUserCode = Object.keys(ext).some(c => c !== DM_SENTINEL.code);
+    const hasOvernight = Object.values(ext).some(e => e.session === 'OVERNIGHT');   // 라이브 게이트 = 데이마켓만
     queryClient.setQueryData<CycleResult>(['overseas', overseasCodesRef.current], (old) => {
       if (!old) return old;
       if (!hasUserCode && old.daymarketLive) return old;
-      return { ...old, prices: applyYahooExtended(old.prices, ext), daymarketLive: true };
+      return { ...old, prices: applyYahooExtended(old.prices, ext), daymarketLive: old.daymarketLive || hasOvernight };
     });
   }, [queryClient]);
 
-  // 데이마켓(OVERNIGHT/CLOSED US) 갱신 — 야후 캐시 읽어 overseas 캐시에 머지(신선한 종목 한 번에 일괄).
+  // 야후 가격 갱신(US 전체) — 야후 캐시 읽어 overseas 캐시에 머지(신선한 종목 한 번에 일괄).
+  //   정규장: 네이버보다 신선한 가격 차용 / 오버나잇: 데이마켓 가격. 적용 가드는 applyYahooExtended(세션 권한).
   // 국내 사이클 완료 시점에 호출 → 국내 종목과 위상 맞춰 같이 flash. refs로 최신값 읽어 안정 참조 유지.
-  // 센티널(QQQ) 동승: 오버나잇 응답 1건+(센티널 포함) = 세션 라이브 → daymarketLive 갱신('연결중' 게이트).
-  const runDaymarketRefresh = useCallback(async (shouldAbort: () => boolean): Promise<void> => {
-    const targets = selectDaymarketTargets(classifiedRef.current.overseasStocks, overseasPricesRef.current);
+  // 센티널(QQQ) 동승: 오버나잇 응답 1건+(센티널 포함) = 데이마켓 세션 라이브 → daymarketLive 갱신('연결중' 게이트).
+  const runYahooRefresh = useCallback(async (shouldAbort: () => boolean): Promise<void> => {
+    const targets = selectYahooTargets(classifiedRef.current.overseasStocks, overseasPricesRef.current);
     if (targets.length === 0) return;
     const ext = await fetchYahooExtended(withDaymarketSentinel(targets), true);   // silentWhenEmpty — 연결 중/주말 0건 로그 소음 방지
     if (shouldAbort()) return;
-    mergeDaymarketExt(ext);
-  }, [mergeDaymarketExt]);
+    mergeYahooExt(ext);
+  }, [mergeYahooExt]);
 
   // ── 자체 타이머 (수동 갱신 시 리셋) ──
   const domesticTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -323,17 +325,17 @@ export const useDataPolling = (
     return () => clearTimeout(overseasTimerRef.current);
   }, [overseasQuery.isFetching, scheduleOverseas]);
 
-  // ── 데이마켓 갱신 — 정상상태(국내 사이클 동기) ──
-  // 정착 후 유지: 국내 사이클(15초)마다 신선 종목 일괄 머지 → 국내와 위상 맞춰 같이 flash.
-  // 부트스트랩 진행 중엔 건너뜀(부트스트랩이 한꺼번에 공개하므로 트리클 방지).
+  // ── 야후 가격 갱신 — 정상상태(국내 사이클 동기) ──
+  // 정착 후 유지: 국내 사이클(15초)마다 US 야후가(정규/오버나잇) 일괄 머지 → 국내와 위상 맞춰 같이 flash.
+  // (해외만 따로 번쩍이면 30종목 화면이 산만 → 한 박자에 같이 갱신.) 부트스트랩 중엔 건너뜀(트리클 방지).
   useEffect(() => {
-    if (!ownsDaymarketRefresh) return;          // 단일 소유자(App)만 — 중복 호출/로그 방지
+    if (!ownsYahooRefresh) return;          // 단일 소유자(App)만 — 중복 호출/로그 방지
     if (!domesticQuery.dataUpdatedAt) return;   // 국내 사이클 완료 시점에만 발사
     if (bootstrapActiveRef.current) return;     // 부트스트랩 중 → 보류(트리클 방지)
     let cancelled = false;
-    void runDaymarketRefresh(() => cancelled);
+    void runYahooRefresh(() => cancelled);
     return () => { cancelled = true; };
-  }, [ownsDaymarketRefresh, domesticQuery.dataUpdatedAt, runDaymarketRefresh]);
+  }, [ownsYahooRefresh, domesticQuery.dataUpdatedAt, runYahooRefresh]);
 
   // ── 데이마켓 부트스트랩 — 마운트/종목추가 시 빠른 로딩 (준비되는 대로 즉시 공개) ──
   // 렌더러는 WS 연결 시점을 모름 → 2초 간격으로 야후 캐시를 빠르게 확인(재시도 포함).
@@ -343,7 +345,7 @@ export const useDataPolling = (
   //  · ~14초까지 안 오는 종목(저유동 등)은 부트스트랩 종료 후 15초 사이클이 이어받음('연결중' 유지는 세션 기반).
   //  · 종목 구성(overseasCodesKey) 바뀔 때만 재가동 — 상태 flip엔 재가동 안 함(straggler 무한 재시작 방지).
   useEffect(() => {
-    if (!ownsDaymarketRefresh) return;
+    if (!ownsYahooRefresh) return;
     const MAX_ATTEMPTS = 7;        // ~14초 (7 × 2초) — 이후는 15초 정상 사이클이 담당
     const INTERVAL_MS = 2_000;
     let cancelled = false;
@@ -353,13 +355,13 @@ export const useDataPolling = (
       if (cancelled) return;
       const prices = overseasPricesRef.current;
       if (prices) {
-        const targets = selectDaymarketTargets(classifiedRef.current.overseasStocks, prices);
+        const targets = selectYahooTargets(classifiedRef.current.overseasStocks, prices);
         const pendingTargets = targets.filter(t => prices[t.code]?.marketStatus === 'CLOSED');
         if (pendingTargets.length === 0) { bootstrapActiveRef.current = false; return; }   // 펜딩 없음 → 종료
         bootstrapActiveRef.current = true;     // 국내사이클 머지 보류(부트스트랩이 더 자주 머지)
         const ext = await fetchYahooExtended(withDaymarketSentinel(pendingTargets), true);   // 연결중 종목만 + 센티널
         if (cancelled) return;
-        mergeDaymarketExt(ext);                // 준비된 종목 즉시 공개(as-ready) + 세션 라이브 플래그 (no-op 가드 공유)
+        mergeYahooExt(ext);                // 준비된 종목 즉시 공개(as-ready) + 세션 라이브 플래그 (no-op 가드 공유)
         if (!pendingTargets.some(t => !ext[t.code])) { bootstrapActiveRef.current = false; return; }   // 전부 로딩 → 종료
       }
       attempts++;
@@ -368,7 +370,7 @@ export const useDataPolling = (
     };
     void tick();
     return () => { cancelled = true; clearTimeout(timer); bootstrapActiveRef.current = false; };
-  }, [ownsDaymarketRefresh, overseasCodesKey, mergeDaymarketExt]);
+  }, [ownsYahooRefresh, overseasCodesKey, mergeYahooExt]);
 
   // 데이마켓 '연결중' 게이트 — 연결 시도 대상(US+시간외지원+CLOSED)은 시도 시작부터 바로 펄스.
   //  · 시도 창(8초): 마운트/종목추가 직후부터 펄스 → '장마감→데이' 점프 없이 '연결중→데이' 순서 보장.
@@ -377,7 +379,7 @@ export const useDataPolling = (
   //    (daymarketLive, 공유 캐시) → 전 종목이 저유동이어도 데이터 올 때까지 '연결중' 유지(장마감 깜빡임 없음).
   //  · 주말/완전마감: 센티널도 침묵 → 창 8초 깜빡 후 '장마감' 정착. 미지원(SQLT)은 처음부터 제외.
   //  · 양 인스턴스(App/StockViewSwitch)가 동일 파생 로직 — daymarketLive는 공유 쿼리 캐시라 동기.
-  const dmTargets = selectDaymarketTargets(classified.overseasStocks, overseasQuery.data?.prices);
+  const dmTargets = selectYahooTargets(classified.overseasStocks, overseasQuery.data?.prices);
   const dmPrices = overseasQuery.data?.prices;
   const dmAnyLive = dmTargets.some(t => dmPrices?.[t.code]?.marketStatus === 'OVERNIGHT');
   const dmSessionLive = overseasQuery.data?.daymarketLive === true;

@@ -40,7 +40,9 @@ const s = {
   track: css`
     position: absolute;
     inset: 0;
-    background: ${sem.bg.elevated};
+    /* OFF 트랙: bg.elevated는 라이트모드에서 거의 흰색이라 묻힘 → border.default로 한 톤 진하게.
+       다크는 체감 차이 거의 없음(헌법 1.5 라이트 매트릭스). */
+    background: ${sem.border.default};
     border-radius: ${radius['2xl']}px;
     cursor: pointer;
     transition: ${transition.normal};

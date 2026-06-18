@@ -159,7 +159,9 @@ const s = {
   input: (width: number, height: number) => css`
     width: ${width}px; height: ${height}px; padding: 0 ${spacing.sm}px;
     border: none; outline: none;
-    background: ${sem.surface.card}; border-radius: ${radius.md}px;
+    /* 입력칸은 bg.base — 회색 wrap(bg.surface) 안에 흰 입력칸(라이트)/더 어두운 입력칸(다크)으로
+       리세스 룩. surface.card는 라이트에서 wrap과 거의 같은 회색이라 입력칸이 안 도드라짐. */
+    background: ${sem.bg.base}; border-radius: ${radius.md}px;
     color: ${sem.text.primary}; font-family: inherit;
     font-size: ${fontSize.md}px; font-weight: ${fontWeight.semibold};
     text-align: center;

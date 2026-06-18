@@ -35,6 +35,7 @@ export const v = {
   cardBg: 'var(--c-card-bg)',
   titleBarBg: 'var(--c-titlebar-bg)',
   marqueeBg: 'var(--c-marquee-bg)',
+  controlBg: 'var(--c-control-bg)',
   shadow: 'var(--c-shadow)',
   // Action
   danger: 'var(--c-danger)',
@@ -99,6 +100,7 @@ export const themeToVars = (colors: Record<string, string>): string => `
   --c-card-bg: ${colors.cardBg};
   --c-titlebar-bg: ${colors.titleBarBg};
   --c-marquee-bg: ${colors.marqueeBg};
+  --c-control-bg: ${colors.controlBg};
   --c-shadow: ${colors.shadow};
   --c-danger: ${colors.danger};
   --c-success: ${colors.success};

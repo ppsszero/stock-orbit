@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toYahooTicker, getYahooStockUrl, toExtendedQuote, applyYahooExtended, selectDaymarketTargets, withDaymarketSentinel, DM_SENTINEL, isDaymarketCapable, rememberDaymarketCapable, type ExtendedQuote } from '../yahoo';
+import { toYahooTicker, getYahooStockUrl, toExtendedQuote, applyYahooExtended, selectYahooTargets, withDaymarketSentinel, DM_SENTINEL, isDaymarketCapable, rememberDaymarketCapable, type ExtendedQuote } from '../yahoo';
 import type { YahooStreamQuote, StockPrice, StockSymbol } from '@/shared/types';
 
 const baseNaver = (over: Partial<StockPrice> = {}): StockPrice => ({
@@ -94,50 +94,93 @@ describe('applyYahooExtended', () => {
     expect(out).not.toBe(prices);
     expect(prices.AAPL.currentPrice).toBe(200);   // 원본 그대로
   });
+
+  it('정규장: US는 야후가 가격·세션 권한 — 가격·등락·세션 야후로 덮음', () => {
+    const prices = { AAPL: baseNaver({ marketStatus: 'REGULAR', currentPrice: 200 }) };
+    const regular: Record<string, ExtendedQuote> = {
+      AAPL: { price: 205, change: 5, changePercent: 2.5, direction: 'up', session: 'REGULAR' },
+    };
+    const out = applyYahooExtended(prices, regular);
+    expect(out.AAPL).toMatchObject({
+      currentPrice: 205, change: 5, changePercent: 2.5, changeDirection: 'up', marketStatus: 'REGULAR',
+    });
+  });
+
+  it('네이버 CLOSED여도 야후 활성 세션이면 야후로 덮음 (개장 전환 시 네이버 지연 보완 — 가격+세션 정합)', () => {
+    const prices = { AAPL: baseNaver({ marketStatus: 'CLOSED', currentPrice: 200 }) };
+    const regular: Record<string, ExtendedQuote> = {
+      AAPL: { price: 205, change: 5, changePercent: 2.5, direction: 'up', session: 'REGULAR' },
+    };
+    const out = applyYahooExtended(prices, regular);
+    expect(out.AAPL).toMatchObject({ currentPrice: 205, changePercent: 2.5, marketStatus: 'REGULAR' });
+  });
+
+  it('야후 세션 CLOSED면 네이버가 열려 있어도 스킵(stale 가격 덮어쓰기 방지)', () => {
+    const prices = { AAPL: baseNaver({ marketStatus: 'REGULAR', currentPrice: 200 }) };
+    const closed: Record<string, ExtendedQuote> = {
+      AAPL: { price: 199, change: -1, changePercent: -0.5, direction: 'down', session: 'CLOSED' },
+    };
+    const out = applyYahooExtended(prices, closed);
+    expect(out.AAPL).toBe(prices.AAPL);
+    expect(out.AAPL.currentPrice).toBe(200);
+  });
+
+  it('값 미변동이어도 활성 세션 응답이면 새 객체 — 매 사이클 flash(= 라이브 갱신 중 신호)', () => {
+    // 정규장: 야후 가격이 네이버 base와 동일해도 새 참조 → usePriceFlash 트리거.
+    // flash = "값 변동"이 아니라 "최신값을 방금 받음" 신호 (사용자: 내가 최신 정보 받고 있나가 더 중요).
+    const base = baseNaver({ marketStatus: 'REGULAR', currentPrice: 200, change: 2, changePercent: 1, changeDirection: 'up' });
+    const same: Record<string, ExtendedQuote> = {
+      AAPL: { price: 200, change: 2, changePercent: 1, direction: 'up', session: 'REGULAR' },
+    };
+    const out = applyYahooExtended({ AAPL: base }, same);
+    expect(out.AAPL).not.toBe(base);                 // 새 참조 → flash 발생
+    expect(out.AAPL).toMatchObject({ currentPrice: 200, change: 2, changePercent: 1, marketStatus: 'REGULAR' });
+  });
+
+  it('오버나잇 값 미변동도 새 객체 — 데이마켓 매 사이클 flash', () => {
+    const base = baseNaver({ marketStatus: 'OVERNIGHT', currentPrice: 210, change: 10, changePercent: 5, changeDirection: 'up' });
+    const same: Record<string, ExtendedQuote> = {
+      AAPL: { price: 210, change: 10, changePercent: 5, direction: 'up', session: 'OVERNIGHT' },
+    };
+    const out = applyYahooExtended({ AAPL: base }, same);
+    expect(out.AAPL).not.toBe(base);
+  });
 });
 
-describe('selectDaymarketTargets', () => {
+describe('selectYahooTargets', () => {
   const sym = (code: string, nation: string): StockSymbol =>
     ({ code, name: code, market: 'NASDAQ', nation, reutersCode: `${code}.O` });
   const stocks = [sym('AAPL', 'US'), sym('TSLA', 'US'), sym('NVDA', 'US'), sym('TM', 'JP')];
 
-  it('US의 OVERNIGHT(유지)+CLOSED(진입) 포함 — PRE 등은 제외', () => {
+  it('네이버 base 있는 US 전부 — 세션(정규/오버나잇/장마감) 무관 포함', () => {
     const prices = {
-      AAPL: baseNaver({ code: 'AAPL', marketStatus: 'OVERNIGHT' }),  // 유지
-      TSLA: baseNaver({ code: 'TSLA', marketStatus: 'CLOSED' }),     // 진입 — 포함
-      NVDA: baseNaver({ code: 'NVDA', marketStatus: 'PRE' }),        // 핸드오프 후 → 제외
+      AAPL: baseNaver({ code: 'AAPL', marketStatus: 'REGULAR' }),    // 정규장 — 가격 차용
+      TSLA: baseNaver({ code: 'TSLA', marketStatus: 'OVERNIGHT' }),  // 데이마켓
+      NVDA: baseNaver({ code: 'NVDA', marketStatus: 'CLOSED' }),     // 진입 후보
     };
-    expect(selectDaymarketTargets(stocks, prices)).toEqual([
+    expect(selectYahooTargets(stocks, prices)).toEqual([
       { code: 'AAPL', reutersCode: 'AAPL.O' },
       { code: 'TSLA', reutersCode: 'TSLA.O' },
+      { code: 'NVDA', reutersCode: 'NVDA.O' },
     ]);
   });
 
-  it('hasExtendedHours와 무관하게 CLOSED US는 포함 — 회귀 방지(네이버가 세션 도중 over 정보를 거둬가도 야후 차용 유지)', () => {
-    const prices = {
-      AAPL: baseNaver({ code: 'AAPL', marketStatus: 'CLOSED', hasExtendedHours: true }),
-      TSLA: baseNaver({ code: 'TSLA', marketStatus: 'CLOSED' }),                            // 미설정이어도 포함
-      NVDA: baseNaver({ code: 'NVDA', marketStatus: 'CLOSED', hasExtendedHours: false }),   // false여도 포함
-    };
-    expect(selectDaymarketTargets(stocks, prices).map(t => t.code)).toEqual(['AAPL', 'TSLA', 'NVDA']);
-  });
-
-  it('US가 아니면 CLOSED/OVERNIGHT여도 제외', () => {
-    const prices = { TM: baseNaver({ code: 'TM', nation: 'JP', marketStatus: 'OVERNIGHT' }) };
-    expect(selectDaymarketTargets(stocks, prices)).toEqual([]);
-  });
-
-  it('REGULAR/AFTER는 제외 (네이버가 제공하는 세션)', () => {
+  it('US가 아니면 세션 무관 제외 (JP는 야후 심볼매핑 미지원)', () => {
     const prices = {
       AAPL: baseNaver({ code: 'AAPL', marketStatus: 'REGULAR' }),
-      TSLA: baseNaver({ code: 'TSLA', marketStatus: 'AFTER' }),
+      TM: baseNaver({ code: 'TM', nation: 'JP', marketStatus: 'OVERNIGHT' }),
     };
-    expect(selectDaymarketTargets(stocks, prices)).toEqual([]);
+    expect(selectYahooTargets(stocks, prices).map(t => t.code)).toEqual(['AAPL']);
+  });
+
+  it('네이버 base 없는 US는 제외 (머지 못 하므로 구독 낭비 방지)', () => {
+    const prices = { AAPL: baseNaver({ code: 'AAPL', marketStatus: 'REGULAR' }) };   // TSLA/NVDA base 없음
+    expect(selectYahooTargets(stocks, prices).map(t => t.code)).toEqual(['AAPL']);
   });
 
   it('prices 미정/빈 가격이면 빈 배열', () => {
-    expect(selectDaymarketTargets(stocks, undefined)).toEqual([]);
-    expect(selectDaymarketTargets(stocks, {})).toEqual([]);
+    expect(selectYahooTargets(stocks, undefined)).toEqual([]);
+    expect(selectYahooTargets(stocks, {})).toEqual([]);
   });
 });
 
