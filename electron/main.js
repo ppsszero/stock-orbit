@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, clipboard, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, clipboard, shell, powerMonitor } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -459,6 +459,30 @@ app.whenReady().then(() => {
   const yahooTracked = new Set();          // 구독 중인 티커 (연결과 독립 — 재연결 시 전체 재구독)
   const yahooCache = new Map();            // ticker → { price, change, changePercent, marketHours, receivedAt }
 
+  // ── Liveness watchdog ──
+  // 끊김 이벤트(close/error)가 안 뜨는 "반쯤 죽은 소켓"(절전 깨어남·WiFi 로밍·VPN 재접속 등) 대응.
+  // 이게 없으면 connected=true인 채 프레임이 멈춰 5분 후 stale → 데이장이 '장마감'으로 굳고 영구 먹통(재실행 전까지).
+  // 30초마다 ping → pong/프레임이 연속 N회 없으면 죽은 소켓 판정 후 강제 terminate → onDown 재연결 경로 진입.
+  let yahooHeartbeatTimer = null;
+  let yahooMissedBeats = 0;
+  const YAHOO_HEARTBEAT_MS = 30_000;
+  const YAHOO_MAX_MISSED = 3;              // 30초 × 3 = 90초간 pong·프레임 모두 없으면 죽은 소켓
+  const yahooAlive = () => { yahooMissedBeats = 0; };   // pong/프레임 수신 = 생존 신호
+  const startYahooHeartbeat = (sock) => {
+    clearInterval(yahooHeartbeatTimer);
+    yahooMissedBeats = 0;
+    yahooHeartbeatTimer = setInterval(() => {
+      if (yahooWs !== sock) { clearInterval(yahooHeartbeatTimer); return; }   // 소켓 교체됨 → 옛 인터벌 자가 퇴거(cross-socket terminate 구조적 차단)
+      yahooMissedBeats++;                                // 직전 틱 이후 pong/프레임 없었으면 누적 (yahooAlive가 0으로 리셋)
+      if (yahooMissedBeats >= YAHOO_MAX_MISSED) {        // 연속 3틱(90초) 무응답 = 죽은 소켓 → terminate → 'close' → onDown 재연결
+        try { sock.terminate(); } catch { /* noop */ }
+        return;
+      }
+      try { sock.ping(); } catch { /* noop */ }
+    }, YAHOO_HEARTBEAT_MS);
+  };
+  const stopYahooHeartbeat = () => { clearInterval(yahooHeartbeatTimer); yahooHeartbeatTimer = null; };
+
   // protobuf PricingData 최소 디코더 (1=id str, 2=price f32, 7=marketHours varint, 8=changePercent f32, 12=change f32)
   const decodeYahooPricing = (b64) => {
     const buf = Buffer.from(b64, 'base64');
@@ -492,10 +516,13 @@ app.whenReady().then(() => {
     yahooWs.on('open', () => {
       yahooConnected = true;
       yahooReconnectDelay = 1000;
+      startYahooHeartbeat(yahooWs);   // 이 소켓을 캡처 — 인터벌이 모듈 전역이 아닌 자기 소켓만 ping/terminate
       if (yahooTracked.size > 0) yahooSend({ subscribe: [...yahooTracked] });
       // WS 상태는 렌더러 시스템로그 WS 탭에서 확인 (메인 콘솔 로그 X — 헌법 21)
     });
+    yahooWs.on('pong', yahooAlive);   // pong 수신 = 소켓 생존 (장마감 등 프레임 없는 구간에도 연결 유지)
     yahooWs.on('message', (data) => {
+      yahooAlive();                   // 프레임 수신도 생존 신호 (Yahoo가 pong 안 줘도 데이장 중엔 churn 없음)
       try {
         const msg = JSON.parse(data.toString());
         if (msg.type === 'pricing' && msg.message) {
@@ -506,6 +533,7 @@ app.whenReady().then(() => {
     });
     const onDown = (info) => {
       yahooConnected = false;
+      stopYahooHeartbeat();
       // 죽은 소켓 리스너 제거 + 종료 (재연결 시 새 소켓만 살아있게 — orphan 리스너/late 캐시쓰기 방지)
       if (yahooWs) { try { yahooWs.removeAllListeners(); yahooWs.terminate(); } catch { /* noop */ } }
       yahooWs = null;
@@ -545,8 +573,21 @@ app.whenReady().then(() => {
     return { quotes, meta: { connected: yahooConnected, tracked: yahooTracked.size, fresh: Object.keys(quotes).length } };
   });
 
+  // 절전/최대절전 깨어남 — 소켓이 죽었어도 close 이벤트가 안 뜨는 경우가 많음(half-open).
+  // watchdog 90초·stale 5분을 기다리지 않고 즉시 강제 재연결 → 깨어난 직후 바로 데이장 복구.
+  powerMonitor.on('resume', () => {
+    if (yahooTracked.size === 0) return;                 // 구독 대상 없으면 스킵
+    stopYahooHeartbeat();
+    if (yahooReconnectTimer) { clearTimeout(yahooReconnectTimer); yahooReconnectTimer = null; }
+    if (yahooWs) { try { yahooWs.removeAllListeners(); yahooWs.terminate(); } catch { /* noop */ } yahooWs = null; }
+    yahooConnected = false;
+    yahooReconnectDelay = 1000;
+    yahooConnect();
+  });
+
   // 앱 종료 시 WS/타이머 정리 (dangling 소켓 + 종료 중 재연결 storm 방지)
   app.on('before-quit', () => {
+    stopYahooHeartbeat();
     if (yahooReconnectTimer) { clearTimeout(yahooReconnectTimer); yahooReconnectTimer = null; }
     if (yahooWs) { try { yahooWs.removeAllListeners(); yahooWs.close(); } catch { /* noop */ } yahooWs = null; }
   });
